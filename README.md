@@ -1,8 +1,6 @@
 # Smartfleet - Bookings (React + Vite)
 
-A UI clone of the Bookings screen (list view + Add/Update Booking form),
-built to match the reference screenshot, and wired to the field rules
-documented in the Smartfleet Bookings module manual.
+A UI of the Bookings screen (list view + Add/Update Booking form),.
 
 ## Setup
 
