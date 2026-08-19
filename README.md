@@ -1,8 +1,8 @@
-# Smartfleet - Bookings (React + Vite)
+# Reileo Logistics Services - Bookings (React + Vite)
 
 A UI clone of the Bookings screen (list view + Add/Update Booking form),
 built to match the reference screenshot, and wired to the field rules
-documented in the Smartfleet Bookings module manual.
+documented in the Reileo Logistics Services Bookings module manual.
 
 ## Setup
 

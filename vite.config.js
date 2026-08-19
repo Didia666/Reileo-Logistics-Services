@@ -5,5 +5,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:80',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '/New%20folder/Marvel-Trucking-Solutions-Inc/api'),
+      },
+    },
   },
 })
