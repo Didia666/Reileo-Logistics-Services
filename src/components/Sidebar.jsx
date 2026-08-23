@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import {
   Truck, LayoutDashboard, Home, ClipboardList, Receipt, Car, Bell,
-  AlertTriangle, Wrench, Package, Fuel, BarChart3, LogOut,
+  AlertTriangle, Wrench, Package, Fuel, BarChart3, LogOut, Settings2,
 } from 'lucide-react';
 
 const NAV = [
@@ -18,6 +18,7 @@ const NAV = [
   { to: '/work-orders',  label: 'Work Order',       Icon: Package },
   { to: '/fuel',         label: 'Fuel Record',      Icon: Fuel },
   { to: '/reports',      label: 'Reports',          Icon: BarChart3 },
+  { to: '/settings',     label: 'Settings',         Icon: Settings2 },
 ];
 
 export default function Sidebar() {

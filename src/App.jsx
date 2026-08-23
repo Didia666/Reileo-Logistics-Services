@@ -5,6 +5,7 @@ import Login from './components/Login.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import BookingsList from './components/BookingsList.jsx';
 import BookingForm from './components/BookingForm.jsx';
+import Settings from './components/Settings.jsx';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -49,6 +50,8 @@ function Layout() {
           <Route path="/work-orders" element={<DashboardPlaceholder title="Work Order" />} />
           <Route path="/fuel" element={<DashboardPlaceholder title="Fuel Record" />} />
           <Route path="/reports" element={<DashboardPlaceholder title="Reports" />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings/:category" element={<Settings />} />
           <Route path="*" element={<Navigate to="/bookings" replace />} />
         </Routes>
       </main>

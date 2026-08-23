@@ -9,7 +9,7 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:80',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/New%20folder/Marvel-Trucking-Solutions-Inc/api'),
+        rewrite: (path) => path.replace(/^\/api/, '/New%20folder/Reileo_Logistics_Services/api'),
       },
     },
   },

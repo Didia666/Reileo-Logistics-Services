@@ -37,6 +37,22 @@ export const bookings = {
 
 const lookup = (endpoint) => () => request(`/${endpoint}.php`);
 
+export function settingsCrud(endpoint) {
+  return {
+    schema: () => request(`/${endpoint}.php?schema=1`),
+    list: (params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      return request(`/${endpoint}.php${q ? '?' + q : ''}`);
+    },
+    create: (payload) =>
+      request(`/${endpoint}.php`, { method: 'POST', body: JSON.stringify(payload) }),
+    update: (id, payload) =>
+      request(`/${endpoint}.php?id=${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    remove: (id) =>
+      request(`/${endpoint}.php?id=${id}`, { method: 'DELETE' }),
+  };
+}
+
 export const lookups = {
   customers: lookup('customers'),
   depots: lookup('depots'),

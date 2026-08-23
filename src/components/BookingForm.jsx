@@ -127,6 +127,36 @@ export default function BookingForm() {
 
   /*
    * ============================================================
+   * BOOKING TYPE HELPERS
+   * ============================================================
+   *
+   * The database uses `book_type`, while older API responses may
+   * expose the same value as `booking_type`, `name`, `type`, or
+   * `label`. Normalize all of those possibilities so the form
+   * always has a consistent `booking_type` field to display.
+   */
+
+  const getBookingTypeId = (type) => {
+    return (
+      type?.booking_type_id ??
+      type?.id ??
+      ''
+    );
+  };
+
+  const getBookingTypeName = (type) => {
+    return (
+      type?.booking_type ??
+      type?.book_type ??
+      type?.name ??
+      type?.type ??
+      type?.label ??
+      ''
+    );
+  };
+
+  /*
+   * ============================================================
    * LOAD LOOKUPS
    * ============================================================
    */
@@ -178,14 +208,29 @@ export default function BookingForm() {
       const getResult = (index) => {
         const result = results[index];
 
-        if (result.status === 'fulfilled') {
-          return Array.isArray(result.value) ? result.value : [];
+        if (result.status !== 'fulfilled') {
+          console.warn(
+            `Lookup ${index} failed:`,
+            result.reason
+          );
+
+          return [];
         }
 
-        console.warn(
-          `Lookup ${index} failed:`,
-          result.reason
-        );
+        // Normal API response: [...]
+        if (Array.isArray(result.value)) {
+          return result.value;
+        }
+
+        // Also support: { data: [...] }
+        if (Array.isArray(result.value?.data)) {
+          return result.value.data;
+        }
+
+        // Also support: { rows: [...] }
+        if (Array.isArray(result.value?.rows)) {
+          return result.value.rows;
+        }
 
         return [];
       };
@@ -201,8 +246,27 @@ export default function BookingForm() {
       const it = getResult(8);
       const tt = getResult(9);
 
+      // Normalize booking types because the database column is
+      // `book_type`, while the form uses `booking_type`.
+      const normalizedBookingTypes = bt
+        .map((type) => ({
+          ...type,
+          booking_type_id: getBookingTypeId(type),
+          booking_type: getBookingTypeName(type),
+        }))
+        .filter(
+          (type) =>
+            type.booking_type_id !== '' &&
+            type.booking_type !== ''
+        );
+
+      console.log(
+        'Booking types loaded:',
+        normalizedBookingTypes
+      );
+
       setCustomers(c);
-      setBookingTypes(bt);
+      setBookingTypes(normalizedBookingTypes);
       setStatuses(s);
       setDepots(d);
       setCommodities(cm);
@@ -224,7 +288,7 @@ export default function BookingForm() {
 
       return {
         customers: c,
-        bookingTypes: bt,
+        bookingTypes: normalizedBookingTypes,
         statuses: s,
         depots: d,
         commodities: cm,
@@ -1058,18 +1122,22 @@ export default function BookingForm() {
                     -Select-
                   </option>
 
-                  {bookingTypes.map((type) => (
-                    <option
-                      key={
-                        type.booking_type_id
-                      }
-                      value={
-                        type.booking_type_id
-                      }
-                    >
-                      {type.booking_type}
-                    </option>
-                  ))}
+                  {bookingTypes.map((type) => {
+                    const bookingTypeId =
+                      getBookingTypeId(type);
+
+                    const bookingTypeName =
+                      getBookingTypeName(type);
+
+                    return (
+                      <option
+                        key={bookingTypeId}
+                        value={bookingTypeId}
+                      >
+                        {bookingTypeName}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             </div>

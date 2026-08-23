@@ -3,7 +3,7 @@ define('DB_HOST', 'localhost');
 define('DB_NAME', 'reileo_logistics_services');
 define('DB_USER', 'root');
 define('DB_PASS', '');
-define('DB_PREFIX', 'reileo_logistics_services_');
+define('DB_PREFIX', '');
 
 function getDB() {
     $conn = null;

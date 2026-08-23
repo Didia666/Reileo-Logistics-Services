@@ -33,7 +33,7 @@ function requireAuth($roles = null) {
 
 function loginUser($username, $password) {
     $db = getDB();
-    $tbl = tableName('users');
+    $tbl = 'reileo_logistics_services_users';
     $stmt = $db->prepare("SELECT * FROM `{$tbl}` WHERE username = ? OR email = ? LIMIT 1");
     $stmt->execute([$username, $username]);
     $user = $stmt->fetch();
