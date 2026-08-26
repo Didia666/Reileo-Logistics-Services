@@ -53,6 +53,20 @@ export function settingsCrud(endpoint) {
   };
 }
 
+export const customersCrud = {
+  list: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request(`/customers.php${q ? '?' + q : ''}`);
+  },
+  get: (id) => request(`/customers.php?id=${id}`),
+  create: (payload) =>
+    request('/customers.php', { method: 'POST', body: JSON.stringify(payload) }),
+  update: (id, payload) =>
+    request(`/customers.php?id=${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  remove: (id) =>
+    request(`/customers.php?id=${id}`, { method: 'DELETE' }),
+};
+
 export const lookups = {
   customers: lookup('customers'),
   depots: lookup('depots'),

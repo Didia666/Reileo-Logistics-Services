@@ -6,6 +6,8 @@ import Sidebar from './components/Sidebar.jsx';
 import BookingsList from './components/BookingsList.jsx';
 import BookingForm from './components/BookingForm.jsx';
 import Settings from './components/Settings.jsx';
+import Home from './components/Home.jsx';
+import Customers from './components/Customers.jsx';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -36,9 +38,10 @@ function Layout() {
       <Sidebar />
       <main className="main-content">
         <Routes>
-          <Route path="/" element={<Navigate to="/bookings" replace />} />
+          <Route path="/" element={<Navigate to="/home" replace />} />
           <Route path="/dashboard" element={<DashboardPlaceholder title="Dashboard" />} />
-          <Route path="/home" element={<DashboardPlaceholder title="Home" />} />
+          <Route path="/home" element={<Home />} />
+          <Route path="/customers" element={<Customers />} />
           <Route path="/bookings" element={<BookingsList />} />
           <Route path="/bookings/new" element={<BookingForm />} />
           <Route path="/bookings/:id/edit" element={<BookingForm />} />
@@ -52,7 +55,7 @@ function Layout() {
           <Route path="/reports" element={<DashboardPlaceholder title="Reports" />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/settings/:category" element={<Settings />} />
-          <Route path="*" element={<Navigate to="/bookings" replace />} />
+          <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
       </main>
     </div>
