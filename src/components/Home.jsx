@@ -19,7 +19,7 @@ const SHORTCUTS = [
     { label: 'BOOKINGS', route: '/bookings', Icon: BarChart3, color: '#4FC3F7' },
     { label: 'CLIENT BILLING', route: '/billing', Icon: Receipt, color: '#29B6F6' },
     { label: 'INCIDENTS', route: '/incidents', Icon: AlertTriangle, color: '#039BE5' },
-    { label: 'VEHICLES', route: '/assets', Icon: Car, color: '#0288D1' },
+    { label: 'VEHICLES', route: '/vehicles', Icon: Car, color: '#0288D1' },
     { label: 'CUSTOMERS', route: '/customers', Icon: Users, color: '#0277BD' },
   ],
   [

@@ -5,6 +5,8 @@ import Login from './components/Login.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import BookingsList from './components/BookingsList.jsx';
 import BookingForm from './components/BookingForm.jsx';
+import Vehicles from './components/Vehicles.jsx';
+import VehiclesForm from './components/VehiclesForm.jsx';
 import Settings from './components/Settings.jsx';
 import Home from './components/Home.jsx';
 import Customers from './components/Customers.jsx';
@@ -47,6 +49,9 @@ function Layout() {
           <Route path="/bookings/:id/edit" element={<BookingForm />} />
           <Route path="/billing" element={<DashboardPlaceholder title="Billing Management" />} />
           <Route path="/assets" element={<DashboardPlaceholder title="Asset Management" />} />
+          <Route path="/vehicles" element={<Vehicles />} />
+          <Route path="/vehicles/new" element={<VehiclesForm />} />
+          <Route path="/vehicles/:id/edit" element={<VehiclesForm />} />
           <Route path="/reminders" element={<DashboardPlaceholder title="Reminders" />} />
           <Route path="/incidents" element={<DashboardPlaceholder title="Incidents" />} />
           <Route path="/parts" element={<DashboardPlaceholder title="Parts Management" />} />

@@ -25,20 +25,30 @@ $method = $_SERVER['REQUEST_METHOD'];
 $id = $_GET['id'] ?? null;
 $action = $_GET['action'] ?? null;
 
-function bookingsBaseQuery($T) {
+function bookingsBaseQuery($T, $db) {
+    $optionalColumns = [
+        'delivery_date', 'route_code', 'no_of_trips', 'no_of_drops',
+        'category_type', 'area', 'trip_allowance', 'fuel_liters',
+        'fuel_po', 'fuel_amount', 'remarks', 'client_ref_no',
+        'other_ref_no', 'remarks_2',
+    ];
+    $selectColumns = [];
+    foreach ($optionalColumns as $column) {
+        $selectColumns[] = bookingHasColumn($db, $T['b'], $column)
+            ? "b.{$column}"
+            : "NULL AS {$column}";
+    }
+
     return "SELECT b.booking_id, b.booking_no, b.created_at, b.updated_at,
-                   b.delivery_date, b.route_code, b.no_of_trips, b.no_of_drops,
-                   b.category_type, b.area, b.trip_allowance,
-                   b.fuel_liters, b.fuel_po, b.fuel_amount,
-                   b.remarks, b.client_ref_no, b.other_ref_no, b.remarks_2,
+                   " . implode(', ', $selectColumns) . ",
                    c.customer_id, c.customer_name, c.contact_number,
-                   bt.booking_type_id, bt.booking_type,
+                   bt.booking_type_id, bt.book_type AS booking_type,
                    bs.status_id, bs.status_name, bs.sort_order,
                    v.vehicle_id, v.plate_no,
                    d.depot_id, d.depot_name,
                    o.origin_id, o.origins AS origin_name,
                    dst.destination_id, dst.destination,
-                   ct.commodity_type_id, ct.commodity_type
+                   ct.commodity_id AS commodity_type_id, ct.commodity_type
             FROM `{$T['b']}` b
             LEFT JOIN `{$T['c']}` c   ON b.customer_id = c.customer_id
             LEFT JOIN `{$T['bt']}` bt ON b.booking_type_id = bt.booking_type_id
@@ -47,11 +57,11 @@ function bookingsBaseQuery($T) {
             LEFT JOIN `{$T['d']}` d   ON b.depot_id = d.depot_id
             LEFT JOIN `{$T['o']}` o   ON b.origin_id = o.origin_id
             LEFT JOIN `{$T['dst']}` dst ON b.destination_id = dst.destination_id
-            LEFT JOIN `{$T['ct']}` ct ON b.commodity_type_id = ct.commodity_type_id";
+            LEFT JOIN `{$T['ct']}` ct ON b.commodity_type_id = ct.commodity_id";
 }
 
 function fetchRows($db, $T, $filters) {
-    $sql = bookingsBaseQuery($T) . " WHERE 1=1";
+    $sql = bookingsBaseQuery($T, $db) . " WHERE 1=1";
     $params = [];
     if (!empty($filters['status_id'])) {
         $sql .= " AND bs.status_id = ?";
@@ -81,9 +91,9 @@ function fetchRows($db, $T, $filters) {
 
 function fetchPersonnelForBooking($db, $T, $bookingId) {
     $sql = "SELECT bp.booking_personnel_id, bp.booking_id, bp.personnel_id,
-                   bp.assignment_role, bp.employment_type AS source,
+                   bp.assignment_role, NULL AS source,
                    CONCAT_WS(' ', p.first_name, p.middle_name, p.last_name) AS full_name,
-                   p.contact_number, p.e_mail_id
+                   p.contact_number, p.p_email_id
             FROM `{$T['bp']}` bp
             LEFT JOIN `{$T['p']}` p ON bp.personnel_id = p.personnel_id
             WHERE bp.booking_id = ?
@@ -221,7 +231,7 @@ switch ($method) {
             $personnelMap = [];
             if (!empty($ids)) {
                 $placeholders = implode(',', array_fill(0, count($ids), '?'));
-                $sql = "SELECT bp.booking_id, bp.personnel_id, bp.assignment_role, bp.employment_type AS source,
+                $sql = "SELECT bp.booking_id, bp.personnel_id, bp.assignment_role, NULL AS source,
                                CONCAT_WS(' ', p.first_name, p.middle_name, p.last_name) AS full_name
                         FROM `{$T['bp']}` bp
                         LEFT JOIN `{$T['p']}` p ON bp.personnel_id = p.personnel_id

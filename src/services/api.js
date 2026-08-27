@@ -79,8 +79,23 @@ export const lookups = {
   destinations: lookup('destinations'),
   bookingTypes: lookup('booking_types'),
   bookingStatuses: lookup('booking_statuses'),
+  vehicleStatus: lookup('vehicles_status'),
   commodities: lookup('commodities'),
   vendors: lookup('vendors'),
   item_types: lookup('item_types'),
   category_types: lookup('category_types'),
+};
+
+export const vehicles = {
+  list: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request(`/vehicles.php${q ? '?' + q : ''}`);
+  },
+  get: (id) => request(`/vehicles.php?id=${id}`),
+  create: (payload) =>
+    request('/vehicles.php', { method: 'POST', body: JSON.stringify(payload) }),
+  update: (id, payload) =>
+    request(`/vehicles.php?id=${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  cancel: (id) => request(`/vehicles.php?action=cancel&id=${id}`, { method: 'POST' }),
+  remove: (id) => request(`/vehicles.php?id=${id}`, { method: 'DELETE' }),
 };

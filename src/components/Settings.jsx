@@ -22,9 +22,9 @@ const SETTINGS_CATEGORIES = [
   { key: 'personnel-renewal',  label: 'Personnel Renewal',   Icon: UserCog,        endpoint: null             },
   { key: 'vehicle-renewal',    label: 'Vehicle Renewal',     Icon: Bell,           endpoint: null             },
   { key: 'service-tasks',      label: 'Service Tasks',       Icon: Wrench,         endpoint: null             },
-  { key: 'vehicle-types',      label: 'Vehicle Types',       Icon: CheckSquare,    endpoint: null             },
-  { key: 'vehicle-makers',     label: 'Vehicle Makers',      Icon: Car,            endpoint: null             },
-  { key: 'vehicle-models',     label: 'Vehicle Models',      Icon: Car,            endpoint: null             },
+  { key: 'vehicle-types',      label: 'Vehicle Types',       Icon: CheckSquare,    endpoint: 'vh_types'             },
+  { key: 'vehicle-makers',     label: 'Vehicle Makers',      Icon: Car,            endpoint: 'vh_manufacturers'             },
+  { key: 'vehicle-models',     label: 'Vehicle Models',      Icon: Car,            endpoint: 'vh_models'             },
   { key: 'vendor-types',       label: 'Vendor Types',        Icon: Package,        endpoint: null             },
 ];
 

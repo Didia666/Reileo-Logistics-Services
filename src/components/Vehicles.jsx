@@ -1,29 +1,32 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { bookings, lookups } from '../services/api.js';
+import { vehicles, lookups } from '../services/api.js';
 import { Plus, MoreHorizontal, Eye, Pencil, X, Search, Loader2 } from 'lucide-react';
 
 const STATUS_TABS = [
   { key: 'all',                 label: 'All',         variant: 'default' },
-  { key: 'Under Review',        label: 'Under Review', variant: 'info' },
-  { key: 'Approved',            label: 'Approved',     variant: 'warning' },
-  { key: 'Dispatched',          label: 'Dispatched',   variant: 'info' },
-  { key: 'Delivered',           label: 'Delivered',    variant: 'success' },
-  { key: 'Completed',           label: 'Completed',    variant: 'success' },
-  { key: 'Cancelled',           label: 'Cancelled',    variant: 'danger' },
-  { key: 'Declined',            label: 'Declined',     variant: 'danger' },
+  { key: 'Active',              label: 'Active', variant: 'info' },
+  { key: 'Inactive',            label: 'Inactive',     variant: 'warning' },
+  { key: 'Sold',                label: 'Sold',   variant: 'info' },
+  { key: 'Archive',             label: 'Archive',    variant: 'success' },
+  { key: 'Scrapped',            label: 'Scrapped',    variant: 'success' },
+  { key: 'In-shop',             label: 'In-shop',    variant: 'danger' },
+  { key: 'Out of Service',      label: 'Out of Service',     variant: 'danger' },
 ];
+
 
 function statusVariant(name) {
   switch (name) {
-    case 'Completed': case 'Delivered': case 'Approved': return 'success';
-    case 'Dispatched': case 'Under Review': return 'info';
-    case 'Cancelled': case 'Declined': return 'danger';
+    case 'Active': case 'Archive': case 'In-shop': return 'success';
+    case 'Inactive': case 'Sold': return 'warning';
+    case 'Scrapped': case 'Out of Service': return 'success';
     default: return 'default';
   }
 }
 
-function ActionMenu({ booking, onOpen, onClose, isOpen, onCancel }) {
+
+
+function ActionMenu({ vehicle, onOpen, onClose, isOpen, onCancel }) {
   const navigate = useNavigate();
   const ref = React.useRef(null);
   useEffect(() => {
@@ -38,13 +41,13 @@ function ActionMenu({ booking, onOpen, onClose, isOpen, onCancel }) {
       <button onClick={onOpen}><MoreHorizontal size={14} /> Select</button>
       {isOpen && (
         <div className="dropdown">
-          <button onClick={() => { onClose(); navigate(`/bookings/${booking.booking_id}/edit`); }}>
+          <button onClick={() => { onClose(); navigate(`/vehicles/${vehicle.vehicle_id}/edit`); }}>
             <Eye size={12} style={{ marginRight: 6 }} /> View
           </button>
-          <button onClick={() => { onClose(); navigate(`/bookings/${booking.booking_id}/edit`); }}>
+          <button onClick={() => { onClose(); navigate(`/vehicles/${vehicle.vehicle_id}/edit`); }}>
             <Pencil size={12} style={{ marginRight: 6 }} /> Update
           </button>
-          <button className="danger" onClick={() => { onClose(); onCancel(booking); }}>
+          <button className="danger" onClick={() => { onClose(); onCancel(vehicle); }}>
             <X size={12} style={{ marginRight: 6 }} /> Cancel
           </button>
         </div>
@@ -53,7 +56,7 @@ function ActionMenu({ booking, onOpen, onClose, isOpen, onCancel }) {
   );
 }
 
-export default function BookingsList() {
+export default function Vehicles() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [all, setAll] = useState([]);
@@ -70,15 +73,12 @@ export default function BookingsList() {
     (async () => {
       try {
         const [a, s] = await Promise.all([
-          bookings.list({ limit: 1000 }),
-          lookups.bookingStatuses().catch(() => []),
+          vehicles.list({ limit: 1000 }),
+          lookups.vehicleStatus().catch(() => []),
         ]);
-        const rows = Array.isArray(a) ? a : (Array.isArray(a?.data) ? a.data : []);
-        setAll(rows);
-        setTotal(a?.total || rows.length);
-        setStatuses(Array.isArray(s) ? s : (Array.isArray(s?.data) ? s.data : []));
-      } catch (e) {
-        setToast(e.message || 'Unable to load bookings.');
+        setAll(Array.isArray(a) ? a : (a.data || []));
+        setTotal(a.total || (Array.isArray(a) ? a.length : 0));
+        setStatuses(s);
       } finally {
         setLoading(false);
       }
@@ -93,11 +93,9 @@ export default function BookingsList() {
     if (search.trim()) {
       const q = search.toLowerCase();
       rows = rows.filter(r =>
-        (r.booking_no || '').toLowerCase().includes(q) ||
-        (r.customer_name || '').toLowerCase().includes(q) ||
         (r.plate_no || '').toLowerCase().includes(q) ||
-        (r.origin_name || '').toLowerCase().includes(q) ||
-        (r.destination || '').toLowerCase().includes(q)
+        (r.vehicle_type || '').toLowerCase().includes(q) ||
+        (r.vehicle_manufacturer || '').toLowerCase().includes(q)
       );
     }
     return rows;
@@ -113,12 +111,12 @@ export default function BookingsList() {
     return base;
   }, [all]);
 
-  const handleCancel = async (b) => {
-    if (!confirm(`Cancel booking ${b.booking_no}?`)) return;
+  const handleCancel = async (v) => {
+    if (!confirm(`Cancel vehicle ${v.plate_no}?`)) return;
     try {
-      await bookings.cancel(b.booking_id);
-      setAll(prev => prev.map(r => r.booking_id === b.booking_id ? { ...r, status_name: 'Cancelled', status_id: 7 } : r));
-      setToast(`Booking ${b.booking_no} cancelled.`);
+      await vehicles.cancel(v.vehicle_id);
+      setAll(prev => prev.map(r => r.vehicle_id === v.vehicle_id ? { ...r, status_name: 'Cancelled', status_id: 7 } : r));
+      setToast(`Vehicle ${v.plate_no} cancelled.`);
       setTimeout(() => setToast(''), 3000);
     } catch (e) { setToast(e.message); setTimeout(() => setToast(''), 4000); }
   };
@@ -129,15 +127,15 @@ export default function BookingsList() {
     <>
       <div className="page-header">
         <div>
-          <div className="breadcrumb">Operations / Bookings</div>
-          <h2>Bookings</h2>
+          <div className="breadcrumb">Operations / Vehicles</div>
+          <h2>Vehicle</h2>
           <div style={{ color: '#6b7280', fontSize: 13 }}>
-            {filtered.length} of {total} total · {statuses.length} statuses
+            {filtered.length} of {total} total · {statuses.length} Vehicles
           </div>
         </div>
         <div>
-          <button className="btn btn-primary" onClick={() => navigate('/bookings/new')}>
-            <Plus size={15} /> New Booking
+          <button className="btn btn-primary" onClick={() => navigate('/vehicles/new')}>
+            <Plus size={15} /> New Vehicle
           </button>
         </div>
       </div>
@@ -159,7 +157,7 @@ export default function BookingsList() {
             <input
               type="text"
               className="search-input"
-              placeholder="Search booking no, customer, plate, route…"
+              placeholder="Search plate no, vehicle no, depot..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             />
@@ -175,55 +173,40 @@ export default function BookingsList() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Booking No</th>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Type</th>
-                <th>Route</th>
+                <th>Plate No.</th>
+                <th>Vehicle Type</th>
                 <th>Depot</th>
-                <th>Vehicle</th>
-                <th>Personnel</th>
+                <th>Maker</th>
+                <th>With GPS</th>
+                <th>Company Owned</th>
+                <th>Subcon</th>
+                <th>Category Type</th>
                 <th>Status</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {current.length === 0 && (
-                <tr><td colSpan={10} className="empty-row">No bookings match the current filters.</td></tr>
+                <tr><td colSpan={10} className="empty-row">No vehicles match the current filters.</td></tr>
               )}
-              {current.map(b => (
-                <tr key={b.booking_id}>
-                  <td style={{ fontWeight: 600, color: '#2563eb' }}>{b.booking_no}</td>
-                  <td style={{ whiteSpace: 'nowrap', color: '#6b7280' }}>
-                    {b.created_at ? new Date(b.created_at).toLocaleDateString() : '—'}
-                  </td>
-                  <td>{b.customer_name || '—'}</td>
-                  <td>{b.booking_type || '—'}</td>
+              {current.map(v => (
+                <tr key={v.vehicle_id}>
+                  <td style={{ fontWeight: 600, color: '#2563eb' }}>{v.plate_no}</td>
+                  <td>{v.vehicle_type || '—'}</td>
+                  <td>{v.depot_name || '—'}</td>
+                  <td>{v.vehicle_manufacturer || '—'}</td>
+                  <td>{v.GPS || '—'}</td>
+                  <td>{v.vendor_name || 'No'}</td>
+                  <td>{v.subcon_name || '—'}</td>
+                  <td>{v.category_type || '—'}</td>
                   <td>
-                    <div>{b.origin_name || '—'}</div>
-                    <div style={{ color: '#6b7280', fontSize: 12 }}>→ {b.destination || '—'}</div>
-                  </td>
-                  <td>{b.depot_name || '—'}</td>
-                  <td>{b.plate_no || '—'}</td>
-                  <td>
-                    {b.personnel && b.personnel.length > 0 ? (
-                      <div className="personnel-tags">
-                        {b.personnel.map((p, i) => (
-                          <span key={i} className="personnel-tag">
-                            {p.assignment_role === 'driver' ? '🚚' : '👷'} {p.full_name}
-                          </span>
-                        ))}
-                      </div>
-                    ) : <span style={{ color: '#94a3b8' }}>—</span>}
-                  </td>
-                  <td>
-                    <span className={`badge badge-${statusVariant(b.status_name)}`}>{b.status_name || 'Unknown'}</span>
+                    <span className={`badge badge-${statusVariant(v.status_name)}`}>{v.status_name || 'Unknown'}</span>
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <ActionMenu
-                      booking={b}
-                      isOpen={openMenuId === b.booking_id}
-                      onOpen={() => setOpenMenuId(b.booking_id)}
+                      vehicle={v}
+                      isOpen={openMenuId === v.vehicle_id}
+                      onOpen={() => setOpenMenuId(v.vehicle_id)}
                       onClose={() => setOpenMenuId(null)}
                       onCancel={handleCancel}
                     />

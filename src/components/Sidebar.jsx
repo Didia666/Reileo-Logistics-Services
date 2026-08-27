@@ -13,6 +13,7 @@ const NAV = [
   { to: '/customers',    label: 'Customers',       Icon: Users },
   { to: '/billing',      label: 'Billing Mgmt',     Icon: Receipt },
   { to: '/assets',       label: 'Asset Mgmt',       Icon: Car },
+  { to: '/vehicles',     label: 'Vehicles',         Icon: Car },
   { to: '/reminders',    label: 'Reminders',        Icon: Bell },
   { to: '/incidents',    label: 'Incidents',        Icon: AlertTriangle },
   { to: '/parts',        label: 'Parts Mgmt',       Icon: Wrench },
