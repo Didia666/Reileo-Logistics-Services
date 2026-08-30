@@ -16,7 +16,7 @@ const SETTINGS_CATEGORIES = [
   { key: 'depots',             label: 'Depots',              Icon: MapPin,         endpoint: 'depots'         },
   { key: 'destinations',       label: 'Destinations',        Icon: Map,            endpoint: 'destinations'   },
   { key: 'origins',            label: 'Origins',             Icon: MapPin,         endpoint: 'origins'        },
-  { key: 'personnel-types',    label: 'Personnel Types',     Icon: Users,          endpoint: null             },
+  { key: 'personnel-types',    label: 'Personnel Types',     Icon: Users,          endpoint: 'p_types'        },
   { key: 'part-categories',    label: 'Part Categories',     Icon: Cog,            endpoint: null             },
   { key: 'part-locations',     label: 'Part Locations',      Icon: MapPin,         endpoint: null             },
   { key: 'personnel-renewal',  label: 'Personnel Renewal',   Icon: UserCog,        endpoint: null             },

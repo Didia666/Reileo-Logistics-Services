@@ -23,7 +23,7 @@ function statusVariant(name) {
   }
 }
 
-function ActionMenu({ booking, onOpen, onClose, isOpen, onCancel }) {
+function ActionMenu({ booking, onOpen, onClose, isOpen, onApprove, onDispatch, onDeliver, onComplete, onCancel }) {
   const navigate = useNavigate();
   const ref = React.useRef(null);
   useEffect(() => {
@@ -44,6 +44,26 @@ function ActionMenu({ booking, onOpen, onClose, isOpen, onCancel }) {
           <button onClick={() => { onClose(); navigate(`/bookings/${booking.booking_id}/edit`); }}>
             <Pencil size={12} style={{ marginRight: 6 }} /> Update
           </button>
+          {booking.status_name === 'Under Review' && (
+            <button onClick={() => { onClose(); onApprove(booking); }} style={{ color: '#059669' }}>
+              ✓ Approve
+            </button>
+          )}
+          {booking.status_name === 'Approved' && (
+            <button onClick={() => { onClose(); onDispatch(booking); }} style={{ color: '#059669' }}>
+              ✓ Dispatch
+            </button>
+          )}
+          {booking.status_name === 'Dispatched' && (
+            <button onClick={() => { onClose(); onDeliver(booking); }} style={{ color: '#059669' }}>
+              ✓ Deliver
+            </button>
+          )}
+          {booking.status_name === 'Delivered' && (
+            <button onClick={() => { onClose(); onComplete(booking); }} style={{ color: '#059669' }}>
+              ✓ Complete
+            </button>
+          )}
           <button className="danger" onClick={() => { onClose(); onCancel(booking); }}>
             <X size={12} style={{ marginRight: 6 }} /> Cancel
           </button>
@@ -119,6 +139,46 @@ export default function BookingsList() {
       await bookings.cancel(b.booking_id);
       setAll(prev => prev.map(r => r.booking_id === b.booking_id ? { ...r, status_name: 'Cancelled', status_id: 7 } : r));
       setToast(`Booking ${b.booking_no} cancelled.`);
+      setTimeout(() => setToast(''), 3000);
+    } catch (e) { setToast(e.message); setTimeout(() => setToast(''), 4000); }
+  };
+
+  const handleApprove = async (b) => {
+    if (!confirm(`Approve booking ${b.booking_no}?`)) return;
+    try {
+      await bookings.approve(b.booking_id);
+      setAll(prev => prev.map(r => r.booking_id === b.booking_id ? { ...r, status_name: 'Approved', status_id: 2 } : r));
+      setToast(`Booking ${b.booking_no} approved.`);
+      setTimeout(() => setToast(''), 3000);
+    } catch (e) { setToast(e.message); setTimeout(() => setToast(''), 4000); }
+  };
+
+  const handleDispatch = async (b) => {
+    if (!confirm(`Dispatch booking ${b.booking_no}?`)) return;
+    try {
+      await bookings.dispatch(b.booking_id);
+      setAll(prev => prev.map(r => r.booking_id === b.booking_id ? { ...r, status_name: 'Dispatched', status_id: 3 } : r));
+      setToast(`Booking ${b.booking_no} dispatched.`);
+      setTimeout(() => setToast(''), 3000);
+    } catch (e) { setToast(e.message); setTimeout(() => setToast(''), 4000); }
+  };
+
+  const handleDeliver = async (b) => {
+    if (!confirm(`Mark booking ${b.booking_no} as delivered?`)) return;
+    try {
+      await bookings.deliver(b.booking_id);
+      setAll(prev => prev.map(r => r.booking_id === b.booking_id ? { ...r, status_name: 'Delivered', status_id: 4 } : r));
+      setToast(`Booking ${b.booking_no} marked as delivered.`);
+      setTimeout(() => setToast(''), 3000);
+    } catch (e) { setToast(e.message); setTimeout(() => setToast(''), 4000); }
+  };
+
+  const handleComplete = async (b) => {
+    if (!confirm(`Complete booking ${b.booking_no}?`)) return;
+    try {
+      await bookings.complete(b.booking_id);
+      setAll(prev => prev.map(r => r.booking_id === b.booking_id ? { ...r, status_name: 'Completed', status_id: 6 } : r));
+      setToast(`Booking ${b.booking_no} completed.`);
       setTimeout(() => setToast(''), 3000);
     } catch (e) { setToast(e.message); setTimeout(() => setToast(''), 4000); }
   };
@@ -225,6 +285,10 @@ export default function BookingsList() {
                       isOpen={openMenuId === b.booking_id}
                       onOpen={() => setOpenMenuId(b.booking_id)}
                       onClose={() => setOpenMenuId(null)}
+                      onApprove={handleApprove}
+                      onDispatch={handleDispatch}
+                      onDeliver={handleDeliver}
+                      onComplete={handleComplete}
                       onCancel={handleCancel}
                     />
                   </td>

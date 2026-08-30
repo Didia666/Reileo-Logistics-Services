@@ -31,6 +31,10 @@ export const bookings = {
     request('/bookings.php', { method: 'POST', body: JSON.stringify(payload) }),
   update: (id, payload) =>
     request(`/bookings.php?id=${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  approve: (id) => request(`/bookings.php?action=approve&id=${id}`, { method: 'POST' }),
+  dispatch: (id) => request(`/bookings.php?action=dispatch&id=${id}`, { method: 'POST' }),
+  deliver: (id) => request(`/bookings.php?action=deliver&id=${id}`, { method: 'POST' }),
+  complete: (id) => request(`/bookings.php?action=complete&id=${id}`, { method: 'POST' }),
   cancel: (id) => request(`/bookings.php?action=cancel&id=${id}`, { method: 'POST' }),
   remove: (id) => request(`/bookings.php?id=${id}`, { method: 'DELETE' }),
 };
@@ -84,6 +88,20 @@ export const lookups = {
   vendors: lookup('vendors'),
   item_types: lookup('item_types'),
   category_types: lookup('category_types'),
+};
+
+export const personnelCrud = {
+  list: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request(`/personnel.php${q ? '?' + q : ''}`);
+  },
+  get: (id) => request(`/personnel.php?id=${id}`),
+  create: (payload) =>
+    request('/personnel.php', { method: 'POST', body: JSON.stringify(payload) }),
+  update: (id, payload) =>
+    request(`/personnel.php?id=${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  remove: (id) =>
+    request(`/personnel.php?id=${id}`, { method: 'DELETE' }),
 };
 
 export const vehicles = {

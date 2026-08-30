@@ -10,6 +10,7 @@ import VehiclesForm from './components/VehiclesForm.jsx';
 import Settings from './components/Settings.jsx';
 import Home from './components/Home.jsx';
 import Customers from './components/Customers.jsx';
+import Personnel from './components/Personnel.jsx';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -44,6 +45,7 @@ function Layout() {
           <Route path="/dashboard" element={<DashboardPlaceholder title="Dashboard" />} />
           <Route path="/home" element={<Home />} />
           <Route path="/customers" element={<Customers />} />
+          <Route path="/personnel" element={<Personnel />} />
           <Route path="/bookings" element={<BookingsList />} />
           <Route path="/bookings/new" element={<BookingForm />} />
           <Route path="/bookings/:id/edit" element={<BookingForm />} />

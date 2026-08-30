@@ -128,14 +128,13 @@ function setBookingPersonnel($db, $T, $bookingId, $assignments) {
     $stmt = $db->prepare("DELETE FROM `{$T['bp']}` WHERE booking_id = ?");
     $stmt->execute([$bookingId]);
     if (empty($assignments)) return;
-    $ins = $db->prepare("INSERT INTO `{$T['bp']}` (booking_id, personnel_id, assignment_role, employment_type)
-                         VALUES (?, ?, ?, ?)");
+    $ins = $db->prepare("INSERT INTO `{$T['bp']}` (booking_id, personnel_id, assignment_role)
+                         VALUES (?, ?, ?)");
     foreach ($assignments as $a) {
         $pid = intval($a['personnel_id'] ?? 0);
         $role = $a['assignment_role'] ?? 'driver';
-        $src  = $a['source'] ?? 'direct';
         if ($pid > 0) {
-            $ins->execute([$bookingId, $pid, $role, $src]);
+            $ins->execute([$bookingId, $pid, $role]);
         }
     }
 }
@@ -252,6 +251,23 @@ switch ($method) {
         break;
 
     case 'POST':
+        if ($action === 'approve' && $id) {
+            $stmt = $db->prepare("SELECT status_id FROM `{$T['b']}` WHERE booking_id = ?");
+            $stmt->execute([$id]);
+            if (!$stmt->fetch()) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Booking not found']); exit;
+            }
+            $approveStatus = $db->prepare("SELECT status_id FROM `{$T['bs']}` WHERE status_name = 'Approved' LIMIT 1");
+            $approveStatus->execute();
+            $as = $approveStatus->fetch();
+            $sid = $as ? $as['status_id'] : 2;
+            $upd = $db->prepare("UPDATE `{$T['b']}` SET status_id = ?, updated_by = ?, updated_at = NOW() WHERE booking_id = ?");
+            $upd->execute([$sid, $user['user_id'], $id]);
+            echo json_encode(['success' => true, 'booking_id' => (int)$id]);
+            exit;
+        }
+
         if ($action === 'cancel' && $id) {
             $stmt = $db->prepare("SELECT status_id FROM `{$T['b']}` WHERE booking_id = ?");
             $stmt->execute([$id]);
@@ -263,6 +279,57 @@ switch ($method) {
             $cancelStatus->execute();
             $cs = $cancelStatus->fetch();
             $sid = $cs ? $cs['status_id'] : 8;
+            $upd = $db->prepare("UPDATE `{$T['b']}` SET status_id = ?, updated_by = ?, updated_at = NOW() WHERE booking_id = ?");
+            $upd->execute([$sid, $user['user_id'], $id]);
+            echo json_encode(['success' => true, 'booking_id' => (int)$id]);
+            exit;
+        }
+
+        if ($action === 'dispatch' && $id) {
+            $stmt = $db->prepare("SELECT status_id FROM `{$T['b']}` WHERE booking_id = ?");
+            $stmt->execute([$id]);
+            if (!$stmt->fetch()) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Booking not found']); exit;
+            }
+            $dispatchStatus = $db->prepare("SELECT status_id FROM `{$T['bs']}` WHERE status_name = 'Dispatched' LIMIT 1");
+            $dispatchStatus->execute();
+            $ds = $dispatchStatus->fetch();
+            $sid = $ds ? $ds['status_id'] : 3;
+            $upd = $db->prepare("UPDATE `{$T['b']}` SET status_id = ?, updated_by = ?, updated_at = NOW() WHERE booking_id = ?");
+            $upd->execute([$sid, $user['user_id'], $id]);
+            echo json_encode(['success' => true, 'booking_id' => (int)$id]);
+            exit;
+        }
+
+        if ($action === 'deliver' && $id) {
+            $stmt = $db->prepare("SELECT status_id FROM `{$T['b']}` WHERE booking_id = ?");
+            $stmt->execute([$id]);
+            if (!$stmt->fetch()) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Booking not found']); exit;
+            }
+            $deliverStatus = $db->prepare("SELECT status_id FROM `{$T['bs']}` WHERE status_name = 'Delivered' LIMIT 1");
+            $deliverStatus->execute();
+            $dvs = $deliverStatus->fetch();
+            $sid = $dvs ? $dvs['status_id'] : 4;
+            $upd = $db->prepare("UPDATE `{$T['b']}` SET status_id = ?, updated_by = ?, updated_at = NOW() WHERE booking_id = ?");
+            $upd->execute([$sid, $user['user_id'], $id]);
+            echo json_encode(['success' => true, 'booking_id' => (int)$id]);
+            exit;
+        }
+
+        if ($action === 'complete' && $id) {
+            $stmt = $db->prepare("SELECT status_id FROM `{$T['b']}` WHERE booking_id = ?");
+            $stmt->execute([$id]);
+            if (!$stmt->fetch()) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Booking not found']); exit;
+            }
+            $completeStatus = $db->prepare("SELECT status_id FROM `{$T['bs']}` WHERE status_name = 'Completed' LIMIT 1");
+            $completeStatus->execute();
+            $cs = $completeStatus->fetch();
+            $sid = $cs ? $cs['status_id'] : 6;
             $upd = $db->prepare("UPDATE `{$T['b']}` SET status_id = ?, updated_by = ?, updated_at = NOW() WHERE booking_id = ?");
             $upd->execute([$sid, $user['user_id'], $id]);
             echo json_encode(['success' => true, 'booking_id' => (int)$id]);

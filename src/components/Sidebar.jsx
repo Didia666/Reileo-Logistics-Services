@@ -3,14 +3,15 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import {
   Truck, LayoutDashboard, Home, ClipboardList, Receipt, Car, Bell,
-  AlertTriangle, Wrench, Package, Fuel, BarChart3, LogOut, Settings2, Users,
+  AlertTriangle, Wrench, Package, Fuel, BarChart3, LogOut, Settings2, Users, UserCheck,
 } from 'lucide-react';
 
 const NAV = [
   { to: '/dashboard',    label: 'Dashboard',        Icon: LayoutDashboard },
   { to: '/home',         label: 'Home',             Icon: Home },
   { to: '/bookings',     label: 'Bookings',         Icon: ClipboardList },
-  { to: '/customers',    label: 'Customers',       Icon: Users },
+  { to: '/customers',    label: 'Customers',        Icon: Users },
+  { to: '/personnel',    label: 'Personnel',        Icon: UserCheck },
   { to: '/billing',      label: 'Billing Mgmt',     Icon: Receipt },
   { to: '/assets',       label: 'Asset Mgmt',       Icon: Car },
   { to: '/vehicles',     label: 'Vehicles',         Icon: Car },

@@ -125,6 +125,31 @@ export default function BookingForm() {
     }));
   };
 
+  const updatePersonnelAndSource = (roleKey, sourceKey, personnelId) => {
+    const selected = personnel.find(p => String(p.personnel_id) === String(personnelId));
+    if (!selected) {
+      update(roleKey, personnelId);
+      return;
+    }
+
+    // Get employment type from selected personnel
+    const empType = selected.employment_type || 
+                    (selected.employment && selected.employment.employment_type) || 
+                    '';
+    
+    // Auto-set source based on employment type
+    let source = 'direct';
+    if (empType && empType.toLowerCase().includes('outsource')) {
+      source = 'outsource';
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      [roleKey]: personnelId,
+      [sourceKey]: source,
+    }));
+  };
+
   /*
    * ============================================================
    * BOOKING TYPE HELPERS
@@ -153,6 +178,31 @@ export default function BookingForm() {
       type?.label ??
       ''
     );
+  };
+
+  const getFilteredPersonnel = (role, source) => {
+    return personnel.filter((p) => {
+      // Get personnel type - check multiple possible field names
+      const pType = p.personnel_type || p.pt || '';
+      
+      // Get employment type - check multiple possible field names
+      const empType = p.employment_type || 
+                      (p.employment && p.employment.employment_type) || 
+                      p.emp_type || '';
+      
+      // Filter by role: Driver type personnel for 'driver' role, Helper/other types for helper roles
+      const isDriverRole = role === 'driver';
+      const roleMatch = isDriverRole 
+        ? pType && pType.toLowerCase().includes('driver')
+        : pType && !pType.toLowerCase().includes('driver');
+      
+      // Filter by employment source type
+      const sourceMatch = source 
+        ? empType && empType.toLowerCase().includes(source.toLowerCase())
+        : true;
+      
+      return roleMatch && sourceMatch;
+    });
   };
 
   /*
@@ -1711,6 +1761,7 @@ export default function BookingForm() {
                       type="radio"
                       name="driver_source"
                       value="direct"
+                      disabled={Boolean(form.driver_id)}
                       checked={
                         form.driver_source ===
                         'direct'
@@ -1733,6 +1784,7 @@ export default function BookingForm() {
                       type="radio"
                       name="driver_source"
                       value="outsource"
+                      disabled={Boolean(form.driver_id)}
                       checked={
                         form.driver_source ===
                         'outsource'
@@ -1763,8 +1815,9 @@ export default function BookingForm() {
                 <select
                   value={form.driver_id}
                   onChange={(e) =>
-                    update(
+                    updatePersonnelAndSource(
                       'driver_id',
+                      'driver_source',
                       e.target.value
                     )
                   }
@@ -1773,7 +1826,7 @@ export default function BookingForm() {
                     -Select-
                   </option>
 
-                  {personnel.map((person) => (
+                  {getFilteredPersonnel('driver', form.driver_source).map((person) => (
                     <option
                       key={
                         person.personnel_id
@@ -1806,6 +1859,7 @@ export default function BookingForm() {
                       type="radio"
                       name="helper1_source"
                       value="direct"
+                      disabled={Boolean(form.helper1_id)}
                       checked={
                         form.helper1_source ===
                         'direct'
@@ -1828,6 +1882,7 @@ export default function BookingForm() {
                       type="radio"
                       name="helper1_source"
                       value="outsource"
+                      disabled={Boolean(form.helper1_id)}
                       checked={
                         form.helper1_source ===
                         'outsource'
@@ -1855,8 +1910,9 @@ export default function BookingForm() {
                 <select
                   value={form.helper1_id}
                   onChange={(e) =>
-                    update(
+                    updatePersonnelAndSource(
                       'helper1_id',
+                      'helper1_source',
                       e.target.value
                     )
                   }
@@ -1865,7 +1921,7 @@ export default function BookingForm() {
                     -Select-
                   </option>
 
-                  {personnel.map((person) => (
+                  {getFilteredPersonnel('helper', form.helper1_source).map((person) => (
                     <option
                       key={
                         person.personnel_id
@@ -1977,8 +2033,9 @@ export default function BookingForm() {
                 <select
                   value={form.helper2_id}
                   onChange={(e) =>
-                    update(
+                    updatePersonnelAndSource(
                       'helper2_id',
+                      'helper2_source',
                       e.target.value
                     )
                   }
@@ -1987,7 +2044,7 @@ export default function BookingForm() {
                     -Select-
                   </option>
 
-                  {personnel.map((person) => (
+                  {getFilteredPersonnel('helper', form.helper2_source).map((person) => (
                     <option
                       key={
                         person.personnel_id
