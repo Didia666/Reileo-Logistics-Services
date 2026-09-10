@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { vehicleCrud, lookups } from '../services/api.js';
+import { Link, useNavigate } from 'react-router-dom';
+import { vehicles, lookups } from '../services/api.js';
 import { Plus, MoreHorizontal, Eye, Pencil, X, Search, Loader2 } from 'lucide-react';
-import VehiclesFormModal from './VehiclesForm.jsx';
+import PersonnelFormModal from './VehiclesForm.jsx';
 
 const STATUS_TABS = [
   { key: 'all',                 label: 'All',                variant: 'default' },
@@ -27,7 +27,8 @@ function statusVariant(name) {
 
 
 
-function ActionMenu({ vehicle, onOpen, onClose, isOpen, onView, onEdit, onCancel }) {
+function ActionMenu({ vehicle, onOpen, onClose, isOpen, onCancel }) {
+  const navigate = useNavigate();
   const ref = React.useRef(null);
   useEffect(() => {
     if (!isOpen) return;
@@ -41,10 +42,10 @@ function ActionMenu({ vehicle, onOpen, onClose, isOpen, onView, onEdit, onCancel
       <button onClick={onOpen}><MoreHorizontal size={14} /> Select</button>
       {isOpen && (
         <div className="dropdown">
-          <button onClick={() => { onClose(); onView(vehicle); }}>
+          <button onClick={() => { onClose(); navigate(`/vehicles/${vehicle.vehicle_id}/edit`); }}>
             <Eye size={12} style={{ marginRight: 6 }} /> View
           </button>
-          <button onClick={() => { onClose(); onEdit(vehicle); }}>
+          <button onClick={() => { onClose(); navigate(`/vehicles/${vehicle.vehicle_id}/edit`); }}>
             <Pencil size={12} style={{ marginRight: 6 }} /> Update
           </button>
           <button className="danger" onClick={() => { onClose(); onCancel(vehicle); }}>
@@ -68,16 +69,13 @@ export default function Vehicles() {
   const [perPage, setPerPage] = useState(10);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [toast, setToast] = useState('');
-  const [formOpen, setFormOpen] = useState(false);
-  const [editVehicle, setEditVehicle] = useState(null);
-  const [viewOnly, setViewOnly] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
         const [a, s] = await Promise.all([
-          vehicleCrud.list({ limit: 1000 }),
-          lookups.vehicle_statuses().catch(() => []),
+          vehicles.list({ limit: 1000 }),
+          lookups.vehicleStatus().catch(() => []),
         ]);
         const rows = Array.isArray(a) ? a : (Array.isArray(a?.data) ? a.data : []);
         setAll(rows);
@@ -118,45 +116,11 @@ export default function Vehicles() {
   const handleCancel = async (v) => {
     if (!confirm(`Cancel vehicle ${v.plate_no}?`)) return;
     try {
-      await vehicleCrud.cancel(v.vehicle_id);
+      await vehicles.cancel(v.vehicle_id);
       setAll(prev => prev.map(r => r.vehicle_id === v.vehicle_id ? { ...r, status_name: 'Cancelled', status_id: 7 } : r));
       setToast(`Vehicle ${v.plate_no} cancelled.`);
       setTimeout(() => setToast(''), 3000);
     } catch (e) { setToast(e.message); setTimeout(() => setToast(''), 4000); }
-  };
-
-  const handleView = async (v) => {
-    setEditVehicle(v);
-    setViewOnly(true);
-    setFormOpen(true);
-  };
-
-  const handleEdit = async (v) => {
-    try {
-      const full = await vehicleCrud.get(v.vehicle_id);
-      setEditVehicle(full);
-      setViewOnly(false);
-      setFormOpen(true);
-    } catch (e) {
-      setToast(e.message || 'Failed to load vehicle details.');
-      setTimeout(() => setToast(''), 4000);
-    }
-  };
-
-  const handleAdd = () => {
-    setEditVehicle(null);
-    setViewOnly(false);
-    setFormOpen(true);
-  };
-
-  const handleSaved = (savedData) => {
-    if (editVehicle && editVehicle.vehicle_id) {
-      setAll(prev => prev.map(r => r.vehicle_id === savedData.vehicle_id ? savedData : r));
-    } else {
-      setAll(prev => [...prev, savedData]);
-    }
-    setEditVehicle(null);
-    setViewOnly(false);
   };
 
   if (loading) return <div className="loading"><Loader2 className="animate-spin" size={20} /> Loading bookings…</div>;
@@ -166,14 +130,14 @@ export default function Vehicles() {
       <div className="page-header">
         <div>
           <div className="breadcrumb">Operations / Vehicles</div>
-          <h2>Vehicles</h2>
+          <h2>Vehicle</h2>
           <div style={{ color: '#6b7280', fontSize: 13 }}>
             {filtered.length} of {total} total · {statuses.length} status
           </div>
         </div>
         <div>
-          <button className="btn btn-primary" onClick={handleAdd}>
-            <Plus size={15} /> New Vehicles
+          <button className="btn btn-primary" onClick={() => navigate('/vehicles/new')}>
+            <Plus size={15} /> New Vehicle
           </button>
         </div>
       </div>
@@ -225,10 +189,10 @@ export default function Vehicles() {
             </thead>
             <tbody>
               {current.length === 0 && (
-                <tr key="empty-row"><td colSpan={10} className="empty-row">No vehicles match the current filters.</td></tr>
+                <tr><td colSpan={10} className="empty-row">No vehicles match the current filters.</td></tr>
               )}
-              {current.map((v, index) => (
-                <tr key={v.vehicle_id ?? `${v.plate_no || 'vehicle'}-${index}`}>
+              {current.map(v => (
+                <tr key={v.vehicle_id}>
                   <td style={{ fontWeight: 600, color: '#2563eb' }}>{v.plate_no}</td>
                   <td>{v.vehicle_type || '—'}</td>
                   <td>{v.depot_name || '—'}</td>
@@ -246,8 +210,6 @@ export default function Vehicles() {
                       isOpen={openMenuId === v.vehicle_id}
                       onOpen={() => setOpenMenuId(v.vehicle_id)}
                       onClose={() => setOpenMenuId(null)}
-                      onView={handleView}
-                      onEdit={handleEdit}
                       onCancel={handleCancel}
                     />
                   </td>
@@ -270,11 +232,11 @@ export default function Vehicles() {
           </div>
         </div>
       </div>
-      <VehiclesFormModal
+      <PersonnelFormModal
         isOpen={formOpen}
-        onClose={() => { setFormOpen(false); setEditVehicle(null); setViewOnly(false); }}
+        onClose={() => { setFormOpen(false); setEditPersonnel(null); setViewOnly(false); }}
         onSaved={handleSaved}
-        editPersonnel={editVehicle}
+        editPersonnel={editPersonnel}
         viewOnly={viewOnly}
       />
     </>

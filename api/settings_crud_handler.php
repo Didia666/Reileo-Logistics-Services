@@ -10,7 +10,7 @@ function describeSettingsTable($db, $tbl) {
     $statusField = null;
     $allowedFields = [];
 
-    $nameHints = ['name','type','origin','destination','depot','origins','category','commodity','item','booking'];
+    $nameHints = ['name','type','origin','destination','depot','origin_name','category','commodity','item','booking'];
     $skipPatterns = ['_at','_by','_date','_no','_number','_path','_text','_code','remarks','notes','info','address','email','phone','contact','tin','account','rate'];
 
     foreach ($cols as $c) {

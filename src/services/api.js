@@ -83,7 +83,12 @@ export const lookups = {
   destinations: lookup('destinations'),
   bookingTypes: lookup('booking_types'),
   bookingStatuses: lookup('booking_statuses'),
-  vehicleStatus: lookup('vehicles_status'),
+  vehicle_statuses: lookup('vehicle_statuses'),
+  vh_types: lookup('vh_types'),
+  vh_manufacturers: lookup('vh_manufacturers'),
+  vh_models: lookup('vh_models'),
+  depots: lookup('depots'),
+  dl_codes: lookup('dl_codes'),
   commodities: lookup('commodities'),
   vendors: lookup('vendors'),
   item_types: lookup('item_types'),
@@ -104,7 +109,7 @@ export const personnelCrud = {
     request(`/personnel.php?id=${id}`, { method: 'DELETE' }),
 };
 
-export const vehicles = {
+export const vehicleCrud = {
   list: (params = {}) => {
     const q = new URLSearchParams(params).toString();
     return request(`/vehicles.php${q ? '?' + q : ''}`);
@@ -115,5 +120,7 @@ export const vehicles = {
   update: (id, payload) =>
     request(`/vehicles.php?id=${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   cancel: (id) => request(`/vehicles.php?action=cancel&id=${id}`, { method: 'POST' }),
-  remove: (id) => request(`/vehicles.php?id=${id}`, { method: 'DELETE' }),
+  remove: (id) =>
+    request(`/vehicles.php?id=${id}`, { method: 'DELETE' }),
 };
+

@@ -17,12 +17,11 @@ $tblLocation = tableName('vh_location');
 $tblPhotos = tableName('vh_photos');
 $tblRegistrationCompliance = tableName('vh_regist_compli');
 $tblSpecifications = tableName('vh_specifications');
-$tblCommodityTypes = tableName('commodity_type');
+$tblCommodityTypes = tableName('commodity_types');
 $tblCategoryTypes = tableName('category_types');
 $tblOrigins = tableName('origin');
 $tblDepots = tableName('depots');
 $tblVendors = tableName('vendor');
-
 
 $method = $_SERVER['REQUEST_METHOD'];
 $id     = (int)($_GET['id'] ?? 0);
@@ -39,7 +38,6 @@ function echoJson($data, $code = 200) {
     echo json_encode($data);
     exit;
 }
-
 
 function listSql($tblV, $tblModels, $tblManufacturers, $tblTypes, $tblCategories, $tblVendor, $tblStatuses, $tblLocation, $tblOrigins, $tblDepots) {
     return "SELECT
@@ -59,7 +57,7 @@ function listSql($tblV, $tblModels, $tblManufacturers, $tblTypes, $tblCategories
                     o.origin_name,
                     vl.depot_id,
                     d.depot_name,
-                    vl.GPS,
+                    vl.with_gps AS GPS,
                     vs.sort_order
             FROM `{$tblV}` v
             LEFT JOIN `{$tblModels}` m ON v.vehicle_model_id = m.vehicle_model_id
@@ -74,36 +72,24 @@ function listSql($tblV, $tblModels, $tblManufacturers, $tblTypes, $tblCategories
             ORDER BY v.plate_no ASC";
 }
 
-function detailSql(
-    $tblV,
-    $tblVS,
-    $tblA,
-    $tblI,
-    $tblL,
-    $tblM,
-    $tblMo,
-    $tblRC,
-    $tblS,
-    $tblT,
-    $tblCo,
-    $tblCa,
-    $tblO,
-    $tblDe,
-    $tblVendors
-) {
+function detailSql($tblV, $tblModels, $tblManufacturers, $tblTypes, $tblCategories, $tblVendor, $tblStatuses, $tblLocation, $tblOrigins, $tblDepots, $tblAcquisition, $tblInsurance, $tblRegistrationCompliance, $tblSpecifications) {
     return "SELECT
                     v.vehicle_id,
                     v.plate_no,
                     v.body_no,
                     v.status_id,
-                    vstatus.status_name,
+                    v.status_id AS vehicle_status_id,
+                    vs.status_name,
                     v.vehicle_type_id,
                     vt.vehicle_type,
                     v.vehicle_manufacturer_id,
+                    v.vehicle_manufacturer_id AS manufacturer_id,
                     vma.vehicle_manufacturer,
                     v.vehicle_model_id,
+                    v.vehicle_model_id AS model_id,
                     vmo.vehicle_model,
                     v.year AS year_model,
+                    v.commodity_type_id,
                     v.commodity_type_id AS commodity_id,
                     vco.commodity_type,
                     v.asset_no,
@@ -115,7 +101,13 @@ function detailSql(
                     o.origin_name,
                     vl.depot_id,
                     d.depot_name,
-                    vl.GPS,
+                    vl.with_gps AS GPS,
+                    specs.chassis_no,
+                    specs.color,
+                    specs.engine_no,
+                    specs.engine_size,
+                    specs.fuel_type_id,
+                    specs.transmission_type,
                     vrc.or_date,
                     vrc.or_number,
                     vrc.cr_date,
@@ -138,28 +130,24 @@ function detailSql(
                     va.acquisition_price,
                     va.breakdown_date,
                     va.breakdown_remarks,
-                    va.remarks,
-                    specs.chassis_no,
-                    specs.color,
-                    specs.engine_no,
-                    specs.engine_size,
-                    specs.fuel_type_id,
-                    specs.transmission_type
+                    va.remarks
             FROM `{$tblV}` v
-            LEFT JOIN `{$tblVS}` vstatus ON v.status_id = vstatus.status_id
-            LEFT JOIN `{$tblT}` vt ON v.vehicle_type_id = vt.vehicle_type_id
-            LEFT JOIN `{$tblM}` vma ON v.vehicle_manufacturer_id = vma.vehicle_manufacturer_id
-            LEFT JOIN `{$tblMo}` vmo ON v.vehicle_model_id = vmo.vehicle_model_id
-            LEFT JOIN `{$tblCo}` vco ON v.commodity_type_id = vco.commodity_id
-            LEFT JOIN `{$tblCa}` vca ON v.category_type_id = vca.category_type_id
-            LEFT JOIN `{$tblVendors}` vend ON v.vendor_id = vend.vendor_id
-            LEFT JOIN `{$tblL}` vl ON v.vehicle_id = vl.vehicle_id
-            LEFT JOIN `{$tblO}` o ON vl.origin_id = o.origin_id
-            LEFT JOIN `{$tblDe}` d ON vl.depot_id = d.depot_id
-            LEFT JOIN `{$tblA}` va ON v.vehicle_id = va.vehicle_id
-            LEFT JOIN `{$tblI}` vi ON v.vehicle_id = vi.vehicle_id
-            LEFT JOIN `{$tblRC}` vrc ON v.vehicle_id = vrc.vehicle_id
-            LEFT JOIN `{$tblS}` specs ON v.vehicle_id = specs.vehicle_id";
+            LEFT JOIN `{$tblStatuses}` vs ON v.status_id = vs.status_id
+            LEFT JOIN `{$tblTypes}` vt ON v.vehicle_type_id = vt.vehicle_type_id
+            LEFT JOIN `{$tblManufacturers}` vma ON v.vehicle_manufacturer_id = vma.vehicle_manufacturer_id
+            LEFT JOIN `{$tblModels}` vmo ON v.vehicle_model_id = vmo.vehicle_model_id
+            LEFT JOIN `{$tblCategories}` vca ON v.category_type_id = vca.category_type_id
+            LEFT JOIN `{$tblVendor}` vend ON v.vendor_id = vend.vendor_id
+            LEFT JOIN `{$tblLocation}` vl ON v.vehicle_id = vl.vehicle_id
+            LEFT JOIN `{$tblOrigins}` o ON vl.origin_id = o.origin_id
+            LEFT JOIN `{$tblDepots}` d ON vl.depot_id = d.depot_id
+            LEFT JOIN `{$tblAcquisition}` va ON v.vehicle_id = va.vehicle_id
+            LEFT JOIN `{$tblInsurance}` vi ON v.vehicle_id = vi.vehicle_id
+            LEFT JOIN `{$tblRegistrationCompliance}` vrc ON v.vehicle_id = vrc.vehicle_id
+            LEFT JOIN `{$tblSpecifications}` specs ON v.vehicle_id = specs.vehicle_id
+            LEFT JOIN `{$tblCategories}` vco ON v.commodity_type_id = vco.category_type_id
+            WHERE v.vehicle_id = ?
+            LIMIT 1";
 }
 
 switch ($method) {
@@ -167,79 +155,42 @@ switch ($method) {
     case 'GET':
         try {
             if ($id > 0) {
-                $detailSql = detailSql(
+                $stmt = $db->prepare(detailSql(
                     $tblVehicles,
-                    $tblVehicleStatuses,
-                    $tblAcquisition,
-                    $tblInsurance,
-                    $tblLocation,
-                    $tblManufacturers,
                     $tblModels,
-                    $tblRegistrationCompliance,
-                    $tblSpecifications,
+                    $tblManufacturers,
                     $tblTypes,
-                    $tblCommodityTypes,
                     $tblCategoryTypes,
+                    $tblVendors,
+                    $tblVehicleStatuses,
+                    $tblLocation,
                     $tblOrigins,
                     $tblDepots,
-                    $tblVendors
-                );
-
-                $detailSql .= " WHERE v.vehicle_id = ? LIMIT 1";
-
-                $stmt = $db->prepare($detailSql);
+                    $tblAcquisition,
+                    $tblInsurance,
+                    $tblRegistrationCompliance,
+                    $tblSpecifications
+                ));
                 $stmt->execute([$id]);
                 $row = $stmt->fetch();
                 if (!$row) echoJson(['error' => 'Vehicle not found'], 404);
 
-                $stmtPhotos = $db->prepare("SELECT * FROM `{$tblPhotos}` WHERE vehicle_id = ? ORDER BY vh_photos_id ASC");
+                $stmtPhotos = $db->prepare("SELECT * FROM `{$tblPhotos}` WHERE vehicle_id = ? ORDER BY photo_id ASC");
                 $stmtPhotos->execute([$id]);
-                $row['vh_photos'] = $stmtPhotos->fetchAll() ?: [];
+                $row['photos'] = $stmtPhotos->fetchAll() ?: [];
 
-                $stmtDocs = $db->prepare("SELECT * FROM `{$tblDocuments}` WHERE vehicle_id = ? ORDER BY vh_documents_id ASC");
+                $stmtDocs = $db->prepare("SELECT * FROM `{$tblDocuments}` WHERE vehicle_id = ? ORDER BY document_id ASC");
                 $stmtDocs->execute([$id]);
-                $row['vh_documents'] = $stmtDocs->fetchAll() ?: [];
+                $row['documents'] = $stmtDocs->fetchAll() ?: [];
 
                 echoJson($row);
             }
 
-            $statusFilter = $_GET['status'] ?? 'all';
-            $search = trim($_GET['search'] ?? '');
-            $params = [];
-            $baseSql = listSql(
-                $tblVehicles,
-                $tblModels,
-                $tblManufacturers,
-                $tblTypes,
-                $tblCategoryTypes,
-                $tblVendors,
-                $tblVehicleStatuses,
-                $tblLocation,
-                $tblOrigins,
-                $tblDepots
-            );
-            $where = " WHERE 1=1";
-            if ($statusFilter && $statusFilter !== 'all') {
-                $where .= " AND v.status = ?";
-                $params[] = $statusFilter;
-            }
-            if ($search !== '') {
-                $where .= " AND (v.plate_no LIKE ? OR v.body_no LIKE ?)
-                            OR (v.vehicle_type LIKE ? OR v.vehicle_manufacturer LIKE ?)
-                            OR (v.vehicle_model LIKE ?)";
-                $searchTerm = "%{$search}%";
-                $params[] = $searchTerm;
-                $params[] = $searchTerm;
-                $params[] = $searchTerm;
-                $params[] = $searchTerm;
-                $params[] = $searchTerm;
-            }
             $sql = listSql($tblVehicles, $tblModels, $tblManufacturers, $tblTypes, $tblCategoryTypes, $tblVendors, $tblVehicleStatuses, $tblLocation, $tblOrigins, $tblDepots);
             $stmt = $db->prepare($sql);
             $stmt->execute();
             $rows = $stmt->fetchAll();
             echoJson($rows);
-
         } catch (PDOException $e) {
             echoJson(['error' => 'DB error: ' . $e->getMessage()], 500);
         }

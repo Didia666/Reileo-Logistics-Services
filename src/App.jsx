@@ -54,6 +54,9 @@ function Layout() {
           <Route path="/vehicles" element={<Vehicles />} />
           <Route path="/vehicles/new" element={<VehiclesForm />} />
           <Route path="/vehicles/:id/edit" element={<VehiclesForm />} />
+          <Route path="/vehicle" element={<Navigate to="/vehicles" replace />} />
+          <Route path="/vehicle/new" element={<Navigate to="/vehicles/new" replace />} />
+          <Route path="/vehicle/:id/edit" element={<Navigate to="/vehicles/:id/edit" replace />} />
           <Route path="/reminders" element={<DashboardPlaceholder title="Reminders" />} />
           <Route path="/incidents" element={<DashboardPlaceholder title="Incidents" />} />
           <Route path="/parts" element={<DashboardPlaceholder title="Parts Management" />} />
