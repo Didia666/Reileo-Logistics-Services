@@ -39,7 +39,6 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
   const [activeTab, setActiveTab] = useState('vehicleinfo');
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ type: '', msg: '' });
-  // const [companyOwned, setCompanyOwned] = useState(!form.employment.vendor_id);
   const [lookupsData, setLookupsData] = useState({
     depots: [],
     origins: [],
@@ -69,10 +68,10 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
     vh_documents: [{ document_name: '', document_path: '' }],
     vh_photos: [{ photo_name: '', photo_path: '' }],
     // Vehicle information
-    vehicle_status_id: '',
+    status_id: '',
     vehicle_type_id: '',
-    manufacturer_id: '',
-    model_id: '',
+    vehicle_manufacturer_id: '',
+    vehicle_model_id: '',
     commodity_id: '',
     year_model: '',
     plate_no: '',
@@ -83,6 +82,7 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
     // Vehicle locations
     origin_id: '',
     depot_id: '',
+    vendor_id: '',
     GPS: '',
 
     // Vehicle specifications
@@ -128,6 +128,7 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
   };
 
   const [form, setForm] = useState(blankForm);
+  const [companyOwned, setCompanyOwned] = useState(true);
   const [errors, setErrors] = useState({});
 
   const loadLookups = async () => {
@@ -176,6 +177,7 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
     if (isOpen) {
       loadLookups();
       if (editVehicle) {
+        setCompanyOwned(!editVehicle.vendor_id);
         if (editVehicle.vh_documents && editVehicle.vh_photos) {
           setForm({
             // last_name: editVehicle.last_name || '',
@@ -219,12 +221,13 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
                   photo_path: photo.photo_path || '',
                 }))
               : [{ photo_name: '', photo_path: '' }],
+            vendor_id: editVehicle.vendor_id ?? '',
             // vehicle info
-            vehicle_status_id: editVehicle.vehicle_status_id ?? editVehicle.status_id ?? '',
+            status_id: editVehicle.status_id ?? editVehicle.vehicle_status_id ?? '',
             vehicle_type_id: editVehicle.vehicle_type_id ?? editVehicle.vh_types_id ?? '',
-            manufacturer_id: editVehicle.manufacturer_id ?? editVehicle.vehicle_manufacturer_id ?? '',
-            model_id: editVehicle.model_id ?? editVehicle.vehicle_model_id ?? '',
-            commodity_id: editVehicle.commodity_id ?? editVehicle.commodities_id ?? '',
+            vehicle_manufacturer_id: editVehicle.manufacturer_id ?? editVehicle.vehicle_manufacturer_id ?? '',
+            vehicle_model_id: editVehicle.model_id ?? editVehicle.vehicle_model_id ?? '',
+            commodities_id: editVehicle.commodity_id ?? editVehicle.commodities_id ?? '',
             year_model: editVehicle.year_model ?? '',
             plate_no: editVehicle.plate_no ?? '',
             body_no: editVehicle.body_no ?? '',
@@ -319,8 +322,9 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
                     photo_path: photo.photo_path || '',
                   }))
                 : [{ photo_name: '', photo_path: '' }],
+              vendor_id: full.vendor_id ?? '',
               // vehicle info
-              vehicle_status_id: full.vehicle_status_id ?? full.status_id ?? '',
+              status_id: full.status_id ?? full.vehicle_status_id ?? '',
               vehicle_type_id: full.vehicle_type_id ?? full.vh_types_id ?? '',
               manufacturer_id: full.manufacturer_id ?? full.vehicle_manufacturer_id ?? '',
               model_id: full.model_id ?? full.vehicle_model_id ?? '',
@@ -378,6 +382,7 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
         }
       } else {
         setForm(blankForm);
+        setCompanyOwned(true);
         setActiveTab('vehicleinfo');
       }
       setErrors({});
@@ -484,6 +489,32 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
         //   license_expiry:    form.license.license_expiry         || null,
         // },
         // dl_code_ids: form.dl_code_ids.map(Number).filter(n => n > 0),
+        // Vehicle information
+        vehicle_info: {
+          plate_no: form.plate_no.trim() || null,
+          body_no: form.body_no.trim() || null,
+          status_id: form.status_id ? Number(form.status_id) : null,
+          vehicle_type_id: form.vehicle_type_id ? Number(form.vehicle_type_id) : null,
+          vehicle_manufacturer_id: form.vehicle_manufacturer_id ? Number(form.vehicle_manufacturer_id) : null,
+          vehicle_model_id: form.vehicle_model_id ? Number(form.vehicle_model_id) : null,
+          year_model: form.year_model.trim() || null,
+          commodities_id: form.commodities_id ? Number(form.commodities_id) : null,
+          asset_no: form.asset_no.trim() || null,
+          category_type_id: form.category_type_id ? Number(form.category_type_id) : null,
+          vendor_id: form.vendor_id ? Number(form.vendor_id) : null,
+        },
+        vehicle_location: {
+          origin_id: form.origin_id ? Number(form.origin_id) : null,
+          depot_id: form.depot_id ? Number(form.depot_id) : null,
+          GPS: form.GPS.trim() || null,
+        },
+        vehicle_specifications: {
+          chassis_no: form.chassis_no.trim() || null,
+          color: form.color.trim() || null,
+          engine_no: form.engine_no.trim() || null,
+          engine_size: form.engine_size.trim() || null,
+          fuel_type_id: form.fuel_type_id ? Number(form.fuel_type_id) : null,
+        },
         vh_documents: (form.vh_documents || [])
           .filter(row => row.document_name.trim() || row.document_path.trim())
           .map(row => ({
@@ -672,17 +703,17 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
                 <Field label="Body No." required error={errors.body_no}>
                   {renderInput('body_no', 'e.g. 456789')}
                 </Field>
-                <Field label="Status" required error={errors.vehicle_status_id}>
-                  {renderSelect('vehicle_status_id', lookupsData.vehicle_statuses, 'status_id', 'status_name', '- Select Status -')}
+                <Field label="Status" required error={errors.status_id}>
+                  {renderSelect('status_id', lookupsData.vehicle_statuses, 'status_id', 'status_name', '- Select Status -')}
                 </Field>
                 <Field label="Vehicle Type" required error={errors.vehicle_type_id}>
                   {renderSelect('vehicle_type_id', lookupsData.vh_types, 'vehicle_type_id', 'vehicle_type', '- Select Vehicle Type -')}
                 </Field>
-                <Field label="Maker/Manufacturer" required error={errors.manufacturer_id}>
-                  {renderSelect('manufacturer_id', lookupsData.vh_manufacturers, 'vehicle_manufacturer_id', 'vehicle_manufacturer', '- Select Manufacturer -')}
+                <Field label="Maker/Manufacturer" required error={errors.vehicle_manufacturer_id}>
+                  {renderSelect('vehicle_manufacturer_id', lookupsData.vh_manufacturers, 'vehicle_manufacturer_id', 'vehicle_manufacturer', '- Select Manufacturer -')}
                 </Field>
-                <Field label="Model" required error={errors.model_id}>
-                  {renderSelect('model_id', lookupsData.vh_models, 'vehicle_model_id', 'vehicle_model', '- Select Model -')}
+                <Field label="Model" required error={errors.vehicle_model_id}>
+                  {renderSelect('vehicle_model_id', lookupsData.vh_models, 'vehicle_model_id', 'vehicle_model', '- Select Model -')}
                 </Field>
                 <Field label="Year">
                   {renderInput('year_model', 'e.g. 2020')}
@@ -709,7 +740,10 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
                 Vehicle Location
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-                {/* <Field label="Company Owned?">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 34 }}>
+                  <label style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>
+                    Company Owned?
+                  </label>
                   <input
                     type="checkbox"
                     disabled={viewOnly}
@@ -719,11 +753,11 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
                       setCompanyOwned(checked);
 
                       if (checked) {
-                        setField('employment.vendor_id', '');
+                        setField('vendor_id', '');
                       }
                     }}
                   />
-                </Field>
+                </div>
 
                 {!companyOwned && (
                   <Field label="Subcon (Tracker)">
@@ -735,7 +769,7 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
                       '- Select Vendor -'
                     )}
                   </Field>
-                )} */}
+                )}
                 <Field label="Origin">
                   {renderSelect('origin_id', lookupsData.origins, 'origin_id', 'origin_name', '- Select Origin -')}
                 </Field>
@@ -771,7 +805,7 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
                   {renderInput('engine_size', 'e.g. 2.0L')}
                 </Field>
                 <Field label="Fuel Type" >
-                  {renderInput('fuel_type', 'e.g. Diesel')}
+                  {renderSelect('fuel_type_id', lookupsData.fuelTypes, 'fuel_type_id', 'fuel_type_name', '- Select Fuel Type -')}
                 </Field>
                 <Field label="Transmission">
                   {renderSelect('transmission', [{ value: 'Automatic', label: 'Automatic' }, { value: 'Manual', label: 'Manual' }], 'value', 'label', '- Select Transmission -')}

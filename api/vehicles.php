@@ -244,6 +244,8 @@ switch ($method) {
             echoJson(['error' => 'DB error: ' . $e->getMessage()], 500);
         }
         break;
+    // case 'POST':
+    //     $
 }
 
 // $subconOnly = isset($_GET['subcon']) && $_GET['subcon'] === '1';
