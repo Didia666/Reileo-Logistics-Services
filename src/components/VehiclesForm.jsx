@@ -46,7 +46,7 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
     vh_types: [],
     vh_manufacturers: [],
     vh_models: [],
-    commodities: [],
+    commodity_type: [],
     category_types: [],
     vendors: [],
   });
@@ -72,7 +72,7 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
     vehicle_type_id: '',
     vehicle_manufacturer_id: '',
     vehicle_model_id: '',
-    commodity_id: '',
+    commodity_type_id: '',
     year_model: '',
     plate_no: '',
     body_no: '',
@@ -140,7 +140,7 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
         vhTypes,
         vhManufacturers,
         vhModels,
-        commodities,
+        commodityTypes,
         categoryTypes,
         vendors,
       ] = await Promise.all([
@@ -150,7 +150,7 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
         lookups.vh_types ? lookups.vh_types().catch(() => []) : Promise.resolve([]),
         lookups.vh_manufacturers ? lookups.vh_manufacturers().catch(() => []) : Promise.resolve([]),
         lookups.vh_models ? lookups.vh_models().catch(() => []) : Promise.resolve([]),
-        lookups.commodities ? lookups.commodities().catch(() => []) : Promise.resolve([]),
+        lookups.commodity_type ? lookups.commodity_type().catch(() => []) : Promise.resolve([]),
         lookups.category_types ? lookups.category_types().catch(() => []) : Promise.resolve([]),
         lookups.vendors ? lookups.vendors().catch(() => []) : Promise.resolve([]),
       ]);
@@ -164,7 +164,7 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
         vh_types: normalize(vhTypes),
         vh_manufacturers: normalize(vhManufacturers),
         vh_models: normalize(vhModels),
-        commodities: normalize(commodities),
+        commodity_type: normalize(commodityTypes),
         category_types: normalize(categoryTypes),
         vendors: normalize(vendors),
       });
@@ -221,31 +221,31 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
                   photo_path: photo.photo_path || '',
                 }))
               : [{ photo_name: '', photo_path: '' }],
-            vendor_id: editVehicle.vendor_id ?? '',
             // vehicle info
             status_id: editVehicle.status_id ?? editVehicle.vehicle_status_id ?? '',
             vehicle_type_id: editVehicle.vehicle_type_id ?? editVehicle.vh_types_id ?? '',
             vehicle_manufacturer_id: editVehicle.manufacturer_id ?? editVehicle.vehicle_manufacturer_id ?? '',
             vehicle_model_id: editVehicle.model_id ?? editVehicle.vehicle_model_id ?? '',
-            commodities_id: editVehicle.commodity_id ?? editVehicle.commodities_id ?? '',
+            commodity_type_id: editVehicle.commodity_type_id ?? editVehicle.commodity_type_id ?? '',
             year_model: editVehicle.year_model ?? '',
             plate_no: editVehicle.plate_no ?? '',
             body_no: editVehicle.body_no ?? '',
             asset_no: editVehicle.asset_no ?? '',
             category_type_id: editVehicle.category_type_id ?? '',
-
+            vendor_id: editVehicle.vendor_id ?? '',
             //vehicle location
+
             origin_id: editVehicle.origin_id ?? '',
             depot_id: editVehicle.depot_id ?? '',
-            GPS: editVehicle.GPS ?? '',
+            GPS: editVehicle.GPS === null || editVehicle.GPS === undefined ? '' : String(editVehicle.GPS),
 
             //vehicle specfications
             chassis_no: editVehicle.chassis_no ?? '',
             engine_no: editVehicle.engine_no ?? '',
             engine_size: editVehicle.engine_size ?? '',
             color: editVehicle.color ?? '',
-            fuel_type: editVehicle.fuel_type ?? '',
-            transmission: editVehicle.transmission ?? '',
+            fuel_type: editVehicle.fuel_type ?? editVehicle.fuel_type ?? '',
+            transmission: editVehicle.transmission ?? editVehicle.transmission_type ?? '',
 
             // Vehicle Registration and Compliance
             or_date: editVehicle.or_date ?? '',
@@ -326,9 +326,9 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
               // vehicle info
               status_id: full.status_id ?? full.vehicle_status_id ?? '',
               vehicle_type_id: full.vehicle_type_id ?? full.vh_types_id ?? '',
-              manufacturer_id: full.manufacturer_id ?? full.vehicle_manufacturer_id ?? '',
-              model_id: full.model_id ?? full.vehicle_model_id ?? '',
-              commodity_id: full.commodity_id ?? full.commodities_id ?? '',
+              vehicle_manufacturer_id: full.vehicle_manufacturer_id ?? full.manufacturer_id ?? '',
+              vehicle_model_id: full.vehicle_model_id ?? full.model_id ?? '',
+              commodity_type_id: full.commodity_type_id ?? full.commodity_type_id ?? '',
               year_model: full.year_model ?? '',
               plate_no: full.plate_no ?? '',
               body_no: full.body_no ?? '',
@@ -338,15 +338,15 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
               //vehicle location
               origin_id: full.origin_id ?? '',
               depot_id: full.depot_id ?? '',
-              GPS: full.GPS ?? '',
+              GPS: full.GPS === null || full.GPS === undefined ? '' : String(full.GPS),
 
               //vehicle specfications
               chassis_no: full.chassis_no ?? '',
               engine_no: full.engine_no ?? '',
               engine_size: full.engine_size ?? '',
               color: full.color ?? '',
-              fuel_type: full.fuel_type ?? '',
-              transmission: full.transmission ?? '',
+              fuel_type: full.fuel_type ?? full.fuel_type ?? '',
+              transmission: full.transmission ?? full.transmission_type ?? '',
 
             // Vehicle Registration and Compliance
             or_date: full.or_date ?? '',
@@ -452,43 +452,6 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
     setSubmitting(true);
     try {
       const payload = {
-        // last_name: form.last_name.trim(),
-        // first_name: form.first_name.trim(),
-        // middle_name: form.middle_name.trim(),
-        // address: form.address.trim() || null,
-        // contact_number: form.contact_number.trim() || null,
-        // email: form.email.trim() || nul l,
-        // birthdate: form.birthdate || null,
-        // gender: form.gender || null,
-        // status: form.status,
-        // employment: {
-        //   personnel_type_id: form.employment.personnel_type_id ? Number(form.employment.personnel_type_id) : null,
-        //   employment_type: form.employment.employment_type,
-        //   vendor_id: form.employment.vendor_id ? Number(form.employment.vendor_id) : null,
-        //   depot_id: form.employment.depot_id ? Number(form.employment.depot_id) : null,
-        //   employee_id_number: form.employment.employee_id_number.trim() || null,
-        //   date_started: form.employment.date_started || null,
-        //   date_of_separation: form.employment.date_of_separation || null,
-        //   reason_of_separation: form.employment.reason_of_separation.trim() || null,
-        //   bank_account: form.employment.bank_account.trim() || null,
-        //   daily_rate: form.employment.daily_rate !== '' ? Number(form.employment.daily_rate) : 0,
-        //   remarks: form.employment.remarks.trim() || null,
-        // },
-        // benefits: {
-        //   philhealth_no: form.benefits.philhealth_no.trim() || null,
-        //   sss_no:        form.benefits.sss_no.trim()        || null,
-        //   tin_no:        form.benefits.tin_no.trim()        || null,
-        //   pag_ibig_no:    form.benefits.pag_ibig_no.trim()    || null,
-        // },
-        // emergency: {
-        //   contact_person: form.emergency.contact_person.trim() || null,
-        //   contact_number: form.emergency.contact_number.trim() || null,
-        // },
-        // license: {
-        //   driver_license_no: form.license.driver_license_no.trim() || null,
-        //   license_expiry:    form.license.license_expiry         || null,
-        // },
-        // dl_code_ids: form.dl_code_ids.map(Number).filter(n => n > 0),
         // Vehicle information
         vehicle_info: {
           plate_no: form.plate_no.trim() || null,
@@ -498,22 +461,52 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
           vehicle_manufacturer_id: form.vehicle_manufacturer_id ? Number(form.vehicle_manufacturer_id) : null,
           vehicle_model_id: form.vehicle_model_id ? Number(form.vehicle_model_id) : null,
           year_model: form.year_model.trim() || null,
-          commodities_id: form.commodities_id ? Number(form.commodities_id) : null,
+          commodity_type_id: form.commodity_type_id ? Number(form.commodity_type_id) : null,
           asset_no: form.asset_no.trim() || null,
           category_type_id: form.category_type_id ? Number(form.category_type_id) : null,
-          vendor_id: form.vendor_id ? Number(form.vendor_id) : null,
         },
         vehicle_location: {
+          vendor_id: form.vendor_id ? Number(form.vendor_id) : null, 
           origin_id: form.origin_id ? Number(form.origin_id) : null,
           depot_id: form.depot_id ? Number(form.depot_id) : null,
-          GPS: form.GPS.trim() || null,
+          GPS: String(form.GPS ?? '').trim() || null,
         },
         vehicle_specifications: {
           chassis_no: form.chassis_no.trim() || null,
           color: form.color.trim() || null,
           engine_no: form.engine_no.trim() || null,
           engine_size: form.engine_size.trim() || null,
-          fuel_type_id: form.fuel_type_id ? Number(form.fuel_type_id) : null,
+          fuel_type: form.fuel_type.trim() || null,
+          transmission: form.transmission.trim() || null,
+        },
+        vehicle_regist_compli: {
+          or_date: form.or_date.trim() || null,
+          or_number: form.or_number.trim() || null,
+          cr_date: form.cr_date.trim() || null,
+          cr_number: form.cr_number.trim() || null,
+          ltfrb_case_no: form.ltfrb_case_no.trim() || null,
+          ltfrb_expiry: form.ltfrb_expiry.trim() || null,
+          mv_file_no: form.mv_file_no.trim() || null,
+          pa_expiry: form.pa_expiry.trim() || null,
+          late_renewal_date: form.late_renewal_date.trim() || null,
+          registration_type: form.registration_type.trim() || null,
+          registration_date: form.registration_date.trim() || null,
+          rfid_type: form.rfid_type.trim() || null,
+          rfid_account_no: form.rfid_account_no.trim() || null,
+        },
+        vehicle_insurance: {
+          insurance_provider: form.insurance_provider.trim() || null,
+          insurance_policy_no: form.insurance_policy_no.trim() || null,
+          insurance_expiry: form.insurance_expiry.trim() || null,
+          inland_marine_policy_no: form.inland_marine_policy_no.trim() || null,
+          inland_marine_expiry: form.inland_marine_expiry.trim() || null,
+        },
+        vehicle_acquisition: {
+          acquisition_date: form.acquisition_date.trim() || null,
+          acquisition_price: form.acquisition_price.trim() || null,
+          breakdown_date: form.breakdown_date.trim() || null,
+          breakdown_remarks: form.breakdown_remarks.trim() || null,
+          remarks: form.remarks.trim() || null,
         },
         vh_documents: (form.vh_documents || [])
           .filter(row => row.document_name.trim() || row.document_path.trim())
@@ -719,14 +712,15 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
                   {renderInput('year_model', 'e.g. 2020')}
                 </Field>
                 <Field label="Commodity">
-                  {renderSelect('commodity_id', lookupsData.commodities, 'commodity_id', 'commodity_type', '- Select Commodity -')}
+                  {renderSelect('commodity_type_id', lookupsData.commodity_type, 'commodity_type_id', 'commodity_type', '- Select Commodity -')}
                 </Field>
                 <Field label="Asset No.">
                   {renderInput('asset_no', 'e.g. 123456')}
                 </Field>
                 <Field label="Category Type">
                   {renderSelect('category_type_id', lookupsData.category_types, 'category_type_id', 'category_type', '- Select Category Type -')}
-                </Field>
+                </Field> 
+                
               </div>
             </fieldset>
           </div>
@@ -805,10 +799,16 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
                   {renderInput('engine_size', 'e.g. 2.0L')}
                 </Field>
                 <Field label="Fuel Type" >
-                  {renderSelect('fuel_type_id', lookupsData.fuelTypes, 'fuel_type_id', 'fuel_type_name', '- Select Fuel Type -')}
+                  {renderSelect('fuel_type', [{
+                    value: 'Gasoline', label: 'Gasoline'},
+                    { value: 'Diesel', label: 'Diesel'}],
+                    'value', 'label', '- Select Fuel Type -')}
                 </Field>
                 <Field label="Transmission">
-                  {renderSelect('transmission', [{ value: 'Automatic', label: 'Automatic' }, { value: 'Manual', label: 'Manual' }], 'value', 'label', '- Select Transmission -')}
+                  {renderSelect('transmission', [{ 
+                    value: 'Automatic', label: 'Automatic' }, 
+                    { value: 'Manual', label: 'Manual' }], 
+                    'value', 'label', '- Select Transmission -')}
                 </Field>
               </div>
             </fieldset>

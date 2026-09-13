@@ -274,7 +274,7 @@ export default function Vehicles() {
         isOpen={formOpen}
         onClose={() => { setFormOpen(false); setEditVehicle(null); setViewOnly(false); }}
         onSaved={handleSaved}
-        editPersonnel={editVehicle}
+        editVehicle={editVehicle}
         viewOnly={viewOnly}
       />
     </>

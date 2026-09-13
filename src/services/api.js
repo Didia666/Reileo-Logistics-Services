@@ -89,7 +89,7 @@ export const lookups = {
   vh_models: lookup('vh_models'),
   depots: lookup('depots'),
   dl_codes: lookup('dl_codes'),
-  commodities: lookup('commodities'),
+  commodity_type: lookup('commodity_type'),
   vendors: lookup('vendors'),
   item_types: lookup('item_types'),
   category_types: lookup('category_types'),
