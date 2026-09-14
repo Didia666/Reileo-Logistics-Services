@@ -124,3 +124,17 @@ export const vehicleCrud = {
     request(`/vehicles.php?id=${id}`, { method: 'DELETE' }),
 };
 
+export const bookingCrud = {
+  list: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request(`/booking.php${q ? '?' + q : ''}`);
+  },
+  get: (id) => request(`/booking.php?id=${id}`),
+  create: (payload) =>
+    request('/booking.php', { method: 'POST', body: JSON.stringify(payload) }),
+  update: (id, payload) =>
+    request(`/booking.php?id=${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  cancel: (id) => request(`/booking.php?action=cancel&id=${id}`, { method: 'POST' }),
+  remove: (id) =>
+    request(`/booking.php?id=${id}`, { method: 'DELETE' }),
+};

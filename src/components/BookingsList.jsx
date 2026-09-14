@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { bookings, lookups } from '../services/api.js';
 import { Plus, MoreHorizontal, Eye, Pencil, X, Search, Loader2 } from 'lucide-react';
+import BookingFormModal from './BookingForm.jsx';
 
 const STATUS_TABS = [
   { key: 'all',                 label: 'All',         variant: 'default' },
@@ -23,7 +24,7 @@ function statusVariant(name) {
   }
 }
 
-function ActionMenu({ booking, onOpen, onClose, isOpen, onApprove, onDispatch, onDeliver, onComplete, onCancel }) {
+function ActionMenu({ booking, onOpen, onClose, isOpen, onView, onEdit, onApprove, onDispatch, onDeliver, onComplete, onCancel }) {
   const navigate = useNavigate();
   const ref = React.useRef(null);
   useEffect(() => {
@@ -38,10 +39,10 @@ function ActionMenu({ booking, onOpen, onClose, isOpen, onApprove, onDispatch, o
       <button onClick={onOpen}><MoreHorizontal size={14} /> Select</button>
       {isOpen && (
         <div className="dropdown">
-          <button onClick={() => { onClose(); navigate(`/bookings/${booking.booking_id}/edit`); }}>
+          <button onClick={() => { onClose(); onView(booking); }}>
             <Eye size={12} style={{ marginRight: 6 }} /> View
           </button>
-          <button onClick={() => { onClose(); navigate(`/bookings/${booking.booking_id}/edit`); }}>
+          <button onClick={() => { onClose(); onEdit(booking); }}>
             <Pencil size={12} style={{ marginRight: 6 }} /> Update
           </button>
           {booking.status_name === 'Under Review' && (
@@ -85,6 +86,9 @@ export default function BookingsList() {
   const [perPage, setPerPage] = useState(10);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [toast, setToast] = useState('');
+  const [formOpen, setFormOpen] = useState(false);
+  const [editBooking, setEditBooking] = useState(null);
+  const [viewOnly, setViewOnly] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -183,6 +187,30 @@ export default function BookingsList() {
     } catch (e) { setToast(e.message); setTimeout(() => setToast(''), 4000); }
   };
 
+  const handleView = (booking) => {
+    setEditBooking(booking);
+    setViewOnly(true);
+    setFormOpen(true);
+  };
+
+  const handleEdit = (booking) => {
+    setEditBooking(booking);
+    setViewOnly(false);
+    setFormOpen(true);
+  };
+
+  const handleAdd = () => {
+    setEditBooking(null);
+    setViewOnly(false);
+    setFormOpen(true);
+  };
+
+  const closeForm = () => {
+    setFormOpen(false);
+    setEditBooking(null);
+    setViewOnly(false);
+  };
+
   if (loading) return <div className="loading"><Loader2 className="animate-spin" size={20} /> Loading bookings…</div>;
 
   return (
@@ -196,7 +224,7 @@ export default function BookingsList() {
           </div>
         </div>
         <div>
-          <button className="btn btn-primary" onClick={() => navigate('/bookings/new')}>
+          <button className="btn btn-primary" onClick={handleAdd}>
             <Plus size={15} /> New Booking
           </button>
         </div>
@@ -285,6 +313,8 @@ export default function BookingsList() {
                       isOpen={openMenuId === b.booking_id}
                       onOpen={() => setOpenMenuId(b.booking_id)}
                       onClose={() => setOpenMenuId(null)}
+                      onView={handleView}
+                      onEdit={handleEdit}
                       onApprove={handleApprove}
                       onDispatch={handleDispatch}
                       onDeliver={handleDeliver}
@@ -311,6 +341,13 @@ export default function BookingsList() {
           </div>
         </div>
       </div>
+      <BookingFormModal
+        isOpen={formOpen}
+        onClose={closeForm}
+        onSaved={() => closeForm()}
+        editVehicle={editBooking}
+        viewOnly={viewOnly}
+      />
     </>
   );
 }
