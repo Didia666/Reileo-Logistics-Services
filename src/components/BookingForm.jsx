@@ -4,13 +4,13 @@ import { personnelCrud, lookups } from '../services/api.js';
 import { vehicleCrud } from '../services/api.js';
 
 const TABS = [
-  { key: 'vehicleinfo',      label: 'Booking Information' },
-  { key: 'location',         label: 'Vehicle Assignment' },
-  { key: 'specifications',    label: 'Fuel and Trip Allowance' },
-  { key: 'registration',  label: 'Personnel Assignment' },
-  { key: 'insurance', label: 'References' },
-  { key: 'acquisition',   label: '' },
-  { key: 'photoanddocuments', label: 'Photos and Documents' },
+  { key: 'bookinginfo',      label: 'Booking Information' },
+  { key: 'vehicleassignment',         label: 'Vehicle Assignment' },
+  { key: 'fueltripallowance',    label: 'Fuel and Trip Allowance' },
+  { key: 'personnelassignment',  label: 'Personnel Assignment' },
+  { key: 'references', label: 'References' },
+  { key: 'itemdetails',   label: 'Item Details' },
+  { key: 'bookingphotos', label: 'Booking Photos' },
 ];
 
 function Field({ label, required, error, children, hint, style }) {
@@ -36,7 +36,7 @@ const readOnlyStyle = {
   width: '100%', boxSizing: 'border-box', background: '#f9fafb', color: '#4b5563',
 };
 export default function BookingFormModal({ isOpen, onClose, onSaved, editVehicle, viewOnly }) {
-  const [activeTab, setActiveTab] = useState('vehicleinfo');
+  const [activeTab, setActiveTab] = useState('bookinginfo');
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ type: '', msg: '' });
   const [lookupsData, setLookupsData] = useState({
@@ -52,18 +52,6 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editVehicle
   });
 
   const blankForm = {
-    // last_name: '', first_name: '', middle_name: '',
-    // address: '', contact_number: '', email: '',
-    // birthdate: '', gender: '', status: 'Active',
-    // employment: {
-    //   personnel_type_id: '', employment_type: 'Direct Hire', vendor_id: '',
-    //   depot_id: '', employee_id_number: '', date_started: '', date_of_separation: '',
-    //   reason_of_separation: '', bank_account: '', daily_rate: '', remarks: '',
-    // },
-    // benefits: { philhealth_no: '', sss_no: '', tin_no: '', pag_ibig_no: '' },
-    // emergency: { contact_person: '', contact_number: '' },
-    // license: { driver_license_no: '', license_expiry: '' },
-    // dl_code_ids: [],
 
     vh_documents: [{ document_name: '', document_path: '' }],
     vh_photos: [{ photo_name: '', photo_path: '' }],
@@ -134,23 +122,31 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editVehicle
   const loadLookups = async () => {
     try {
       const [
+        customers,
+        bookingTypes,
         depots,
+        commodityTypes,
         origins,
+        destinations,
+        vehicles,
         vehicleStatuses,
         vhTypes,
         vhManufacturers,
         vhModels,
-        commodityTypes,
         categoryTypes,
         vendors,
       ] = await Promise.all([
+        lookups.customers ? lookups.customers().catch(() => []) : Promise.resolve([]),
+        lookups.bookingTypes ? lookups.bookingTypes().catch(() => []) : Promise.resolve([]),
         lookups.depots ? lookups.depots().catch(() => []) : Promise.resolve([]),
+        lookups.commodity_type ? lookups.commodity_type().catch(() => []) : Promise.resolve([]),
         lookups.origins ? lookups.origins().catch(() => []) : Promise.resolve([]),
+        lookups.destinations ? lookups.destinations().catch(() => []) : Promise.resolve([]),
+        lookups.vehicles ? lookups.vehicles().catch(() => []) : Promise.resolve([]),
         lookups.vehicle_statuses ? lookups.vehicle_statuses().catch(() => []) : Promise.resolve([]),
         lookups.vh_types ? lookups.vh_types().catch(() => []) : Promise.resolve([]),
         lookups.vh_manufacturers ? lookups.vh_manufacturers().catch(() => []) : Promise.resolve([]),
         lookups.vh_models ? lookups.vh_models().catch(() => []) : Promise.resolve([]),
-        lookups.commodity_type ? lookups.commodity_type().catch(() => []) : Promise.resolve([]),
         lookups.category_types ? lookups.category_types().catch(() => []) : Promise.resolve([]),
         lookups.vendors ? lookups.vendors().catch(() => []) : Promise.resolve([]),
       ]);
@@ -158,8 +154,12 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editVehicle
       const normalize = (data) => (Array.isArray(data) ? data : (data?.data || []));
 
       setLookupsData({
+        customers: normalize(customers),
+        bookingTypes: normalize(bookingTypes),
         depots: normalize(depots),
         origins: normalize(origins),
+        destinations: normalize(destinations),
+        vehicles: normalize(vehicles),
         vehicle_statuses: normalize(vehicleStatuses),
         vh_types: normalize(vhTypes),
         vh_manufacturers: normalize(vhManufacturers),
@@ -383,7 +383,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editVehicle
       } else {
         setForm(blankForm);
         setCompanyOwned(true);
-        setActiveTab('vehicleinfo');
+        setActiveTab('bookinginfo');
       }
       setErrors({});
       setToast({ type: '', msg: '' });
@@ -612,131 +612,79 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editVehicle
 
   const renderTab = () => {
     switch (activeTab) {
-      // case 'info':
-      //   return (
-      //     <div style={{ padding: 18 }}>
-      //       <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-      //         <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
-      //           Personnel Information
-      //         </legend>
-      //         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 14 }}>
-      //           <Field label="Last Name" required error={errors.last_name}>
-      //             {renderInput('last_name', 'e.g. Cruz')}
-      //           </Field>
-      //           <Field label="First Name" required error={errors.first_name}>
-      //             {renderInput('first_name', 'e.g. Patricia Diane')}
-      //           </Field>
-      //           <Field label="Middle Name">
-      //             {renderInput('middle_name', 'e.g. Ruiz')}
-      //           </Field>
-      //         </div>
-      //         <div style={{ marginBottom: 14 }}>
-      //           <Field label="Home Address">
-      //             {renderTextarea('address', 'e.g. 123 Main St., Barangay, City')}
-      //           </Field>
-      //         </div>
-      //         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-      //           <Field label="Contact Number">
-      //             {renderInput('contact_number', 'e.g. 0923-245-2314')}
-      //           </Field>
-      //           <Field label="Email Address">
-      //             {renderInput('email', 'e.g. example@email.com', 'email')}
-      //           </Field>
-      //         </div>
-      //         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
-      //           <Field label="Birthdate">
-      //             {renderInput('birthdate', '', 'date')}
-      //           </Field>
-      //           <Field label="Gender">
-      //             <div style={{ display: 'flex', gap: 18, alignItems: 'center', padding: '6px 0' }}>
-      //               {['Male', 'Female'].map(g => (
-      //                 <label key={g} style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: viewOnly ? 'default' : 'pointer' }}>
-      //                   <input
-      //                     type="radio"
-      //                     name="gender"
-      //                     disabled={viewOnly}
-      //                     checked={form.gender === g}
-      //                     onChange={() => setField('gender', g)}
-      //                   /> {g}
-      //                 </label>
-      //               ))}
-      //             </div>
-      //           </Field>
-      //           <Field label="Status" required error={errors.status}>
-      //             <div style={{ display: 'flex', gap: 18, alignItems: 'center', padding: '6px 0' }}>
-      //               {['Active', 'Inactive'].map(s => (
-      //                 <label key={s} style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: viewOnly ? 'default' : 'pointer' }}>
-      //                   <input
-      //                     type="radio"
-      //                     name="status"
-      //                     disabled={viewOnly}
-      //                     checked={form.status === s}
-      //                     onChange={() => setField('status', s)}
-      //                   /> {s}
-      //                 </label>
-      //               ))}
-      //             </div>
-      //           </Field>
-      //         </div>
-      //       </fieldset>
-      //     </div>
-      //   );
-
-      case 'vehicleinfo':
+      case 'bookinginfo':
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
               <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
-                Vehicle Information
+                Booking Information
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-                <Field label="Plate No." required error={errors.plate_no}>
-                  {renderInput('plate_no', 'e.g. ABC-123')}
+                <Field label="Customer" required error={errors.customer_id}>
+                  {renderSelect('customer_id', lookupsData.customers, 'customer_id', 'customer_name', '- Select Customer -')}
                 </Field>
-                <Field label="Body No." required error={errors.body_no}>
-                  {renderInput('body_no', 'e.g. 456789')}
+                <Field label="Booking Type." required error={errors.booking_type_id}>
+                  {renderSelect('booking_type_id', lookupsData.booking_types, 'booking_type_id', 'booking_type', '- Select Booking Type -')}
                 </Field>
-                <Field label="Status" required error={errors.status_id}>
-                  {renderSelect('status_id', lookupsData.vehicle_statuses, 'status_id', 'status_name', '- Select Status -')}
+                <Field label="Delivery Date" required error={errors.delivery_date}>
+                  {renderInput('delivery_date', '', 'date')}
                 </Field>
-                <Field label="Vehicle Type" required error={errors.vehicle_type_id}>
-                  {renderSelect('vehicle_type_id', lookupsData.vh_types, 'vehicle_type_id', 'vehicle_type', '- Select Vehicle Type -')}
+                <Field label="Depot"  required error={errors.depot_id}>
+                  {renderSelect('depot_id', lookupsData.depots, 'depot_id', 'depot_name', '- Select Depot -')}
                 </Field>
-                <Field label="Maker/Manufacturer" required error={errors.vehicle_manufacturer_id}>
-                  {renderSelect('vehicle_manufacturer_id', lookupsData.vh_manufacturers, 'vehicle_manufacturer_id', 'vehicle_manufacturer', '- Select Manufacturer -')}
-                </Field>
-                <Field label="Model" required error={errors.vehicle_model_id}>
-                  {renderSelect('vehicle_model_id', lookupsData.vh_models, 'vehicle_model_id', 'vehicle_model', '- Select Model -')}
-                </Field>
-                <Field label="Year">
-                  {renderInput('year_model', 'e.g. 2020')}
-                </Field>
-                <Field label="Commodity">
+                <Field label="Commodity"  required error={errors.commodity_type_id}>
                   {renderSelect('commodity_type_id', lookupsData.commodity_type, 'commodity_type_id', 'commodity_type', '- Select Commodity -')}
                 </Field>
-                <Field label="Asset No.">
-                  {renderInput('asset_no', 'e.g. 123456')}
+                <Field label="Route Code">
+                  {renderInput('route_code', 'e.g. 123456')}
                 </Field>
-                <Field label="Category Type">
-                  {renderSelect('category_type_id', lookupsData.category_types, 'category_type_id', 'category_type', '- Select Category Type -')}
-                </Field> 
-                
+                <Field label="Number of Trips">
+                  {renderInput('trips_number', 'e.g. 5', 'number')}
+                </Field>
+               <Field label="Number of drops">
+                  {renderInput('drops_number', 'e.g. 5', 'number')}
+                </Field>
+                <Field label="Origin"  required error={errors.origin_id}>
+                  {renderSelect('origin_id', lookupsData.origins, 'origin_id', 'origin_name', '- Select Origin -')}
+                </Field>
+                <Field label="Destination">
+                  {renderSelect('destination_id', lookupsData.destinations, 'destination_id', 'destination_name', '- Select Destination -')}
+                </Field>
+
               </div>
             </fieldset>
           </div>
         );
 
-      case 'location':
+      case 'vehicleassignment':
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
               <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
-                Vehicle Location
+                Vehicle Assignment
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                <Field label="Plate No."  required error={errors.plate_no}>
+                  {renderSelect('plate_no', lookupsData.vehicles, 'plate_no', 'plate_no', '- Select Commodity -')}
+                </Field>
+                {/* <Field label="Vehicle Type" required error={errors.vehicle_type_id}>
+                  <input
+                    type="text"
+                    value={selectedVehicle?.vehicle_type || ''}
+                    disabled
+                  />
+                </Field>
+                <Field label="Category Type" required error={errors.vehicle_type_id}>
+                  <input
+                    type="text"
+                    value={selectedVehicle?.category_type || ''}
+                    disabled
+                  />
+                </Field> */}
+
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 34 }}>
                   <label style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>
-                    Company Owned?
+                    Subcon
                   </label>
                   <input
                     type="checkbox"
@@ -764,115 +712,76 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editVehicle
                     )}
                   </Field>
                 )}
-                <Field label="Origin">
-                  {renderSelect('origin_id', lookupsData.origins, 'origin_id', 'origin_name', '- Select Origin -')}
-                </Field>
-                <Field label="Depot">
-                  {renderSelect('depot_id', lookupsData.depots, 'depot_id', 'depot_name', '- Select Depot -')}
-                </Field>
-                <Field label="With GPS?">
-                  {renderSelect('GPS', [{ value: '1', label: 'Yes' }, { value: '0', label: 'No' }], 'value', 'label', '- Select -')}
-                </Field>
+
               </div>
             </fieldset>
           </div>
         );
       
-      case 'specifications':
+      case 'fueltripallowance':
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
               <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
-                Vehicle Specifications
+                Fuel and Trip Allowance
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-                <Field label="Chassis No." >
-                  {renderInput('chassis_no', 'e.g. ABC123')}
+                <Field label="Area" >
+                  {renderInput('area', 'e.g. Pasig')}
                 </Field>
-                <Field label="Color" >
-                  {renderInput('color', 'e.g. Red')}
+                <Field label="Trip Allowance" >
+                  {renderInput('trip_allowance', 'e.g. 1000')}
                 </Field>
-                <Field label="Engine No." >
-                  {renderInput('engine_no', 'e.g. 123456789')}
+                <Field label="Fuel (L)" >
+                  {renderInput('fuel', 'e.g. 50')}
                 </Field>
-                <Field label="Engine Size" >
-                  {renderInput('engine_size', 'e.g. 2.0L')}
+                <Field label="Fuel Po." >
+                  {renderInput('fuel_po', 'e.g. 12')}
                 </Field>
-                <Field label="Fuel Type" >
-                  {renderSelect('fuel_type', [{
-                    value: 'Gasoline', label: 'Gasoline'},
-                    { value: 'Diesel', label: 'Diesel'}],
-                    'value', 'label', '- Select Fuel Type -')}
-                </Field>
-                <Field label="Transmission">
-                  {renderSelect('transmission', [{ 
-                    value: 'Automatic', label: 'Automatic' }, 
-                    { value: 'Manual', label: 'Manual' }], 
-                    'value', 'label', '- Select Transmission -')}
+                <Field label="Fuel Amount" >
+                  {renderInput('fuel_amount', 'e.g. 100')}
                 </Field>
               </div>
             </fieldset>
           </div>
         );
 
-      case 'registration':
+      case 'personnelassignment':
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
               <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
-                Vehicle Specifications
+                Personnel Assignment
               </legend>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-                <Field label="OR Date">
-                  {renderInput('or_date', '', 'date')}
-                </Field>
-                <Field label="OR Number">
-                  {renderInput('or_number', 'e.g. OR-12345')}
-                </Field>
-                <Field label="CR Date">
-                  {renderInput('cr_date', '', 'date')}
-                </Field>
-                <Field label="CR Number">
-                  {renderInput('cr_number', 'e.g. CR-12345')}
-                </Field>
-                <Field label="LTFRB Case No.">
-                  {renderInput('ltfrb_case_no', 'e.g. LTFRB-12345')}
-                </Field>
-                <Field label="LTFRB Expiry Date">
-                  {renderInput('ltfrb_expiry', '', 'date')}
-                </Field>
-                <Field label="M.V. File No.">
-                  {renderInput('mv_file_no', 'e.g. MV-12345')}
-                </Field>
-                <Field label="P.A. Expiry Date">
-                  {renderInput('pa_expiry', '', 'date')}
-                </Field>
-                <Field label="Late Renewal Date">
-                  {renderInput('late_renewal_date', '', 'date')}
-                </Field>
-                <Field label="Registration Type">
-                  {renderSelect('registration_type', [{ value: 'For hire', label: 'For hire' }, { value: 'Private', label: 'Private' }], 'value', 'label', '- Select Registration Type -')}
-                </Field>
-                <Field label="Registration Date">
-                  {renderInput('registration_date', '', 'date')}
-                </Field>
-                <Field label="RFID Type">
-                  {renderSelect('rfid_type', [{ value: 'Auto Sweep', label: 'Auto Sweep' }, { value: 'Easy Trip', label: 'Easy Trip' }, {value: 'None', label: 'None' }], 'value', 'label', '- Select RFID Type -')}
-                </Field>
-                <Field label="RFID Account No.">
-                  {renderInput('rfid_account_no', 'e.g. RFID-12345')}
-                </Field>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
               </div>
+
+              {/* DRIVER */}
+                <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                marginTop: 10,
+                fontSize: 13,
+                color: '#374151',
+              }}
+            ></label>
+
+
+              {/* Helper 1 */}
+
+              {/* Helper 2 */}
             </fieldset>
           </div>
         );
 
-      case 'insurance':
+      case 'references':
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
               <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
-                Vehicle Specifications
+                References
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
                 <Field label="Insurance Provider">
@@ -895,12 +804,12 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editVehicle
           </div>
         );  
 
-      case 'acquisition':
+      case 'itemdetails':
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
               <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
-                Vehicle Specifications
+                Item Details
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
                 <Field label="Acquisition Date">
@@ -923,12 +832,12 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editVehicle
           </div>
         );
 
-      case 'photoanddocuments':
+      case 'bookingphotos':
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
               <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
-                Photos and Documents
+                Booking Photos
               </legend>
 
               <div style={{ marginBottom: 28 }}>
