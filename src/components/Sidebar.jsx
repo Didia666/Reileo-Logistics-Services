@@ -2,8 +2,8 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import {
-  Truck, LayoutDashboard, Home, ClipboardList, Receipt, Car, Bell,
-  AlertTriangle, Wrench, Package, Fuel, BarChart3, LogOut, Settings2, Users, UserCheck,
+  LayoutDashboard, Home, ClipboardList, Receipt, Car, Bell,
+  AlertTriangle, Wrench, Package, Fuel, BarChart3, FileText, LogOut, Settings2, Users, UserCheck,
 } from 'lucide-react';
 
 const NAV = [
@@ -21,6 +21,7 @@ const NAV = [
   { to: '/work-orders',  label: 'Work Order',       Icon: Package },
   { to: '/fuel',         label: 'Fuel Record',      Icon: Fuel },
   { to: '/reports',      label: 'Reports',          Icon: BarChart3 },
+  { to: '/logs',         label: 'Logs',             Icon: FileText },
   { to: '/settings',     label: 'Settings',         Icon: Settings2 },
 ];
 
@@ -36,8 +37,7 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <div className="logo-box"><Truck size={18} /></div>
-        <span>Reileo <br></br>Logistics Services</span>
+        <img src="/images/logo.png" alt="Reileo Logistics Services" />
       </div>
       <nav className="sidebar-nav">
         {NAV.map(({ to, label, Icon }) => (

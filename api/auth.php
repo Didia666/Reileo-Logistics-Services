@@ -31,6 +31,41 @@ function requireAuth($roles = null) {
     return $user;
 }
 
+function ensureAuditLogTable($db) {
+    $db->exec("CREATE TABLE IF NOT EXISTS `audit_logs` (
+        `log_id` INT NOT NULL AUTO_INCREMENT,
+        `module` VARCHAR(100) NOT NULL,
+        `action` VARCHAR(50) NOT NULL,
+        `reference` VARCHAR(255) DEFAULT NULL,
+        `changes_made` TEXT DEFAULT NULL,
+        `user_id` INT DEFAULT NULL,
+        `username` VARCHAR(100) DEFAULT NULL,
+        `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`log_id`),
+        KEY `idx_audit_created_at` (`created_at`),
+        KEY `idx_audit_module` (`module`),
+        KEY `idx_audit_user` (`user_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+}
+
+function writeAuditLog($db, $module, $action, $reference = null, $changes = null, $user = null) {
+    ensureAuditLogTable($db);
+    $user = $user ?: currentUser();
+    $encodedChanges = is_string($changes) ? $changes : ($changes === null ? null : json_encode($changes));
+    $stmt = $db->prepare(
+        'INSERT INTO `audit_logs` (module, action, reference, changes_made, user_id, username)
+         VALUES (?, ?, ?, ?, ?, ?)'
+    );
+    $stmt->execute([
+        $module,
+        $action,
+        $reference !== null ? (string)$reference : null,
+        $encodedChanges,
+        $user['user_id'] ?? null,
+        $user['username'] ?? null,
+    ]);
+}
+
 function loginUser($username, $password) {
     $db = getDB();
     $tbl = 'reileo_logistics_services_users';
@@ -56,11 +91,17 @@ function loginUser($username, $password) {
         'customer_id' => $user['customer_id'],
     ];
 
+    writeAuditLog($db, 'auth', 'login', $user['username'], null, $_SESSION['user']);
+
     return ['success' => true, 'user' => $_SESSION['user']];
 }
 
 function logoutUser() {
     startSession();
+    $user = $_SESSION['user'] ?? null;
+    if ($user) {
+        writeAuditLog(getDB(), 'auth', 'logout', $user['username'], null, $user);
+    }
     $_SESSION = [];
     if (ini_get('session.use_cookies')) {
         $p = session_get_cookie_params();

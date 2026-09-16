@@ -11,6 +11,31 @@ async function request(path, options = {}) {
   if (!res.ok) {
     throw new Error((data && data.error) || `HTTP ${res.status}`);
   }
+
+  const method = (options.method || 'GET').toUpperCase();
+  const isAuditRequest = path.split('?')[0].endsWith('/audit_logs.php');
+  const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+  if (isMutation && !isAuditRequest && !path.includes('/login.php')) {
+    const query = new URLSearchParams(path.split('?')[1] || '');
+    const endpoint = path.split('?')[0].split('/').pop()?.replace('.php', '') || 'system';
+    const action = query.get('action') || ({ POST: 'create', PUT: 'update', PATCH: 'update', DELETE: 'delete' }[method]);
+    let changes = null;
+    try {
+      changes = options.body ? JSON.parse(options.body) : null;
+      if (changes?.password) delete changes.password;
+    } catch { /* no-op */ }
+    fetch(`${API_BASE}/audit_logs.php`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        module: endpoint,
+        action,
+        reference: data?.booking_no || data?.vehicle_id || data?.customer_id || data?.personnel_id || query.get('id') || null,
+        changes,
+      }),
+    }).catch(() => {});
+  }
   return data;
 }
 
@@ -19,6 +44,17 @@ export const auth = {
     request('/login.php', { method: 'POST', body: JSON.stringify({ username, password }) }),
   me: () => request('/login.php', { method: 'GET' }),
   logout: () => request('/login.php?action=logout', { method: 'POST' }),
+};
+
+export const auditLogs = {
+  list: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request(`/audit_logs.php${q ? '?' + q : ''}`);
+  },
+};
+
+export const reports = {
+  list: (report) => request(`/reports.php?report=${encodeURIComponent(report)}`),
 };
 
 export const bookings = {
@@ -73,6 +109,7 @@ export const customersCrud = {
 
 export const lookups = {
   customers: lookup('customers'),
+  bookingTypes: lookup('booking_types'),
   depots: lookup('depots'),
   vehicles: (params = {}) => {
     const q = new URLSearchParams(params).toString();
@@ -80,8 +117,8 @@ export const lookups = {
   },
   personnel: lookup('personnel'),
   origins: lookup('origins'),
-  destinations: lookup('destinations'),
-  bookingTypes: lookup('booking_types'),
+  destination: lookup('destination'),
+  item_types: lookup('item_types'),
   bookingStatuses: lookup('booking_statuses'),
   vehicle_statuses: lookup('vehicle_statuses'),
   vh_types: lookup('vh_types'),
@@ -91,7 +128,6 @@ export const lookups = {
   dl_codes: lookup('dl_codes'),
   commodity_type: lookup('commodity_type'),
   vendors: lookup('vendors'),
-  item_types: lookup('item_types'),
   category_types: lookup('category_types'),
 };
 
@@ -127,14 +163,14 @@ export const vehicleCrud = {
 export const bookingCrud = {
   list: (params = {}) => {
     const q = new URLSearchParams(params).toString();
-    return request(`/booking.php${q ? '?' + q : ''}`);
+    return request(`/bookings.php${q ? '?' + q : ''}`);
   },
-  get: (id) => request(`/booking.php?id=${id}`),
+  get: (id) => request(`/bookings.php?id=${id}`),
   create: (payload) =>
-    request('/booking.php', { method: 'POST', body: JSON.stringify(payload) }),
+    request('/bookings.php', { method: 'POST', body: JSON.stringify(payload) }),
   update: (id, payload) =>
-    request(`/booking.php?id=${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
-  cancel: (id) => request(`/booking.php?action=cancel&id=${id}`, { method: 'POST' }),
+    request(`/bookings.php?id=${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  cancel: (id) => request(`/bookings.php?action=cancel&id=${id}`, { method: 'POST' }),
   remove: (id) =>
-    request(`/booking.php?id=${id}`, { method: 'DELETE' }),
+    request(`/bookings.php?id=${id}`, { method: 'DELETE' }),
 };

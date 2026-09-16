@@ -11,6 +11,8 @@ import Settings from './components/Settings.jsx';
 import Home from './components/Home.jsx';
 import Customers from './components/Customers.jsx';
 import Personnel from './components/Personnel.jsx';
+import Logs from './components/Logs.jsx';
+import Reports from './components/Reports.jsx';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -62,7 +64,8 @@ function Layout() {
           <Route path="/parts" element={<DashboardPlaceholder title="Parts Management" />} />
           <Route path="/work-orders" element={<DashboardPlaceholder title="Work Order" />} />
           <Route path="/fuel" element={<DashboardPlaceholder title="Fuel Record" />} />
-          <Route path="/reports" element={<DashboardPlaceholder title="Reports" />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/logs" element={<Logs />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/settings/:category" element={<Settings />} />
           <Route path="*" element={<Navigate to="/home" replace />} />

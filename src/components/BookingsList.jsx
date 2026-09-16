@@ -264,13 +264,15 @@ export default function BookingsList() {
             <thead>
               <tr>
                 <th>Booking No</th>
-                <th>Date</th>
+                <th>Delivery Date</th>
                 <th>Customer</th>
                 <th>Type</th>
-                <th>Route</th>
+                <th>Fuel (L)</th>
                 <th>Depot</th>
-                <th>Vehicle</th>
-                <th>Personnel</th>
+                <th>Origin</th>
+                <th>Vendor</th>
+                <th>Plate No.</th>
+                <th>Client Ref No.</th>
                 <th>Status</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
@@ -287,14 +289,15 @@ export default function BookingsList() {
                   </td>
                   <td>{b.customer_name || '—'}</td>
                   <td>{b.booking_type || '—'}</td>
+                  <td>{b.fuel || '—'}</td>
+                  <td>{b.depot_name || '—'}</td>
                   <td>
                     <div>{b.origin_name || '—'}</div>
                     <div style={{ color: '#6b7280', fontSize: 12 }}>→ {b.destination || '—'}</div>
                   </td>
-                  <td>{b.depot_name || '—'}</td>
-                  <td>{b.plate_no || '—'}</td>
                   <td>
-                    {b.personnel && b.personnel.length > 0 ? (
+                    {b.vendor_name || '—'}
+                    {/* {b.personnel && b.personnel.length > 0 ? (
                       <div className="personnel-tags">
                         {b.personnel.map((p, i) => (
                           <span key={i} className="personnel-tag">
@@ -302,8 +305,10 @@ export default function BookingsList() {
                           </span>
                         ))}
                       </div>
-                    ) : <span style={{ color: '#94a3b8' }}>—</span>}
+                    ) : <span style={{ color: '#94a3b8' }}>—</span>} */}
                   </td>
+                  <td>{b.plate_no || '—'}</td>
+                  <td>{b.client_ref_no || '—'}</td>
                   <td>
                     <span className={`badge badge-${statusVariant(b.status_name)}`}>{b.status_name || 'Unknown'}</span>
                   </td>
@@ -345,7 +350,7 @@ export default function BookingsList() {
         isOpen={formOpen}
         onClose={closeForm}
         onSaved={() => closeForm()}
-        editVehicle={editBooking}
+        editBooking={editBooking}
         viewOnly={viewOnly}
       />
     </>

@@ -47,6 +47,8 @@ function listSql($tblV, $tblModels, $tblManufacturers, $tblTypes, $tblCategories
                     v.plate_no,
                     v.body_no,
                     v.status_id,
+                    v.vehicle_type_id,
+                    v.commodity_type_id,
                     vs.status_name,
                     vt.vehicle_type,
                     mf.vehicle_manufacturer,

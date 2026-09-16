@@ -2,483 +2,830 @@
 require_once __DIR__ . '/headers.php';
 require_once __DIR__ . '/auth.php';
 
-$user = requireAuth();
+$currentUser = requireAuth();
 $db = getDB();
 
-$T = [
-    'b'  => tableName('bookings'),
-    'bp' => tableName('booking_personnel'),
-    'c'  => tableName('customers'),
-    'bt' => tableName('booking_types'),
-    'bs' => tableName('booking_statuses'),
-    'v'  => tableName('vehicle'),
-    'd'  => tableName('depots'),
-    'o'  => tableName('origin'),
-    'dst'=> tableName('destination'),
-    'p'  => tableName('personnel'),
-    'ct' => tableName('commodity_type'),
-    'bi' => tableName('booking_items'),
-    'ph' => tableName('booking_photos'),
-];
+$tblModels = tableName('vh_models');
+$tblManufacturers = tableName('vh_manufacturers');
+$tblVehicleStatuses = tableName('vehicle_statuses');
+$tblAcquisition = tableName('vh_acquisition');
+$tblDocuments = tableName('vh_documents');
+$tblInsurance = tableName('vh_insurance');
+$tblLocation = tableName('vh_location');
+$tblPhotos = tableName('vh_photos');
+$tblRegistrationCompliance = tableName('vh_regist_compli');
+$tblSpecifications = tableName('vh_specifications');
+
+
+$tblBookings = tableName('bookings');
+$tblBStatuses = tableName('booking_statuses');
+$tblBPersonnel= tableName('booking_personnel');
+$tblPersonnel = tableName('personnel');
+$tblBFuel = tableName('bk_fuel_trip');
+$tblBItems = tableName('bk_items');
+$tblIType = tableName('item_types');
+$tblBPhotos = tableName('bk_photos');
+$tblBReferences = tableName('bk_references');
+$tblBTypes = tableName('booking_types');
+$tblVehicles = tableName('vehicles');
+$tblTypes = tableName('vh_types');
+$tblCommodityTypes = tableName('commodity_type');
+$tblCategoryTypes = tableName('category_types');
+$tblOrigins = tableName('origin');
+$tblDepots = tableName('depots');
+$tblVendors = tableName('vendor');
+$tblCustomers = tableName('customers');
+$tblDestination = tableName('destination');
+$tblBVehicles = tableName('bk_vehicles');
+
+
 
 $method = $_SERVER['REQUEST_METHOD'];
-$id = $_GET['id'] ?? null;
-$action = $_GET['action'] ?? null;
+$id     = (int)($_GET['id'] ?? 0);
 
-function bookingsBaseQuery($T, $db) {
-    $optionalColumns = [
-        'delivery_date', 'route_code', 'no_of_trips', 'no_of_drops',
-        'category_type', 'area', 'trip_allowance', 'fuel_liters',
-        'fuel_po', 'fuel_amount', 'remarks', 'client_ref_no',
-        'other_ref_no', 'remarks_2',
-    ];
-    $selectColumns = [];
-    foreach ($optionalColumns as $column) {
-        $selectColumns[] = bookingHasColumn($db, $T['b'], $column)
-            ? "b.{$column}"
-            : "NULL AS {$column}";
-    }
-
-    return "SELECT b.booking_id, b.booking_no, b.created_at, b.updated_at,
-                   " . implode(', ', $selectColumns) . ",
-                   c.customer_id, c.customer_name, c.contact_number,
-                   bt.booking_type_id, bt.book_type AS booking_type,
-                   bs.status_id, bs.status_name, bs.sort_order,
-                   v.vehicle_id, v.plate_no,
-                   d.depot_id, d.depot_name,
-                   o.origin_id, o.origins AS origin_name,
-                   dst.destination_id, dst.destination,
-                   ct.commodity_id AS commodity_type_id, ct.commodity_type
-            FROM `{$T['b']}` b
-            LEFT JOIN `{$T['c']}` c   ON b.customer_id = c.customer_id
-            LEFT JOIN `{$T['bt']}` bt ON b.booking_type_id = bt.booking_type_id
-            LEFT JOIN `{$T['bs']}` bs ON b.status_id = bs.status_id
-            LEFT JOIN `{$T['v']}` v   ON b.vehicle_id = v.vehicle_id
-            LEFT JOIN `{$T['d']}` d   ON b.depot_id = d.depot_id
-            LEFT JOIN `{$T['o']}` o   ON b.origin_id = o.origin_id
-            LEFT JOIN `{$T['dst']}` dst ON b.destination_id = dst.destination_id
-            LEFT JOIN `{$T['ct']}` ct ON b.commodity_type_id = ct.commodity_id";
+$input = [];
+if ($method === 'POST' || $method === 'PUT') {
+    $raw = file_get_contents('php://input');
+    $input = $raw ? (json_decode($raw, true) ?: []) : [];
 }
 
-function fetchRows($db, $T, $filters) {
-    $sql = bookingsBaseQuery($T, $db) . " WHERE 1=1";
-    $params = [];
-    if (!empty($filters['status_id'])) {
-        $sql .= " AND bs.status_id = ?";
-        $params[] = $filters['status_id'];
-    }
-    if (!empty($filters['status_name'])) {
-        $sql .= " AND bs.status_name = ?";
-        $params[] = $filters['status_name'];
-    }
-    $sql .= " ORDER BY b.created_at DESC";
-    if (isset($filters['limit']) && $filters['limit'] > 0) {
-        $sql .= " LIMIT ?";
-        $params[] = (int)$filters['limit'];
-        if (isset($filters['offset'])) {
-            $sql .= " OFFSET ?";
-            $params[] = (int)$filters['offset'];
-        }
-    }
-    $stmt = $db->prepare($sql);
-    foreach ($params as $i => $p) {
-        $type = is_int($p) ? PDO::PARAM_INT : PDO::PARAM_STR;
-        $stmt->bindValue($i + 1, $p, $type);
-    }
-    $stmt->execute();
-    return $stmt->fetchAll();
+function echoJson($data, $code = 200) {
+    http_response_code($code);
+    header('Content-Type: application/json');
+    echo json_encode($data);
+    exit;
 }
 
-function fetchPersonnelForBooking($db, $T, $bookingId) {
-    $sql = "SELECT bp.booking_personnel_id, bp.booking_id, bp.personnel_id,
-                   bp.assignment_role, NULL AS source,
-                   CONCAT_WS(' ', p.first_name, p.middle_name, p.last_name) AS full_name,
-                   p.contact_number, p.p_email_id
-            FROM `{$T['bp']}` bp
-            LEFT JOIN `{$T['p']}` p ON bp.personnel_id = p.personnel_id
-            WHERE bp.booking_id = ?
-            ORDER BY FIELD(bp.assignment_role, 'driver','helper1','helper2')";
-    $stmt = $db->prepare($sql);
-    $stmt->execute([$bookingId]);
-    return $stmt->fetchAll();
-}
-
-function fetchItems($db, $T, $bookingId) {
-    $tbl = $T['bi'];
-    try {
-        $stmt = $db->prepare("SELECT booking_item_id, item_type_id, item_description,
-                                      length_cm, width_cm, height_cm, weight_kg
-                               FROM `{$tbl}` WHERE booking_id = ? ORDER BY booking_item_id ASC");
-        $stmt->execute([$bookingId]);
-        return $stmt->fetchAll();
-    } catch (Exception $e) { return []; }
-}
-
-function fetchPhotos($db, $T, $bookingId) {
-    $tbl = $T['ph'];
-    try {
-        $stmt = $db->prepare("SELECT booking_photo_id, photo_name, photo_path, photo_data
-                               FROM `{$tbl}` WHERE booking_id = ? ORDER BY booking_photo_id ASC LIMIT 3");
-        $stmt->execute([$bookingId]);
-        return $stmt->fetchAll();
-    } catch (Exception $e) { return []; }
-}
-
-function setBookingPersonnel($db, $T, $bookingId, $assignments) {
-    $stmt = $db->prepare("DELETE FROM `{$T['bp']}` WHERE booking_id = ?");
-    $stmt->execute([$bookingId]);
-    if (empty($assignments)) return;
-    $ins = $db->prepare("INSERT INTO `{$T['bp']}` (booking_id, personnel_id, assignment_role)
-                         VALUES (?, ?, ?)");
-    foreach ($assignments as $a) {
-        $pid = intval($a['personnel_id'] ?? 0);
-        $role = $a['assignment_role'] ?? 'driver';
-        if ($pid > 0) {
-            $ins->execute([$bookingId, $pid, $role]);
-        }
-    }
-}
-
-function setBookingItems($db, $T, $bookingId, $items) {
-    $tbl = $T['bi'];
-    try {
-        $db->prepare("DELETE FROM `{$tbl}` WHERE booking_id = ?")->execute([$bookingId]);
-    } catch (Exception $e) { return; }
-    if (empty($items)) return;
-    try {
-        $ins = $db->prepare("INSERT INTO `{$tbl}`
-            (booking_id, item_type_id, item_description, length_cm, width_cm, height_cm, weight_kg)
-            VALUES (?,?,?,?,?,?,?)");
-        foreach ($items as $i) {
-            $ins->execute([
-                $bookingId,
-                !empty($i['item_type_id']) ? intval($i['item_type_id']) : null,
-                $i['item_description'] ?? null,
-                isset($i['length_cm']) ? $i['length_cm'] + 0 : null,
-                isset($i['width_cm'])  ? $i['width_cm']  + 0 : null,
-                isset($i['height_cm']) ? $i['height_cm'] + 0 : null,
-                isset($i['weight_kg']) ? $i['weight_kg'] + 0 : null,
-            ]);
-        }
-    } catch (Exception $e) { /* ignore - table may not exist yet */ }
-}
-
-function setBookingPhotos($db, $T, $bookingId, $photos) {
-    $tbl = $T['ph'];
-    try {
-        $db->prepare("DELETE FROM `{$tbl}` WHERE booking_id = ?")->execute([$bookingId]);
-    } catch (Exception $e) { return; }
-    if (empty($photos)) return;
-    try {
-        $ins = $db->prepare("INSERT INTO `{$tbl}` (booking_id, photo_name, photo_path, photo_data)
-                             VALUES (?, ?, ?, ?)");
-        foreach ($photos as $ph) {
-            $name = $ph['name'] ?? 'photo.png';
-            $path = $ph['path'] ?? null;
-            $data = $ph['data'] ?? null;
-            $ins->execute([$bookingId, $name, $path, is_string($data) ? $data : null]);
-        }
-    } catch (Exception $e) { /* ignore - table may not exist yet */ }
-}
-
-function generateBookingNo($db, $T) {
+function generateBookingNo($db, $table) {
     $prefix = 'BK-' . date('Ymd') . '-';
-    $stmt = $db->prepare("SELECT booking_no FROM `{$T['b']}` WHERE booking_no LIKE ? ORDER BY booking_id DESC LIMIT 1");
+    $stmt = $db->prepare("SELECT booking_no FROM `{$table}` WHERE booking_no LIKE ? ORDER BY booking_id DESC LIMIT 1");
     $stmt->execute([$prefix . '%']);
     $row = $stmt->fetch();
-    $num = 1;
-    if ($row) {
+    $nextNumber = 1;
+
+    if ($row && !empty($row['booking_no'])) {
         $parts = explode('-', $row['booking_no']);
-        $num = intval(end($parts)) + 1;
+        $nextNumber = (int)end($parts) + 1;
     }
-    return $prefix . str_pad($num, 4, '0', STR_PAD_LEFT);
+
+    return $prefix . str_pad((string)$nextNumber, 4, '0', STR_PAD_LEFT);
 }
 
-function bookingHasColumn($db, $table, $col) {
-    try {
-        $stmt = $db->query("SHOW COLUMNS FROM `{$table}` LIKE '{$col}'");
-        return $stmt->fetch() ? true : false;
-    } catch (Exception $e) { return false; }
+
+
+function listSql($tblBookings, $tblBStatuses, $tblCustomers, $tblBFuel, $tblBTypes, $tblDepots, $tblOrigins, $tblVehicles, $tblReferences) {
+    return "SELECT 
+                    b.booking_id,
+                    b.booking_no,
+                    b.customer_id,
+                    c.customer_name,
+                    b.booking_type_id,
+                    bt.book_type,
+                    f.fuel,
+                    b.origin_id,
+                    o.origin_name,
+                    b.depot_id,
+                    d.depot_name,
+                    b.vehicle_id,
+                    v.plate_no,
+                    r.client_ref_no,
+                    b.status_id,
+                    bs.status_name,
+                    b.created_at
+            FROM `{$tblBookings}` b     
+            LEFT JOIN `{$tblBStatuses}` bs ON b.status_id = bs.status_id
+            LEFT JOIN `{$tblCustomers}` c ON b.customer_id = c.customer_id
+            LEFT JOIN `{$tblBFuel}` f ON b.booking_id = f.booking_id
+            LEFT JOIN `{$tblBTypes}` bt ON b.booking_type_id = bt.booking_type_id
+            LEFT JOIN `{$tblOrigins}` o ON b.origin_id = o.origin_id
+            LEFT JOIN `{$tblDepots}` d ON b.depot_id = d.depot_id
+            LEFT JOIN `{$tblVehicles}` v ON b.vehicle_id = v.vehicle_id
+            LEFT JOIN `{$tblReferences}` r ON b.booking_id = r.booking_id";
 }
+
+
+function detailSql(
+    $tblBookings,
+    $tblBTypes,
+    $tblBStatuses,
+    $tblBPersonnel,
+    $tblPersonnel,
+    $tblBFuel,
+    $tblBItems,
+    $tblIType,
+    $tblBReferences,
+    $tblVehicles,
+    $tblTypes,
+    $tblCommodityTypes,
+    $tblOrigins,
+    $tblDepots,
+    $tblVendors, 
+    $tblCustomers, 
+    $tblDestination,
+    $tblBVehicles
+) {
+    return "SELECT
+                    b.booking_id,
+                    b.booking_no,
+                    b.customer_id,
+                    CONCAT_WS(' ', p.first_name, p.last_name) AS personnel_name,
+                    b.booking_type_id,
+                    bt.book_type,
+                    b.delivery_date,
+                    b.depot_id,
+                    d.depot_name,
+                    b.commodity_type_id,
+                    ct.commodity_type,
+                    b.route_code,
+                    b.trips_number,
+                    b.drops_number,                    
+                    b.origin_id,
+                    o.origin_name,
+                    b.destination_id,
+                    dest.destination_name,
+                    COALESCE(bv.vehicle_id, b.vehicle_id) AS vehicle_id,
+                    COALESCE(bv.plate_no, v.plate_no) AS plate_no,
+                    v.vehicle_type_id,
+                    vt.vehicle_type,
+                    v.commodity_type_id AS vehicle_commodity_type_id,
+                    COALESCE(bv.vendor_id, v.vendor_id) AS vendor_id,
+                    vd.vendor_name,
+                    f.area,                  
+                    f.trip_allowance,
+                    f.fuel,
+                    f.fuel_po,
+                    f.fuel_amount,
+                    bp.personnel_id,
+                    r.client_ref_no,
+                    r.other_ref_no,
+                    bi.item_type_id,
+                    it.item_type,
+                    bi.item_description,
+                    bi.length,
+                    bi.width,
+                    bi.height,
+                    bi.weight,
+                    r.remarks,
+                    b.status_id,
+                    bs.status_name,
+                    b.created_at
+            FROM `{$tblBookings}` b     
+            LEFT JOIN `{$tblBStatuses}` bs ON b.status_id = bs.status_id
+            LEFT JOIN `{$tblCustomers}` c ON b.customer_id = c.customer_id
+            LEFT JOIN `{$tblBFuel}` f ON b.booking_id = f.booking_id
+            LEFT JOIN `{$tblBTypes}` bt ON b.booking_type_id = bt.booking_type_id
+            LEFT JOIN `{$tblOrigins}` o ON b.origin_id = o.origin_id
+            LEFT JOIN `{$tblDepots}` d ON b.depot_id = d.depot_id
+            LEFT JOIN `{$tblCommodityTypes}` ct ON b.commodity_type_id = ct.commodity_type_id
+            LEFT JOIN `{$tblDestination}` dest ON b.destination_id = dest.destination_id
+            LEFT JOIN `{$tblBVehicles}` bv ON b.booking_id = bv.booking_id
+            LEFT JOIN `{$tblVehicles}` v ON COALESCE(bv.vehicle_id, b.vehicle_id) = v.vehicle_id
+            LEFT JOIN `{$tblTypes}` vt ON v.vehicle_type_id = vt.vehicle_type_id
+            LEFT JOIN `{$tblVendors}` vd ON COALESCE(bv.vendor_id, v.vendor_id) = vd.vendor_id
+            LEFT JOIN `{$tblBReferences}` r ON b.booking_id = r.booking_id
+            LEFT JOIN `{$tblBPersonnel}` bp ON b.booking_id = bp.booking_id
+            LEFT JOIN `{$tblPersonnel}` p ON bp.personnel_id = p.personnel_id
+            LEFT JOIN `{$tblBItems}` bi ON b.booking_id = bi.booking_id
+            LEFT JOIN `{$tblIType}` it ON bi.item_type_id = it.item_type_id";
+}
+
+
 
 switch ($method) {
+
     case 'GET':
-        if ($id) {
-            $list = fetchRows($db, $T, []);
-            $found = null;
-            foreach ($list as $r) {
-                if ($r['booking_id'] == $id) { $found = $r; break; }
+        try {
+            if ($id > 0) {
+                $detailSql = detailSql(
+                    $tblBookings,
+                    $tblBTypes,
+                    $tblBStatuses,
+                    $tblBPersonnel,
+                    $tblPersonnel,
+                    $tblBFuel,
+                    $tblBItems,
+                    $tblIType,
+                    $tblBReferences,
+                    $tblVehicles,
+                    $tblTypes,
+                    $tblCommodityTypes,
+                    $tblOrigins,
+                    $tblDepots,
+                    $tblVendors,
+                    $tblCustomers,
+                    $tblDestination,
+                    $tblBVehicles
+                );
+
+                $detailSql .= " WHERE b.booking_id = ? LIMIT 1";
+
+                $stmt = $db->prepare($detailSql);
+                $stmt->execute([$id]);
+                $row = $stmt->fetch();
+                if (!$row) echoJson(['error' => 'Booking not found'], 404);
+
+                $stmtPhotos = $db->prepare("SELECT * FROM `{$tblBPhotos}` WHERE booking_id = ? ORDER BY bk_photos_id ASC");
+                $stmtPhotos->execute([$id]);
+                $row['bk_photos'] = $stmtPhotos->fetchAll() ?: [];
+
+                $stmtItems = $db->prepare(
+                    "SELECT item_type_id, item_description, length, width, height, weight
+                     FROM `{$tblBItems}`
+                     WHERE booking_id = ?
+                     ORDER BY bk_items_id ASC"
+                );
+                $stmtItems->execute([$id]);
+                $row['item_details'] = $stmtItems->fetchAll() ?: [];
+
+                $stmtPersonnel = $db->prepare(
+                    "SELECT personnel_id, assignment_role
+                     FROM `{$tblBPersonnel}`
+                     WHERE booking_id = ?
+                     ORDER BY booking_personnel_id ASC"
+                );
+                $stmtPersonnel->execute([$id]);
+                $row['personnel_assignments'] = $stmtPersonnel->fetchAll() ?: [];
+
+
+                echoJson($row);
             }
-            if (!$found) {
-                http_response_code(404);
-                echo json_encode(['error' => 'Booking not found']);
-                exit;
+
+            $statusFilter = $_GET['status'] ?? 'all';
+            $search = trim($_GET['search'] ?? '');
+            $params = [];
+            $baseSql = $where = " WHERE 1=1";
+            if ($statusFilter && $statusFilter !== 'all') {
+                $where .= " AND b.status_id = ?";
+                $params[] = $statusFilter;
             }
-            $found['personnel'] = fetchPersonnelForBooking($db, $T, $id);
-            $found['items'] = fetchItems($db, $T, $id);
-            $found['photos'] = fetchPhotos($db, $T, $id);
-            echo json_encode($found);
-        } else {
-            $filters = [
-                'status_id'   => $_GET['status_id'] ?? null,
-                'status_name' => $_GET['status_name'] ?? null,
-                'limit'       => isset($_GET['limit']) ? (int)$_GET['limit'] : 1000,
-                'offset'      => isset($_GET['offset']) ? (int)$_GET['offset'] : 0,
-            ];
-            $rows = fetchRows($db, $T, $filters);
-            $ids = array_column($rows, 'booking_id');
-            $personnelMap = [];
-            if (!empty($ids)) {
-                $placeholders = implode(',', array_fill(0, count($ids), '?'));
-                $sql = "SELECT bp.booking_id, bp.personnel_id, bp.assignment_role, NULL AS source,
-                               CONCAT_WS(' ', p.first_name, p.middle_name, p.last_name) AS full_name
-                        FROM `{$T['bp']}` bp
-                        LEFT JOIN `{$T['p']}` p ON bp.personnel_id = p.personnel_id
-                        WHERE bp.booking_id IN ({$placeholders})";
-                $stmt = $db->prepare($sql);
-                $stmt->execute($ids);
-                foreach ($stmt->fetchAll() as $pr) {
-                    $personnelMap[$pr['booking_id']][] = $pr;
-                }
+            if ($search !== '') {
+                $where .= " AND (b.booking_no LIKE ? OR c.customer_name LIKE ? OR o.origin_name LIKE ? OR d.depot_name LIKE ? OR v.plate_no LIKE ?)";
+                $searchTerm = "%{$search}%";
+                $params[] = $searchTerm;
+                $params[] = $searchTerm;
+                $params[] = $searchTerm;
+                $params[] = $searchTerm;
+                $params[] = $searchTerm;
             }
-            foreach ($rows as &$r) {
-                $r['personnel'] = $personnelMap[$r['booking_id']] ?? [];
-            }
-            $countStmt = $db->query("SELECT COUNT(*) AS total FROM `{$T['b']}`");
-            $total = $countStmt->fetch()['total'];
-            echo json_encode(['data' => $rows, 'total' => (int)$total]);
+            $sql = listSql(
+                $tblBookings,
+                $tblBStatuses,
+                $tblCustomers,
+                $tblBFuel,
+                $tblBTypes,
+                $tblDepots,
+                $tblOrigins,
+                $tblVehicles,
+                $tblBReferences
+            ) . $where . " ORDER BY b.booking_id DESC";
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            $rows = $stmt->fetchAll();
+            echoJson($rows);
+
+        } catch (PDOException $e) {
+            echoJson(['error' => 'DB error: ' . $e->getMessage()], 500);
         }
         break;
-
+    
     case 'POST':
-        if ($action === 'approve' && $id) {
-            $stmt = $db->prepare("SELECT status_id FROM `{$T['b']}` WHERE booking_id = ?");
-            $stmt->execute([$id]);
-            if (!$stmt->fetch()) {
-                http_response_code(404);
-                echo json_encode(['error' => 'Booking not found']); exit;
-            }
-            $approveStatus = $db->prepare("SELECT status_id FROM `{$T['bs']}` WHERE status_name = 'Approved' LIMIT 1");
-            $approveStatus->execute();
-            $as = $approveStatus->fetch();
-            $sid = $as ? $as['status_id'] : 2;
-            $upd = $db->prepare("UPDATE `{$T['b']}` SET status_id = ?, updated_by = ?, updated_at = NOW() WHERE booking_id = ?");
-            $upd->execute([$sid, $user['user_id'], $id]);
-            echo json_encode(['success' => true, 'booking_id' => (int)$id]);
-            exit;
-        }
+        $booking_info = $input['booking_info'] ?? [];
+        $vehicle_assignment = $input['vehicle_assignment'] ?? [];
+        $fueltrip_allowance = $input['fueltrip_allowance'] ?? [];
+        $personnel_assignment = $input['personnel_assignment'] ?? [];
+        $references = $input['references'] ?? [];
+        $item_details = $input['item_details'] ?? [];
 
-        if ($action === 'cancel' && $id) {
-            $stmt = $db->prepare("SELECT status_id FROM `{$T['b']}` WHERE booking_id = ?");
-            $stmt->execute([$id]);
-            if (!$stmt->fetch()) {
-                http_response_code(404);
-                echo json_encode(['error' => 'Booking not found']); exit;
-            }
-            $cancelStatus = $db->prepare("SELECT status_id FROM `{$T['bs']}` WHERE status_name IN ('Cancelled','Declined') LIMIT 1");
-            $cancelStatus->execute();
-            $cs = $cancelStatus->fetch();
-            $sid = $cs ? $cs['status_id'] : 8;
-            $upd = $db->prepare("UPDATE `{$T['b']}` SET status_id = ?, updated_by = ?, updated_at = NOW() WHERE booking_id = ?");
-            $upd->execute([$sid, $user['user_id'], $id]);
-            echo json_encode(['success' => true, 'booking_id' => (int)$id]);
-            exit;
-        }
+        //booking_info
 
-        if ($action === 'dispatch' && $id) {
-            $stmt = $db->prepare("SELECT status_id FROM `{$T['b']}` WHERE booking_id = ?");
-            $stmt->execute([$id]);
-            if (!$stmt->fetch()) {
-                http_response_code(404);
-                echo json_encode(['error' => 'Booking not found']); exit;
-            }
-            $dispatchStatus = $db->prepare("SELECT status_id FROM `{$T['bs']}` WHERE status_name = 'Dispatched' LIMIT 1");
-            $dispatchStatus->execute();
-            $ds = $dispatchStatus->fetch();
-            $sid = $ds ? $ds['status_id'] : 3;
-            $upd = $db->prepare("UPDATE `{$T['b']}` SET status_id = ?, updated_by = ?, updated_at = NOW() WHERE booking_id = ?");
-            $upd->execute([$sid, $user['user_id'], $id]);
-            echo json_encode(['success' => true, 'booking_id' => (int)$id]);
-            exit;
-        }
+        $customer_id = (int)($booking_info['customer_id'] ?? NULL);
+        $booking_type_id = (int)($booking_info['booking_type_id'] ?? NULL);
+        $delivery_date = trim($booking_info['delivery_date'] ?? '');
+        $depot_id = (int)($booking_info['depot_id'] ?? NULL);
+        $commodity_type_id = (int)($booking_info['commodity_type_id'] ?? NULL);
+        $route_code = trim($booking_info['route_code'] ?? '');
+        $trips_number = (int)($booking_info['trips_number'] ?? NULL);
+        $drops_number = (int)($booking_info['drops_number'] ?? NULL);
+        $origin_id = (int)($booking_info['origin_id'] ?? NULL);
+        $destinationValue = $booking_info['destination_id'] ?? null;
+        $destination_id = ($destinationValue === null || $destinationValue === '' || (int)$destinationValue === 0)
+            ? null
+            : (int)$destinationValue;
+        
+        //vehicle_assignment
+        $vehicle_id = (int)($vehicle_assignment['vehicle_id'] ?? NULL);
+        $plate_no = trim($vehicle_assignment['plate_no'] ?? '');
+        $vehicle_type_id = (int)($vehicle_assignment['vehicle_type_id'] ?? NULL);
+        $commodity_type_id = (int)($vehicle_assignment['commodity_type_id'] ?? NULL);
+        $vendorValue = $vehicle_assignment['vendor_id'] ?? null;
+        $vendor_id = ($vendorValue === null || $vendorValue === '' || (int)$vendorValue === 0)
+            ? null
+            : (int)$vendorValue;
 
-        if ($action === 'deliver' && $id) {
-            $stmt = $db->prepare("SELECT status_id FROM `{$T['b']}` WHERE booking_id = ?");
-            $stmt->execute([$id]);
-            if (!$stmt->fetch()) {
-                http_response_code(404);
-                echo json_encode(['error' => 'Booking not found']); exit;
-            }
-            $deliverStatus = $db->prepare("SELECT status_id FROM `{$T['bs']}` WHERE status_name = 'Delivered' LIMIT 1");
-            $deliverStatus->execute();
-            $dvs = $deliverStatus->fetch();
-            $sid = $dvs ? $dvs['status_id'] : 4;
-            $upd = $db->prepare("UPDATE `{$T['b']}` SET status_id = ?, updated_by = ?, updated_at = NOW() WHERE booking_id = ?");
-            $upd->execute([$sid, $user['user_id'], $id]);
-            echo json_encode(['success' => true, 'booking_id' => (int)$id]);
-            exit;
-        }
+        //personnel_assignment
+        $driver_id = (int)($personnel_assignment['driver_id'] ?? NULL);
+        $helper1_id = (int)($personnel_assignment['helper1_id'] ?? NULL);
+        $helper2_id = (int)($personnel_assignment['helper2_id'] ?? NULL);
 
-        if ($action === 'complete' && $id) {
-            $stmt = $db->prepare("SELECT status_id FROM `{$T['b']}` WHERE booking_id = ?");
-            $stmt->execute([$id]);
-            if (!$stmt->fetch()) {
-                http_response_code(404);
-                echo json_encode(['error' => 'Booking not found']); exit;
-            }
-            $completeStatus = $db->prepare("SELECT status_id FROM `{$T['bs']}` WHERE status_name = 'Completed' LIMIT 1");
-            $completeStatus->execute();
-            $cs = $completeStatus->fetch();
-            $sid = $cs ? $cs['status_id'] : 6;
-            $upd = $db->prepare("UPDATE `{$T['b']}` SET status_id = ?, updated_by = ?, updated_at = NOW() WHERE booking_id = ?");
-            $upd->execute([$sid, $user['user_id'], $id]);
-            echo json_encode(['success' => true, 'booking_id' => (int)$id]);
-            exit;
-        }
+        $driver_source = trim($personnel_assignment['driver_source'] ?? 'direct');
+        $helper1_source = trim($personnel_assignment['helper1_source'] ?? 'direct');
+        $helper2_source = trim($personnel_assignment['helper2_source'] ?? 'direct');
 
-        $input = json_decode(file_get_contents('php://input'), true);
-        $db->beginTransaction();
+        $driver_vendor_id = (int)($personnel_assignment['driver_vendor_id'] ?? NULL);
+        $helper1_vendor_id = (int)($personnel_assignment['helper1_vendor_id'] ?? NULL);
+        $helper2_vendor_id = (int)($personnel_assignment['helper2_vendor_id'] ?? NULL);
+
+        //fueltrip_allowance
+        $area = trim($fueltrip_allowance['area'] ?? '');
+        $trip_allowance = trim($fueltrip_allowance['trip_allowance'] ?? '');
+        $fuel = trim($fueltrip_allowance['fuel'] ?? '');
+        $fuel_po = $fueltrip_allowance['fuel_po'] ?? null;
+        $fuel_amount = $fueltrip_allowance['fuel_amount'] ?? null;
+
+        //references
+        $client_ref_no = trim($references['client_ref_no'] ?? '');
+        $other_ref_no = trim($references['other_ref_no'] ?? '');
+        $remarks = trim($references['remarks'] ?? '');
+
+        //item_details
+        $item_details = is_array($item_details) ? $item_details : [];
+
+        // booking photos
+        $bk_photos = $input['bk_photos'] ?? [];
+
+        // if ($plate_no  === '') echoJson(['error' => 'Plate Number is required'], 400);
+        // if ($body_no === '') echoJson(['error' => 'Body Number is required'], 400);
+        // if ($status_id     === '') echoJson(['error' => 'Status is required'], 400);
+        // if ($vehicle_type_id  === '') echoJson(['error' => 'Vehicle Type is required'], 400);
+        // if ($vehicle_manufacturer_id === '') echoJson(['error' => 'Vehicle Manufacturer is required'], 400);
+        // if ($vehicle_model_id     === '') echoJson(['error' => 'Vehicle Model is required'], 400);
+       
+
+
         try {
-            $bookingNo = !empty($input['booking_no']) ? $input['booking_no'] : generateBookingNo($db, $T);
+            $db->beginTransaction();
 
-            $bCols = bookingHasColumn($db, $T['b'], 'delivery_date');
+            $bCols = []; $bPh = []; $bParams = [];
+            foreach ([
+                'booking_no'=>generateBookingNo($db, $tblBookings),
+                'customer_id'=>$customer_id,
+                'booking_type_id'=>$booking_type_id,
+                'status_id'=>1,
+                'created_by'=>(int)$currentUser['user_id'],
+                'delivery_date'=>$delivery_date,
+                'depot_id'=>$depot_id,
+                'commodity_type_id'=>$commodity_type_id,
+                'route_code'=>$route_code,
+                'trips_number'=>$trips_number,
+                'drops_number'=>$drops_number,
+                'origin_id'=>$origin_id,
+                'destination_id'=>$destination_id,
+            ] as $k=>$v) {
+                $bCols[] = "`{$k}`";
+                $bPh[]   = '?';
+                $bParams[] = $v;
+            }
+            $sql = "INSERT INTO `{$tblBookings}` (" . implode(', ', $bCols) . ") VALUES (" . implode(', ', $bPh) . ")";
+            $stmtV = $db->prepare($sql);
+            $stmtV->execute($bParams);
+            if ($stmtV->rowCount() === 0) { $db->rollBack(); echoJson(['error' => 'Insert failed'], 500); }
+            $booking_id = (int)$db->lastInsertId();
+            if ($booking_id <= 0) { $db->rollBack(); echoJson(['error' => 'Insert failed: no ID'], 500); }
 
-            $cols = ["booking_no","customer_id","booking_type_id","depot_id","commodity_type_id",
-                     "origin_id","destination_id","vehicle_id","status_id",
-                     "created_by","updated_by","created_at","updated_at"];
-            $placeholders = ["?","?","?","?","?","?","?","?","?","?","?","NOW()","NOW()"];
-            $vals = [
-                $bookingNo,
-                empty($input['customer_id']) ? null : (int)$input['customer_id'],
-                empty($input['booking_type_id']) ? null : (int)$input['booking_type_id'],
-                empty($input['depot_id']) ? null : (int)$input['depot_id'],
-                empty($input['commodity_type_id']) ? null : (int)$input['commodity_type_id'],
-                empty($input['origin_id']) ? null : (int)$input['origin_id'],
-                empty($input['destination_id']) ? null : (int)$input['destination_id'],
-                empty($input['vehicle_id']) ? null : (int)$input['vehicle_id'],
-                empty($input['status_id']) ? 1 : (int)$input['status_id'],
-                (int)$user['user_id'],
-                (int)$user['user_id'],
+            $blCols = []; $blPh = []; $blParams = [];
+            foreach ([
+                'booking_id'=>$booking_id,
+                'vehicle_id'=>$vehicle_id,
+                'vendor_id'=>$vendor_id,
+                'plate_no'=>$plate_no,                
+            ] as $k=>$v) {
+                $blCols[] = "`{$k}`";
+                $blPh[]   = '?';
+                $blParams[] = $v;
+            }
+            $sql = "INSERT INTO `{$tblBVehicles}` (" . implode(', ', $blCols) . ") VALUES (" . implode(', ', $blPh) . ")";
+            $stmtVl = $db->prepare($sql);
+            $stmtVl->execute($blParams);
+
+            $bsCols = []; $bsPh = []; $bsParams = [];
+            foreach ([
+                'booking_id'=>$booking_id,
+                'area'=>$area,
+                'trip_allowance'=>$trip_allowance,
+                'fuel'=>$fuel,
+                'fuel_po'=>$fuel_po,
+                'fuel_amount'=>$fuel_amount,
+            ] as $k=>$v) {
+                $bsCols[] = "`{$k}`";
+                $bsPh[]   = '?';
+                $bsParams[] = $v;
+            }
+
+            $sql = "INSERT INTO `{$tblBFuel}` (" . implode(', ', $bsCols) . ") VALUES (" . implode(', ', $bsPh) . ")";
+            $stmtBs = $db->prepare($sql);
+            $stmtBs->execute($bsParams);
+
+            $roleBindings = [
+                ['driver', $driver_id],
+                ['helper1', $helper1_id],
+                ['helper2', $helper2_id],
             ];
 
-            $extras = ['delivery_date','route_code','no_of_trips','no_of_drops','category_type',
-                       'area','trip_allowance','fuel_liters','fuel_po','fuel_amount',
-                       'remarks','client_ref_no','other_ref_no','remarks_2'];
-            foreach ($extras as $k) {
-                if (bookingHasColumn($db, $T['b'], $k) && array_key_exists($k, $input)) {
-                    $cols[] = $k;
-                    $placeholders[] = '?';
-                    $v = $input[$k];
-                    if (in_array($k, ['no_of_trips','no_of_drops']) && $v !== null && $v !== '') {
-                        $v = (int)$v;
-                    } elseif (in_array($k, ['trip_allowance','fuel_liters','fuel_amount']) && $v !== null && $v !== '') {
-                        $v = (float)$v;
+            foreach ($roleBindings as [$role, $personnelId]) {
+                if ((int)$personnelId <= 0) {
+                    continue;
+                }
+
+                $stmtBrc = $db->prepare(
+                    "INSERT INTO `{$tblBPersonnel}` (booking_id, personnel_id, assignment_role) VALUES (?, ?, ?)"
+                );
+                $stmtBrc->execute([$booking_id, (int)$personnelId, $role]);
+            }
+
+            $rCols = []; $rPh = []; $rParams = [];
+            foreach ([
+                'booking_id'=>$booking_id,
+                'client_ref_no'=>$client_ref_no,
+                'other_ref_no'=>$other_ref_no,
+                'remarks'=>$remarks
+            ] as $k=>$v) {
+                $rCols[] =  "`{$k}`";
+                $rPh[] = '?';
+                $rParams[] = $v;
+            }
+
+            $sql = "INSERT INTO `{$tblBReferences}` (" . implode(', ', $rCols) . ") VALUES (" . implode(', ', $rPh) . ")";
+            $stmtR = $db->prepare($sql);
+            $stmtR->execute($rParams);
+
+            $stmtId = $db->prepare(
+                "INSERT INTO `{$tblBItems}`
+                    (booking_id, item_type_id, item_description, length, width, height, weight)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)"
+            );
+
+            foreach ($item_details as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $itemTypeId = $item['item_type_id'] ?? null;
+                $itemDescription = trim((string)($item['item_description'] ?? ''));
+                $length = $item['length'] ?? null;
+                $width = $item['width'] ?? null;
+                $height = $item['height'] ?? null;
+                $weight = $item['weight'] ?? null;
+
+                // The form keeps one blank row ready for the next item.
+                if (($itemTypeId === null || $itemTypeId === '')
+                    && $itemDescription === ''
+                    && ($length === null || $length === '')
+                    && ($width === null || $width === '')
+                    && ($height === null || $height === '')
+                    && ($weight === null || $weight === '')) {
+                    continue;
+                }
+
+                $stmtId->execute([
+                    $booking_id,
+                    $itemTypeId !== null && $itemTypeId !== '' ? (int)$itemTypeId : null,
+                    $itemDescription !== '' ? $itemDescription : null,
+                    $length !== null && $length !== '' ? (float)$length : null,
+                    $width !== null && $width !== '' ? (float)$width : null,
+                    $height !== null && $height !== '' ? (float)$height : null,
+                    $weight !== null && $weight !== '' ? (float)$weight : null,
+                ]);
+            }
+        
+
+            if (is_array($bk_photos)) {
+                $stmtPhoto = $db->prepare("
+                    INSERT INTO `{$tblBPhotos}`
+                    (booking_id, photo_name, photo_path)
+                    VALUES (?, ?, ?)
+                ");
+
+                foreach ($bk_photos as $row) {
+                    $photoName = trim($row['photo_name'] ?? '');
+                    $photoPath = trim($row['photo_path'] ?? '');
+
+                    // Ignore completely empty rows
+                    if ($photoName === '' && $photoPath === '') {
+                        continue;
                     }
-                    $vals[] = ($v === '' || $v === null) ? null : $v;
+
+                    $stmtPhoto->execute([
+                        $booking_id,
+                        $photoName !== '' ? $photoName : null,
+                        $photoPath !== '' ? $photoPath : null
+                    ]);
                 }
             }
 
-            $sql = "INSERT INTO `{$T['b']}` (" . implode(',', $cols) . ")
-                    VALUES (" . implode(',', $placeholders) . ")";
-            $ins = $db->prepare($sql);
-            $ins->execute($vals);
-            $newId = (int)$db->lastInsertId();
-            setBookingPersonnel($db, $T, $newId, $input['personnel'] ?? []);
-            setBookingItems($db, $T, $newId, $input['items'] ?? []);
-            setBookingPhotos($db, $T, $newId, $input['photos'] ?? []);
             $db->commit();
-            echo json_encode(['success' => true, 'booking_id' => $newId, 'booking_no' => $bookingNo]);
-        } catch (Exception $e) {
-            $db->rollBack();
-            http_response_code(500);
-            echo json_encode(['error' => 'Failed to create booking: ' . $e->getMessage()]);
+
+            $stmtg = $db->prepare("SELECT * FROM `{$tblBookings}` WHERE booking_id = ? LIMIT 1");
+            $stmtg->execute([$booking_id]);
+            $saved = $stmtg->fetch();
+            echoJson($saved, 201);
+
+        } catch (PDOException $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            echoJson(['error' => 'DB error: ' . $e->getMessage()], 500);
         }
         break;
 
-    case 'PUT':
-        if (!$id) {
-            http_response_code(400);
-            echo json_encode(['error' => 'Booking id required']); exit;
-        }
-        $input = json_decode(file_get_contents('php://input'), true);
-        $db->beginTransaction();
-        try {
-            $sets = [
-                "customer_id = ?",
-                "booking_type_id = ?",
-                "depot_id = ?",
-                "commodity_type_id = ?",
-                "origin_id = ?",
-                "destination_id = ?",
-                "vehicle_id = ?",
-                "status_id = ?",
-                "updated_by = ?",
-                "updated_at = NOW()",
-            ];
-            $vals = [
-                empty($input['customer_id']) ? null : (int)$input['customer_id'],
-                empty($input['booking_type_id']) ? null : (int)$input['booking_type_id'],
-                empty($input['depot_id']) ? null : (int)$input['depot_id'],
-                empty($input['commodity_type_id']) ? null : (int)$input['commodity_type_id'],
-                empty($input['origin_id']) ? null : (int)$input['origin_id'],
-                empty($input['destination_id']) ? null : (int)$input['destination_id'],
-                empty($input['vehicle_id']) ? null : (int)$input['vehicle_id'],
-                empty($input['status_id']) ? 1 : (int)$input['status_id'],
-                (int)$user['user_id'],
+        case 'PUT':
+            if ($id <= 0) echoJson(['error' => 'ID is required'], 400);
+            $stmtChk = $db->prepare("SELECT booking_id FROM `{$tblBookings}` WHERE booking_id = ? LIMIT 1");
+            $stmtChk->execute([$id]);
+            if (!$stmtChk->fetch()) echoJson(['error' => 'Booking not found'], 404);
+
+            $booking_info = $input['booking_info'] ?? [];
+            $vehicle_assignment = $input['vehicle_assignment'] ?? [];
+            $fueltrip_allowance = $input['fueltrip_allowance'] ?? [];
+            $personnel_assignment = $input['personnel_assignment'] ?? [];
+            $references = $input['references'] ?? [];
+            $item_details = $input['item_details'] ?? [];
+
+            //booking_info
+
+            $customer_id = (int)($booking_info['customer_id'] ?? NULL);
+            $booking_type_id = (int)($booking_info['booking_type_id'] ?? NULL);
+            $delivery_date = trim($booking_info['delivery_date'] ?? '');
+            $depot_id = (int)($booking_info['depot_id'] ?? NULL);
+            $commodity_type_id = (int)($booking_info['commodity_type_id'] ?? NULL);
+            $route_code = trim($booking_info['route_code'] ?? '');
+            $trips_number = (int)($booking_info['trips_number'] ?? NULL);
+            $drops_number = (int)($booking_info['drops_number'] ?? NULL);
+            $origin_id = (int)($booking_info['origin_id'] ?? NULL);
+            $destinationValue = $booking_info['destination_id'] ?? null;
+            $destination_id = ($destinationValue === null || $destinationValue === '' || (int)$destinationValue === 0)
+                ? null
+                : (int)$destinationValue;
+            
+            //vehicle_assignment
+            $vehicle_id = (int)($vehicle_assignment['vehicle_id'] ?? NULL);
+            $plate_no = trim($vehicle_assignment['plate_no'] ?? '');
+            $vehicle_type_id = (int)($vehicle_assignment['vehicle_type_id'] ?? NULL);
+            $commodity_type_id = (int)($vehicle_assignment['commodity_type_id'] ?? NULL);
+            $vendorValue = $vehicle_assignment['vendor_id'] ?? null;
+            $vendor_id = ($vendorValue === null || $vendorValue === '' || (int)$vendorValue === 0)
+                ? null
+                : (int)$vendorValue;
+
+            //personnel_assignment
+            $driver_id = (int)($personnel_assignment['driver_id'] ?? NULL);
+            $helper1_id = (int)($personnel_assignment['helper1_id'] ?? NULL);
+            $helper2_id = (int)($personnel_assignment['helper2_id'] ?? NULL);
+
+            $driver_source = trim($personnel_assignment['driver_source'] ?? 'direct');
+            $helper1_source = trim($personnel_assignment['helper1_source'] ?? 'direct');
+            $helper2_source = trim($personnel_assignment['helper2_source'] ?? 'direct');
+
+            $driver_vendor_id = (int)($personnel_assignment['driver_vendor_id'] ?? NULL);
+            $helper1_vendor_id = (int)($personnel_assignment['helper1_vendor_id'] ?? NULL);
+            $helper2_vendor_id = (int)($personnel_assignment['helper2_vendor_id'] ?? NULL);
+
+            //fueltrip_allowance
+            $area = trim($fueltrip_allowance['area'] ?? '');
+            $trip_allowance = trim($fueltrip_allowance['trip_allowance'] ?? '');
+            $fuel = trim($fueltrip_allowance['fuel'] ?? '');
+            $fuel_po = $fueltrip_allowance['fuel_po'] ?? null;
+            $fuel_amount = $fueltrip_allowance['fuel_amount'] ?? null;
+
+            //references
+            $client_ref_no = trim($references['client_ref_no'] ?? '');
+            $other_ref_no = trim($references['other_ref_no'] ?? '');
+            $remarks = trim($references['remarks'] ?? '');
+
+            //item_details
+            $item_details = is_array($item_details) ? $item_details : [];
+
+            // booking photos
+            $bk_photos = $input['bk_photos'] ?? [];
+
+
+            try {
+                $db->beginTransaction();
+
+            $stmtB = $db->prepare(
+                "UPDATE `{$tblBookings}` SET
+                    customer_id = ?, booking_type_id = ?, delivery_date = ?, depot_id = ?,
+                    commodity_type_id = ?, route_code = ?, trips_number = ?, drops_number = ?,
+                    origin_id = ?, destination_id = ?, updated_by = ?
+                 WHERE booking_id = ?"
+            );
+            $stmtB->execute([
+                $customer_id, $booking_type_id, $delivery_date ?: null, $depot_id,
+                $commodity_type_id, $route_code ?: null, $trips_number, $drops_number,
+                $origin_id, $destination_id, (int)$currentUser['user_id'], $id,
+            ]);
+            
+
+            $stmtChkBk = $db->prepare("SELECT booking_id FROM `{$tblBVehicles}` WHERE booking_id = ? LIMIT 1");
+            $stmtChkBk->execute([$id]);
+            $exBk = $stmtChkBk->fetch();
+            $BkData = [
+                'booking_id'=>$id,
+                'vehicle_id'=>$vehicle_id,
+                'vendor_id'=>$vendor_id,
+                'plate_no'=>$plate_no,      
             ];
 
-            $extras = ['delivery_date','route_code','no_of_trips','no_of_drops','category_type',
-                       'area','trip_allowance','fuel_liters','fuel_po','fuel_amount',
-                       'remarks','client_ref_no','other_ref_no','remarks_2'];
-            foreach ($extras as $k) {
-                if (bookingHasColumn($db, $T['b'], $k) && array_key_exists($k, $input)) {
-                    $sets[] = "{$k} = ?";
-                    $v = $input[$k];
-                    if (in_array($k, ['no_of_trips','no_of_drops']) && $v !== null && $v !== '') {
-                        $v = (int)$v;
-                    } elseif (in_array($k, ['trip_allowance','fuel_liters','fuel_amount']) && $v !== null && $v !== '') {
-                        $v = (float)$v;
+            if ($exBk) {
+                $stmtEU = $db->prepare(
+                    "UPDATE `{$tblBVehicles}`
+                     SET vehicle_id = ?, vendor_id = ?, plate_no = ?
+                     WHERE booking_id = ?"
+                );
+                $stmtEU->execute([$vehicle_id, $vendor_id, $plate_no, $id]);
+            } else {
+                $ek = array_keys($BkData);
+                $ev = array_values($BkData);
+                $ph = array_fill(0, count($ek), '?');
+                $stmtEI = $db->prepare("INSERT INTO `{$tblBVehicles}` (" . implode(',', $ek) . ") VALUES (" . implode(',', $ph) . ")");
+                $stmtEI->execute($ev);
+            }
+
+            $stmtChkBf = $db->prepare("SELECT booking_id FROM `{$tblBFuel}` WHERE booking_id = ? LIMIT 1");
+            $stmtChkBf->execute([$id]);
+            $exBf = $stmtChkBf->fetch();
+            $BfData = [
+                'booking_id'=>$id,
+                'area'=>$area,
+                'trip_allowance'=>$trip_allowance,
+                'fuel'=>$fuel,
+                'fuel_po'=>$fuel_po,
+                'fuel_amount'=>$fuel_amount,
+            ];
+            if ($exBf) {
+                $stmtBU = $db->prepare(
+                    "UPDATE `{$tblBFuel}`
+                     SET area = ?, trip_allowance = ?, fuel = ?, fuel_po = ?, fuel_amount = ?
+                     WHERE booking_id = ?"
+                );
+                $stmtBU->execute([$area, $trip_allowance, $fuel, $fuel_po, $fuel_amount, $id]);
+            } else {
+                $stmtBI = $db->prepare("INSERT INTO `{$tblBFuel}` (booking_id, area, trip_allowance, fuel, fuel_po, fuel_amount) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmtBI->execute(array_values($BfData));
+            }
+
+            $roleBindings = [
+                ['driver', $driver_id],
+                ['helper1', $helper1_id],
+                ['helper2', $helper2_id],
+            ];
+
+            foreach ($roleBindings as [$role, $personnelId]) {
+                $personnelId = (int)$personnelId;
+
+                $stmtChkPersonnel = $db->prepare(
+                    "SELECT booking_personnel_id
+                     FROM `{$tblBPersonnel}`
+                     WHERE booking_id = ? AND assignment_role = ?
+                     LIMIT 1"
+                );
+                $stmtChkPersonnel->execute([$id, $role]);
+                $existingPersonnel = $stmtChkPersonnel->fetch();
+
+                if ($personnelId > 0) {
+                    if ($existingPersonnel) {
+                        $stmtUpdatePersonnel = $db->prepare(
+                            "UPDATE `{$tblBPersonnel}`
+                             SET personnel_id = ?
+                             WHERE booking_personnel_id = ?"
+                        );
+                        $stmtUpdatePersonnel->execute([
+                            $personnelId,
+                            $existingPersonnel['booking_personnel_id'],
+                        ]);
+                    } else {
+                        $stmtInsertPersonnel = $db->prepare(
+                            "INSERT INTO `{$tblBPersonnel}`
+                                (booking_id, personnel_id, assignment_role)
+                             VALUES (?, ?, ?)"
+                        );
+                        $stmtInsertPersonnel->execute([$id, $personnelId, $role]);
                     }
-                    $vals[] = ($v === '' || $v === null) ? null : $v;
+                } elseif ($existingPersonnel) {
+                    $stmtDeletePersonnel = $db->prepare(
+                        "DELETE FROM `{$tblBPersonnel}` WHERE booking_personnel_id = ?"
+                    );
+                    $stmtDeletePersonnel->execute([
+                        $existingPersonnel['booking_personnel_id'],
+                    ]);
                 }
             }
-            $vals[] = (int)$id;
 
-            $sql = "UPDATE `{$T['b']}` SET " . implode(', ', $sets) . " WHERE booking_id = ?";
-            $upd = $db->prepare($sql);
-            $upd->execute($vals);
-            setBookingPersonnel($db, $T, $id, $input['personnel'] ?? []);
-            setBookingItems($db, $T, $id, $input['items'] ?? []);
-            setBookingPhotos($db, $T, $id, $input['photos'] ?? []);
+            $stmtChkR = $db->prepare("SELECT booking_id FROM `{$tblBReferences}` WHERE booking_id = ? LIMIT 1");
+            $stmtChkR->execute([$id]);
+            $exR = $stmtChkR->fetch();
+            $RData = [
+                'client_ref_no'=>$client_ref_no,
+                'other_ref_no'=>$other_ref_no,
+                'remarks'=>$remarks
+            ];
+            if ($exR) {
+                $stmtEMU = $db->prepare(
+                    "UPDATE `{$tblBReferences}`
+                     SET client_ref_no = ?, other_ref_no = ?, remarks = ?
+                     WHERE booking_id = ?"
+                );
+                $stmtEMU->execute([$client_ref_no, $other_ref_no, $remarks, $id]);
+            } else {
+                $stmtEMI = $db->prepare("INSERT INTO `{$tblBReferences}` (booking_id, client_ref_no, other_ref_no, remarks) VALUES (?, ?, ?, ?)");
+                $stmtEMI->execute([$id, $RData['client_ref_no'], $RData['other_ref_no'], $RData['remarks']]);
+            }
+
+            $stmtDeleteItems = $db->prepare(
+                "DELETE FROM `{$tblBItems}` WHERE booking_id = ?"
+            );
+            $stmtDeleteItems->execute([$id]);
+
+            $stmtInsertItem = $db->prepare(
+                "INSERT INTO `{$tblBItems}`
+                    (booking_id, item_type_id, item_description, length, width, height, weight)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)"
+            );
+
+            foreach ($item_details as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $itemTypeId = $item['item_type_id'] ?? null;
+                $itemDescription = trim((string)($item['item_description'] ?? ''));
+                $length = $item['length'] ?? null;
+                $width = $item['width'] ?? null;
+                $height = $item['height'] ?? null;
+                $weight = $item['weight'] ?? null;
+
+                // The form keeps one blank row ready for the next item.
+                if (($itemTypeId === null || $itemTypeId === '')
+                    && $itemDescription === ''
+                    && ($length === null || $length === '')
+                    && ($width === null || $width === '')
+                    && ($height === null || $height === '')
+                    && ($weight === null || $weight === '')) {
+                    continue;
+                }
+
+                $stmtInsertItem->execute([
+                    $id,
+                    $itemTypeId !== null && $itemTypeId !== '' ? (int)$itemTypeId : null,
+                    $itemDescription !== '' ? $itemDescription : null,
+                    $length !== null && $length !== '' ? (float)$length : null,
+                    $width !== null && $width !== '' ? (float)$width : null,
+                    $height !== null && $height !== '' ? (float)$height : null,
+                    $weight !== null && $weight !== '' ? (float)$weight : null,
+                ]);
+            }
+
+
+
+            // Replace vehicle photos
+            $stmtPhotoDel = $db->prepare("
+                DELETE FROM `{$tblBPhotos}`
+                WHERE booking_id = ?
+            ");
+            $stmtPhotoDel->execute([$id]);
+
+            if (is_array($bk_photos)) {
+
+                $stmtPhoto = $db->prepare("
+                    INSERT INTO `{$tblBPhotos}`
+                    (booking_id, photo_name, photo_path)
+                    VALUES (?, ?, ?)
+                ");
+
+                foreach ($bk_photos as $row) {
+
+                    $photoName = trim($row['photo_name'] ?? '');
+                    $photoPath = trim($row['photo_path'] ?? '');
+
+                    // Ignore completely empty rows
+                    if ($photoName === '' && $photoPath === '') {
+                        continue;
+                    }
+
+                    $stmtPhoto->execute([
+                        $id,
+                        $photoName !== '' ? $photoName : null,
+                        $photoPath !== '' ? $photoPath : null
+                    ]);
+                }
+            }
+
             $db->commit();
-            echo json_encode(['success' => true, 'booking_id' => (int)$id]);
-        } catch (Exception $e) {
-            $db->rollBack();
-            http_response_code(500);
-            echo json_encode(['error' => 'Failed to update booking: ' . $e->getMessage()]);
-        }
-        break;
+            $stmtg = $db->prepare("SELECT * FROM `{$tblVehicles}` WHERE vehicle_id = ? LIMIT 1");
+            $stmtg->execute([$id]);
+            $saved = $stmtg->fetch();
+            echoJson($saved, 200);
+            } catch (Throwable $e) {
+                if ($db->inTransaction()) $db->rollBack();
+                error_log('Booking update failed: ' . $e->getMessage());
+                echoJson(['error' => 'Booking update failed: ' . $e->getMessage()], 500);
+            }
+    }
 
-    case 'DELETE':
-        if (!$id) {
-            http_response_code(400); echo json_encode(['error'=>'id required']); exit;
-        }
-        $db->beginTransaction();
-        try {
-            try { $db->prepare("DELETE FROM `{$T['ph']}` WHERE booking_id = ?")->execute([$id]); } catch (Exception $e) {}
-            try { $db->prepare("DELETE FROM `{$T['bi']}` WHERE booking_id = ?")->execute([$id]); } catch (Exception $e) {}
-            try { $db->prepare("DELETE FROM `{$T['bp']}` WHERE booking_id = ?")->execute([$id]); } catch (Exception $e) {}
-            $db->prepare("DELETE FROM `{$T['b']}` WHERE booking_id = ?")->execute([$id]);
-            $db->commit();
-            echo json_encode(['success' => true]);
-        } catch (Exception $e) {
-            $db->rollBack();
-            http_response_code(500);
-            echo json_encode(['error' => $e->getMessage()]);
-        }
-        break;
-
-    default:
-        http_response_code(405);
-        echo json_encode(['error' => 'Method not allowed']);
-}
