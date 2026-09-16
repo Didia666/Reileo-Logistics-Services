@@ -234,7 +234,7 @@ export default function Vehicles() {
                   <td>{v.depot_name || '—'}</td>
                   <td>{v.vehicle_manufacturer || '—'}</td>
                   <td>{v.GPS || '—'}</td>
-                  <td>{v.vendor_name || 'No'}</td>
+                  <td>{v.vendor_id ? 'No' : 'Yes'}</td>
                   <td>{v.subcon_name || '—'}</td>
                   <td>{v.category_type || '—'}</td>
                   <td>

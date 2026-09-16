@@ -4,9 +4,10 @@ import {
   Plus, Search, Filter, Pencil, Trash2, Loader2, ChevronDown, ChevronUp,
   ShoppingBasket, FileText, MapPin, Map, Users, Cog, Wrench, Bell,
   CheckSquare, Clock, UserCog, Package, Car, X, MoreHorizontal, ChevronLeft,
-  ShoppingCart, Layers,
+  ShoppingCart, Layers, Building2,
 } from 'lucide-react';
 import { settingsCrud } from '../services/api.js';
+import VendorFormModal from './VendorForm.jsx';
 
 const SETTINGS_CATEGORIES = [
   { key: 'booking-types',      label: 'Booking Types',       Icon: ShoppingBasket, endpoint: 'booking_types'  },
@@ -25,7 +26,8 @@ const SETTINGS_CATEGORIES = [
   { key: 'vehicle-types',      label: 'Vehicle Types',       Icon: CheckSquare,    endpoint: 'vh_types'             },
   { key: 'vehicle-makers',     label: 'Vehicle Makers',      Icon: Car,            endpoint: 'vh_manufacturers'             },
   { key: 'vehicle-models',     label: 'Vehicle Models',      Icon: Car,            endpoint: 'vh_models'             },
-  { key: 'vendor-types',       label: 'Vendor Types',        Icon: Package,        endpoint: null             },
+  { key: 'vendors',            label: 'Vendors',             Icon: Building2,      endpoint: 'vendors'             },
+  { key: 'vendor-types',       label: 'Vendor Types',        Icon: Package,        endpoint: 'v_types'        },
 ];
 
 function stripTypeSuffix(label) {
@@ -141,14 +143,17 @@ function EditModal({ category, schema, item, onClose, onSave, saving }) {
   );
 }
 
-export default function Settings() {
+export default function Settings({ vendorOnly = false }) {
   const { category } = useParams();
   const navigate = useNavigate();
 
   const activeCat = useMemo(() => {
+    if (vendorOnly) {
+      return SETTINGS_CATEGORIES.find((c) => c.key === 'vendors') || SETTINGS_CATEGORIES[0];
+    }
     if (!category) return SETTINGS_CATEGORIES[0];
     return SETTINGS_CATEGORIES.find((c) => c.key === category) || SETTINGS_CATEGORIES[0];
-  }, [category]);
+  }, [category, vendorOnly]);
 
   const hasApi = !!activeCat.endpoint;
 
@@ -375,35 +380,37 @@ export default function Settings() {
   };
 
   return (
-    <div className="settings-layout">
-      <aside className="settings-sidebar">
-        <div className="settings-sidebar-header">
-          <button className="back-btn" onClick={() => navigate(-1)}>
-            <ChevronLeft size={14} />
-          </button>
-          <span style={{ fontWeight: 600 }}>SETTINGS</span>
-        </div>
-        <nav className="settings-nav">
-          {SETTINGS_CATEGORIES.map(({ key, label, Icon }) => {
-            const isActive = key === activeCat.key;
-            return (
-              <a
-                key={key}
-                href={`/settings/${key}`}
-                className={isActive ? 'active' : ''}
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate(`/settings/${key}`);
-                }}
-              >
-                <Icon size={16} /> <span>{label}</span>
-              </a>
-            );
-          })}
-        </nav>
-      </aside>
+    <div className={vendorOnly ? 'settings-main vendor-page' : 'settings-layout'}>
+      {!vendorOnly && (
+        <aside className="settings-sidebar">
+          <div className="settings-sidebar-header">
+            <button className="back-btn" onClick={() => navigate(-1)}>
+              <ChevronLeft size={14} />
+            </button>
+            <span style={{ fontWeight: 600 }}>SETTINGS</span>
+          </div>
+          <nav className="settings-nav">
+            {SETTINGS_CATEGORIES.filter(({ key }) => key !== 'vendors').map(({ key, label, Icon }) => {
+              const isActive = key === activeCat.key;
+              return (
+                <a
+                  key={key}
+                  href={`/settings/${key}`}
+                  className={isActive ? 'active' : ''}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate(`/settings/${key}`);
+                  }}
+                >
+                  <Icon size={16} /> <span>{label}</span>
+                </a>
+              );
+            })}
+          </nav>
+        </aside>
+      )}
 
-      <div className="settings-main">
+      <div className={vendorOnly ? 'settings-main vendor-page-main' : 'settings-main'}>
         <div className="page-header">
           <div>
             <div className="breadcrumb">Settings / {activeCat.label}</div>
@@ -591,7 +598,21 @@ export default function Settings() {
           </div>
         )}
 
-        {isModalOpen && (
+        {isModalOpen && activeCat.key === 'vendors' ? (
+          <VendorFormModal
+            isOpen={isModalOpen}
+            onClose={() => { setIsModalOpen(false); setEditingItem(null); }}
+            onSaved={(payload) => {
+              if (editingItem) {
+                setRows((prev) => prev.map((row) => String(row.vendor_id) === String(payload.vendor_id) ? { ...row, ...payload } : row));
+              } else {
+                const next = payload.vendor_id ? payload : { ...payload, vendor_id: Date.now() };
+                setRows((prev) => [next, ...prev]);
+              }
+            }}
+            editVendor={editingItem}
+          />
+        ) : isModalOpen ? (
           <EditModal
             category={activeCat}
             schema={schema || { nameField: 'name', statusField: 'status' }}
@@ -600,7 +621,7 @@ export default function Settings() {
             onSave={handleSave}
             saving={saving}
           />
-        )}
+        ) : null}
       </div>
     </div>
   );

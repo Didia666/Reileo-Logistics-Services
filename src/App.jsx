@@ -66,6 +66,7 @@ function Layout() {
           <Route path="/fuel" element={<DashboardPlaceholder title="Fuel Record" />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/logs" element={<Logs />} />
+          <Route path="/vendors" element={<Settings vendorOnly />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/settings/:category" element={<Settings />} />
           <Route path="*" element={<Navigate to="/home" replace />} />

@@ -24,7 +24,7 @@ const SHORTCUTS = [
   ],
   [
     { label: 'USERS', route: '/settings/users', Icon: UserCog, color: '#0277BD' },
-    { label: 'VENDORS', route: '/settings/vendors', Icon: Building2, color: '#0288D1' },
+    { label: 'VENDORS', route: '/vendors', Icon: Building2, color: '#0288D1' },
     { label: 'PERSONNEL', route: '/settings/personnel', Icon: UserCheck, color: '#039BE5' },
     { label: 'CLIENT TRUCKER RATES', route: '/billing', Icon: Truck, color: '#29B6F6' },
     { label: 'WORK ORDER', route: '/work-orders', Icon: ClipboardList, color: '#4FC3F7' },
