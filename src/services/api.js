@@ -69,8 +69,8 @@ export const bookings = {
     request(`/bookings.php?id=${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   approve: (id) => request(`/bookings.php?action=approve&id=${id}`, { method: 'POST' }),
   dispatch: (id) => request(`/bookings.php?action=dispatch&id=${id}`, { method: 'POST' }),
-  deliver: (id) => request(`/bookings.php?action=deliver&id=${id}`, { method: 'POST' }),
-  complete: (id) => request(`/bookings.php?action=complete&id=${id}`, { method: 'POST' }),
+  deliver: (id, payload = {}) => request(`/bookings.php?action=deliver&id=${id}`, { method: 'POST', body: JSON.stringify(payload) }),
+  complete: (id, payload = {}) => request(`/bookings.php?action=complete&id=${id}`, { method: 'POST', body: JSON.stringify(payload) }),
   cancel: (id) => request(`/bookings.php?action=cancel&id=${id}`, { method: 'POST' }),
   remove: (id) => request(`/bookings.php?id=${id}`, { method: 'DELETE' }),
 };

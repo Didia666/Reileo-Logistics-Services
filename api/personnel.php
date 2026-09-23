@@ -243,6 +243,7 @@ switch ($method) {
             $stmtEM = $db->prepare("INSERT INTO `{$tblPEmploy}` (" . implode(',', $eCols) . ") VALUES (" . implode(',', $ePh) . ")");
             $stmtEM->execute($eParams);
 
+            $pagIbigNo = trim($benefits['pag_ibig_no'] ?? $benefits['pagibig_no'] ?? '') ?: null;
             $stmtB = $db->prepare(
                 "INSERT INTO `{$tblPBenefits}` (personnel_id, philhealth_no, sss_no, tin_no, pag_ibig_no)
                  VALUES (?, ?, ?, ?, ?)"
@@ -252,7 +253,7 @@ switch ($method) {
                 trim($benefits['philhealth_no'] ?? '') ?: null,
                 trim($benefits['sss_no']        ?? '') ?: null,
                 trim($benefits['tin_no']        ?? '') ?: null,
-                trim($benefits['pag_ibig_no']    ?? '') ?: null,
+                $pagIbigNo,
             ]);
 
             $stmtEMC = $db->prepare(
@@ -433,7 +434,7 @@ switch ($method) {
                 'philhealth_no' => trim($benefits['philhealth_no'] ?? '') ?: null,
                 'sss_no'        => trim($benefits['sss_no']        ?? '') ?: null,
                 'tin_no'        => trim($benefits['tin_no']        ?? '') ?: null,
-                'pagibig_no'    => trim($benefits['pagibig_no']    ?? '') ?: null,
+                'pag_ibig_no'   => trim($benefits['pag_ibig_no'] ?? $benefits['pagibig_no'] ?? '') ?: null,
             ];
             if ($exB) {
                 $bSets = []; $bParams = [];
@@ -442,7 +443,7 @@ switch ($method) {
                 $stmtBU = $db->prepare("UPDATE `{$tblPBenefits}` SET " . implode(', ', $bSets) . " WHERE personnel_id = ?");
                 $stmtBU->execute($bParams);
             } else {
-                $stmtBI = $db->prepare("INSERT INTO `{$tblPBenefits}` (personnel_id, philhealth_no, sss_no, tin_no, pagibig_no) VALUES (?, ?, ?, ?, ?)");
+                $stmtBI = $db->prepare("INSERT INTO `{$tblPBenefits}` (personnel_id, philhealth_no, sss_no, tin_no, pag_ibig_no) VALUES (?, ?, ?, ?, ?)");
                 $stmtBI->execute(array_merge([$id], array_values($bData)));
             }
 

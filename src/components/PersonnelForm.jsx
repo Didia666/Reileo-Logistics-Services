@@ -34,6 +34,13 @@ const readOnlyStyle = {
   width: '100%', boxSizing: 'border-box', background: '#f9fafb', color: '#4b5563',
 };
 
+const normalizeBenefits = (benefits = {}) => ({
+  philhealth_no: benefits.philhealth_no ?? '',
+  sss_no: benefits.sss_no ?? '',
+  tin_no: benefits.tin_no ?? '',
+  pag_ibig_no: benefits.pag_ibig_no ?? benefits.pagibig_no ?? '',
+});
+
 export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPersonnel, viewOnly }) {
   const [activeTab, setActiveTab] = useState('info');
   const [submitting, setSubmitting] = useState(false);
@@ -112,7 +119,7 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
               daily_rate: editPersonnel.daily_rate ?? (editPersonnel.employment?.daily_rate ?? ''),
               remarks: editPersonnel.remarks || editPersonnel.employment?.remarks || '',
             },
-            benefits: editPersonnel.benefits || { philhealth_no: '', sss_no: '', tin_no: '', pag_ibig_no: '' },
+            benefits: normalizeBenefits(editPersonnel.benefits),
             emergency: editPersonnel.emergency || { contact_person: '', contact_number: '' },
             license: {
               driver_license_no: editPersonnel.driver_license_no || editPersonnel.license?.driver_license_no || '',
@@ -145,7 +152,7 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
                 daily_rate: full.daily_rate ?? (full.employment?.daily_rate ?? ''),
                 remarks: full.remarks || full.employment?.remarks || '',
               },
-              benefits: full.benefits || { philhealth_no: '', sss_no: '', tin_no: '', pag_ibig_no: '' },
+              benefits: normalizeBenefits(full.benefits),
               emergency: full.emergency || { contact_person: '', contact_number: '' },
               license: {
                 driver_license_no: full.driver_license_no || full.license?.driver_license_no || '',
@@ -199,6 +206,7 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
     if (!validate()) return;
     setSubmitting(true);
     try {
+      const pagIbigNo = (form.benefits.pag_ibig_no ?? form.benefits.pagibig_no ?? '').trim();
       const payload = {
         last_name: form.last_name.trim(),
         first_name: form.first_name.trim(),
@@ -226,7 +234,8 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
           philhealth_no: form.benefits.philhealth_no.trim() || null,
           sss_no:        form.benefits.sss_no.trim()        || null,
           tin_no:        form.benefits.tin_no.trim()        || null,
-          pag_ibig_no:    form.benefits.pag_ibig_no.trim()    || null,
+          pag_ibig_no:   pagIbigNo || null,
+          pagibig_no:    pagIbigNo || null,
         },
         emergency: {
           contact_person: form.emergency.contact_person.trim() || null,

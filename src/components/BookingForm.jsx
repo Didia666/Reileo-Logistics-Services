@@ -5,7 +5,6 @@ import { bookingCrud, lookups } from '../services/api.js';
 const TABS = [
   { key: 'bookinginfo',      label: 'Booking Information' },
   { key: 'vehicleassignment',         label: 'Vehicle Assignment' },
-  { key: 'fueltripallowance',    label: 'Fuel and Trip Allowance' },
   { key: 'personnelassignment',  label: 'Personnel Assignment' },
   { key: 'references', label: 'References' },
   { key: 'itemdetails',   label: 'Item Details' },
@@ -580,14 +579,6 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
           commodity_type_id: form.commodity_type_id ? Number(form.commodity_type_id) : null,
           vendor_id: form.vendor_id ? Number(form.vendor_id) : null, 
         },
-        // Fuel and Trip Allowance
-        fueltrip_allowance: {
-          area: form.area.trim() || null,
-          trip_allowance: form.trip_allowance.trim() || null,
-          fuel: form.fuel ? Number(form.fuel) : null,
-          fuel_po: form.fuel_po ? Number(form.fuel_po) : null, 
-          fuel_amount: form.fuel_amount ? Number(form.fuel_amount) : null, 
-        },
         // Personnel Assignment
         personnel_assignment: {
           driver_id: form.driver_id ? Number(form.driver_id) : null,
@@ -951,34 +942,6 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
           </div>
         );
       
-      case 'fueltripallowance':
-        return (
-          <div style={{ padding: 18 }}>
-            <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
-                Fuel and Trip Allowance
-              </legend>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-                <Field label="Area" >
-                  {renderInput('area', 'e.g. Pasig')}
-                </Field>
-                <Field label="Trip Allowance" >
-                  {renderInput('trip_allowance', 'e.g. 1000')}
-                </Field>
-                <Field label="Fuel (L)" >
-                  {renderInput('fuel', 'e.g. 50')}
-                </Field>
-                <Field label="Fuel Po." >
-                  {renderInput('fuel_po', 'e.g. 12')}
-                </Field>
-                <Field label="Fuel Amount" >
-                  {renderInput('fuel_amount', 'e.g. 100')}
-                </Field>
-              </div>
-            </fieldset>
-          </div>
-        );
-
       case 'personnelassignment':
         return (
           <div style={{ padding: 18 }}>
