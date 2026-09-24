@@ -171,7 +171,7 @@ export default function Settings({ vendorOnly = false }) {
   const [pendingStatus, setPendingStatus] = useState('all');
 
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(8);
 
   const [editingItem, setEditingItem] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -411,192 +411,193 @@ export default function Settings({ vendorOnly = false }) {
       )}
 
       <div className={vendorOnly ? 'settings-main vendor-page-main' : 'settings-main'}>
-        <div className="page-header">
-          <div>
-            <div className="breadcrumb">Settings / {activeCat.label}</div>
-            <h2>
-              {activeCat.label} <span style={{ color: '#6b7280', fontSize: 18 }}>({total})</span>
-            </h2>
-            {schemaLoading && (
-              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
-                <Loader2 size={12} className="animate-spin" style={{ display: 'inline-block', marginRight: 6 }} />
-                Detecting table columns…
-              </div>
-            )}
-            {schema && schema.table && (
-              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
-                Table: <code style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: 4 }}>{schema.table}</code>
-                {' · '}Name field: <code style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: 4 }}>{schema.nameField || '(auto)'}</code>
-                {' · '}ID: <code style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: 4 }}>{schema.idField || '(auto)'}</code>
-              </div>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              className="btn btn-primary"
-              style={{ background: '#16a34a' }}
-              onClick={() => {
-                if (!hasApi) { showToast('This module is coming soon', 'error'); return; }
-                setEditingItem(null);
-                setIsModalOpen(true);
-              }}
-            >
-              <Plus size={15} /> Add {stripTypeSuffix(activeCat.label)}
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={() => setShowFilterPanel((v) => !v)}
-            >
-              <Filter size={15} /> Filter {showFilterPanel ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </button>
-          </div>
-        </div>
-
-        {toast && (
-          <div
-            className={`alert alert-${toastType === 'error' ? 'error' : 'success'}`}
-            style={{ marginBottom: 14 }}
-          >
-            {toast}
-          </div>
-        )}
-
-        {showFilterPanel && (
-          <div className="card" style={{ marginBottom: 16, padding: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, alignItems: 'center' }}>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'end' }}>
-                <div className="form-group" style={{ flex: '1 1 280px', marginBottom: 0 }}>
-                  <label>{stripTypeSuffix(activeCat.label)}</label>
-                  <input
-                    type="text"
-                    value={pendingSearch}
-                    onChange={(e) => setPendingSearch(e.target.value)}
-                    placeholder={`Search ${activeCat.label.toLowerCase()}…`}
-                  />
-                </div>
-                <div className="form-group" style={{ minWidth: 180, marginBottom: 0 }}>
-                  <label>Status</label>
-                  <select value={pendingStatus} onChange={(e) => setPendingStatus(e.target.value)}>
-                    <option value="all">All Statuses</option>
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 200 }}>
-                <button className="btn btn-primary" onClick={applyFilters}>
-                  <Search size={14} /> Search
-                </button>
-                <button className="btn btn-primary" style={{ background: '#3b82f6' }} onClick={clearFilters}>
-                  Clear Search
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {!hasApi ? (
-          <div className="page-placeholder">
-            <h2>{activeCat.label}</h2>
-            <p>This settings module is coming soon. Select <strong>Booking Types</strong> for a fully working demo.</p>
-          </div>
-        ) : (
-          <div className="card">
-            <div className="table-toolbar">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Search size={14} color="#6b7280" />
-                <input
-                  type="text"
-                  className="search-input"
-                  placeholder={`Quick search ${activeCat.label.toLowerCase()}…`}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-                {(search || statusFilter !== 'all') && (
-                  <span className="badge badge-info" style={{ marginLeft: 8 }}>Filtered</span>
+        <div className="page-shell">
+          <div className="page-toolbar">
+            <div className="page-header">
+              <div>
+                <div className="breadcrumb">Settings / {activeCat.label}</div>
+                <h2>
+                  {activeCat.label} <span style={{ color: '#6b7280', fontSize: 18 }}>({total})</span>
+                </h2>
+                {schemaLoading && (
+                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
+                    <Loader2 size={12} className="animate-spin" style={{ display: 'inline-block', marginRight: 6 }} />
+                    Detecting table columns…
+                  </div>
+                )}
+                {schema && schema.table && (
+                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
+                    Table: <code style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: 4 }}>{schema.table}</code>
+                    {' · '}Name field: <code style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: 4 }}>{schema.nameField || '(auto)'}</code>
+                    {' · '}ID: <code style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: 4 }}>{schema.idField || '(auto)'}</code>
+                  </div>
                 )}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <select
-                  value={perPage}
-                  onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
+                <button
+                  className="btn btn-primary"
+                  style={{ background: '#16a34a' }}
+                  onClick={() => {
+                    if (!hasApi) { showToast('This module is coming soon', 'error'); return; }
+                    setEditingItem(null);
+                    setIsModalOpen(true);
+                  }}
                 >
-                  {[5, 10, 25, 50, 100].map((n) => (
-                    <option key={n} value={n}>{n} / page</option>
-                  ))}
-                </select>
+                  <Plus size={15} /> Add {stripTypeSuffix(activeCat.label)}
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => setShowFilterPanel((v) => !v)}
+                >
+                  <Filter size={15} /> Filter {showFilterPanel ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
               </div>
             </div>
 
-            <div className="table-wrap">
-              {(loading || schemaLoading) ? (
-                <div className="loading" style={{ padding: 40 }}>
-                  <Loader2 className="animate-spin" size={20} /> Loading…
+            {toast && (
+              <div className={`alert alert-${toastType === 'error' ? 'error' : 'success'}`}>
+                {toast}
+              </div>
+            )}
+
+            {showFilterPanel && (
+              <div className="card" style={{ padding: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'end' }}>
+                    <div className="form-group" style={{ flex: '1 1 280px', marginBottom: 0 }}>
+                      <label>{stripTypeSuffix(activeCat.label)}</label>
+                      <input
+                        type="text"
+                        value={pendingSearch}
+                        onChange={(e) => setPendingSearch(e.target.value)}
+                        placeholder={`Search ${activeCat.label.toLowerCase()}…`}
+                      />
+                    </div>
+                    <div className="form-group" style={{ minWidth: 180, marginBottom: 0 }}>
+                      <label>Status</label>
+                      <select value={pendingStatus} onChange={(e) => setPendingStatus(e.target.value)}>
+                        <option value="all">All Statuses</option>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 200 }}>
+                    <button className="btn btn-primary" onClick={applyFilters}>
+                      <Search size={14} /> Search
+                    </button>
+                    <button className="btn btn-primary" style={{ background: '#3b82f6' }} onClick={clearFilters}>
+                      Clear Search
+                    </button>
+                  </div>
                 </div>
-              ) : (
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>{stripTypeSuffix(activeCat.label)}</th>
-                      <th style={{ width: 120 }}>Status</th>
-                      <th style={{ textAlign: 'right', width: 120 }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {current.length === 0 && (
+              </div>
+            )}
+          </div>
+
+          {!hasApi ? (
+            <div className="page-placeholder">
+              <h2>{activeCat.label}</h2>
+              <p>This settings module is coming soon. Select <strong>Booking Types</strong> for a fully working demo.</p>
+            </div>
+          ) : (
+            <div className="card">
+              <div className="table-toolbar">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Search size={14} color="#6b7280" />
+                  <input
+                    type="text"
+                    className="search-input"
+                    placeholder={`Quick search ${activeCat.label.toLowerCase()}…`}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                  {(search || statusFilter !== 'all') && (
+                    <span className="badge badge-info" style={{ marginLeft: 8 }}>Filtered</span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <select
+                    value={perPage}
+                    onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
+                  >
+                    {[5, 8, 10, 25, 50, 100].map((n) => (
+                      <option key={n} value={n}>{n} / page</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="table-wrap">
+                {(loading || schemaLoading) ? (
+                  <div className="loading" style={{ padding: 40 }}>
+                    <Loader2 className="animate-spin" size={20} /> Loading…
+                  </div>
+                ) : (
+                  <table className="data-table">
+                    <thead>
                       <tr>
-                        <td colSpan={3} className="empty-row">
-                          No records. Click <strong>Add</strong> to create the first one.
-                        </td>
+                        <th>{stripTypeSuffix(activeCat.label)}</th>
+                        <th style={{ width: 120 }}>Status</th>
+                        <th style={{ textAlign: 'right', width: 120 }}>Action</th>
                       </tr>
-                    )}
-                    {current.map((row, idx) => {
-                      const rK = resolveIdFieldForRow(row);
-                      const rid = rK ? (row[rK] ?? `row-${idx}`) : `row-${idx}`;
-                      const keyStr = String(rid) + '-' + String(idx);
-                      return (
-                        <tr key={keyStr}>
-                          <td style={{ fontWeight: 500 }}>{getRowName(row)}</td>
-                          <td>
-                            <span className={`badge badge-${getRowStatus(row) === 'Active' ? 'success' : 'muted'}`}>
-                              {getRowStatus(row) || 'Active'}
-                            </span>
-                          </td>
-                          <td style={{ textAlign: 'right' }}>
-                            <ActionMenu
-                              row={row}
-                              idKey={rK}
-                              isOpen={openMenuId === String(rid)}
-                              onOpen={() => setOpenMenuId(String(rid))}
-                              onClose={() => setOpenMenuId(null)}
-                              onEdit={(r) => { setEditingItem(r); setIsModalOpen(true); }}
-                              onDelete={handleDelete}
-                            />
+                    </thead>
+                    <tbody>
+                      {current.length === 0 && (
+                        <tr>
+                          <td colSpan={3} className="empty-row">
+                            No records. Click <strong>Add</strong> to create the first one.
                           </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
+                      )}
+                      {current.map((row, idx) => {
+                        const rK = resolveIdFieldForRow(row);
+                        const rid = rK ? (row[rK] ?? `row-${idx}`) : `row-${idx}`;
+                        const keyStr = String(rid) + '-' + String(idx);
+                        return (
+                          <tr key={keyStr}>
+                            <td style={{ fontWeight: 500 }}>{getRowName(row)}</td>
+                            <td>
+                              <span className={`badge badge-${getRowStatus(row) === 'Active' ? 'success' : 'muted'}`}>
+                                {getRowStatus(row) || 'Active'}
+                              </span>
+                            </td>
+                            <td style={{ textAlign: 'right' }}>
+                              <ActionMenu
+                                row={row}
+                                idKey={rK}
+                                isOpen={openMenuId === String(rid)}
+                                onOpen={() => setOpenMenuId(String(rid))}
+                                onClose={() => setOpenMenuId(null)}
+                                onEdit={(r) => { setEditingItem(r); setIsModalOpen(true); }}
+                                onDelete={handleDelete}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
 
-            <div className="pagination">
-              <div>
-                Showing {current.length === 0 ? 0 : ((page - 1) * perPage + 1)} – {Math.min(page * perPage, rows.length)} of {rows.length}
-              </div>
-              <div className="page-buttons">
-                <button disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>«</button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .slice(Math.max(0, page - 3), page + 2)
-                  .map((p) => (
-                    <button key={p} className={p === page ? 'active' : ''} onClick={() => setPage(p)}>{p}</button>
-                  ))}
-                <button disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>»</button>
+              <div className="pagination">
+                <div>
+                  Showing {current.length === 0 ? 0 : ((page - 1) * perPage + 1)} – {Math.min(page * perPage, rows.length)} of {rows.length}
+                </div>
+                <div className="page-buttons">
+                  <button disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>«</button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .slice(Math.max(0, page - 3), page + 2)
+                    .map((p) => (
+                      <button key={p} className={p === page ? 'active' : ''} onClick={() => setPage(p)}>{p}</button>
+                    ))}
+                  <button disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>»</button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {isModalOpen && activeCat.key === 'vendors' ? (
           <VendorFormModal
