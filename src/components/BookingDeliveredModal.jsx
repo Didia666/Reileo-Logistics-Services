@@ -3,12 +3,9 @@ import { X, Loader2, Save } from 'lucide-react';
 import { bookingCrud, lookups } from '../services/api.js';
 
 const TABS = [
-  { key: 'bookinginfo',      label: 'Booking Information' },
-  { key: 'vehicleassignment',         label: 'Vehicle Assignment' },
-  { key: 'personnelassignment',  label: 'Personnel Assignment' },
+  { key: 'bookinginfo', label: 'Booking Information' },
   { key: 'references', label: 'References' },
-  { key: 'itemdetails',   label: 'Item Details' },
-  { key: 'bookingphotos', label: 'Booking Photos' },
+  { key: 'expenses', label: 'Expenses' },
 ];
 
 function Field({ label, required, error, children, hint, style }) {
@@ -33,7 +30,7 @@ const readOnlyStyle = {
   padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 13,
   width: '100%', boxSizing: 'border-box', background: '#f9fafb', color: '#4b5563',
 };
-export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking, viewOnly }) {
+export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, viewOnly }) {
   const [activeTab, setActiveTab] = useState('bookinginfo');
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ type: '', msg: '' });
@@ -93,6 +90,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
     commodity_type: '',
 
     // Fuel and Trip Allowance
+    area: '',
     trip_allowance: '',
     fuel: '',
     fuel_po: '',
@@ -199,147 +197,12 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
   useEffect(() => {
     if (isOpen) {
       loadLookups();
-      if (editBooking) {
-        setCompanyOwned(Boolean(editBooking.vendor_id));
-        if (Array.isArray(editBooking.bk_photos) && editBooking.bk_photos.length > 0) {
-          setForm({
-
-            // Booking Info
-            customer_id: editBooking.customer_id ?? '',
-            booking_type_id: editBooking.booking_type_id ?? '',
-            delivery_date: editBooking.delivery_date ?? '',
-            depot_id: editBooking.depot_id ?? '',
-            commodity_type_id: editBooking.commodity_type_id ?? '',
-            route_code: editBooking.route_code ?? '',
-            trips_number: editBooking.trips_number ?? '',
-            drops_number: editBooking.drops_number ?? '',
-            origin_id: editBooking.origin_id ?? '',
-            destination_id: editBooking.destination_id ?? '',
-
-            // Vehicle Assignment
-            vehicle_id: editBooking.vehicle_id ?? '',
-            plate_no: editBooking.plate_no ?? '',
-            vehicle_type_id: editBooking.vehicle_type_id ?? '',
-            vendor_id: editBooking.vendor_id ?? '',
-
-            // Fuel and Trip Allowance
-            trip_allowance: editBooking.trip_allowance ?? '',
-            fuel: editBooking.fuel ?? '',
-            fuel_po: editBooking.fuel_po ?? '',
-            fuel_amount: editBooking.fuel_amount ?? '',
-
-            // Personnel Assignment
-            driver_id: personnelIdForRole(editBooking.personnel_assignments, 'driver') || editBooking.driver_id || '',
-            driver_source: editBooking.driver_source ?? 'direct',
-            driver_vendor_id: editBooking.driver_vendor_id ?? '',
-            helper1_id: personnelIdForRole(editBooking.personnel_assignments, 'helper1') || editBooking.helper1_id || '',
-            helper1_source: editBooking.helper1_source ?? 'direct',
-            helper1_vendor_id: editBooking.helper1_vendor_id ?? '',
-            helper2_id: personnelIdForRole(editBooking.personnel_assignments, 'helper2') || editBooking.helper2_id || '',
-            helper2_source: editBooking.helper2_source ?? 'direct',
-            helper2_vendor_id: editBooking.helper2_vendor_id ?? '',
-
-            // References
-            client_ref_no: editBooking.client_ref_no ?? '',
-            other_ref_no: editBooking.other_ref_no ?? '',
-            remarks: editBooking.remarks ?? '',
-
-            // Item Details
-            item_details: Array.isArray(editBooking.item_details) && editBooking.item_details.length
-              ? editBooking.item_details.map((item) => ({
-                  item_type_id: item.item_type_id ?? '',
-                  item_description: item.item_description ?? '',
-                  length: item.length ?? '',
-                  width: item.width ?? '',
-                  height: item.height ?? '',
-                  weight: item.weight ?? '',
-                }))
-              : [createBlankItem()],
-
-            // Booking Photos
-            bk_photos: Array.isArray(editBooking.bk_photos) && editBooking.bk_photos.length
-              ? editBooking.bk_photos.map(photo => ({
-                    photo_name: photo.photo_name || '',
-                    photo_path: photo.photo_path || '',
-                  }))
-                : [{ photo_name: '', photo_path: '' }],
-          });
-
-        } else {
-          bookingCrud.get(editBooking.booking_id).then(full => {
-            setForm({
-              // Booking Info
-              customer_id: full.customer_id ?? '',
-              booking_type_id: full.booking_type_id ?? '',
-              delivery_date: full.delivery_date ?? '',
-              depot_id: full.depot_id ?? '',
-              commodity_type_id: full.commodity_type_id ?? '',
-              route_code: full.route_code ?? '',
-              trips_number: full.trips_number ?? '',
-              drops_number: full.drops_number ?? '',
-              origin_id: full.origin_id ?? '',
-              destination_id: full.destination_id ?? '',
-
-              // Vehicle Assignment
-              vehicle_id: full.vehicle_id ?? '',
-              plate_no: full.plate_no ?? '',
-              vehicle_type_id: full.vehicle_type_id ?? '',
-              vendor_id: full.vendor_id ?? '',
-
-              // Fuel and Trip Allowance
-              trip_allowance: full.trip_allowance ?? '',
-              fuel: full.fuel ?? '',
-              fuel_po: full.fuel_po ?? '',
-              fuel_amount: full.fuel_amount ?? '',
-
-              // Personnel Assignment
-              driver_id: personnelIdForRole(full.personnel_assignments, 'driver') || full.driver_id || '',
-              driver_source: full.driver_source ?? 'direct',
-              driver_vendor_id: full.driver_vendor_id ?? '',
-
-              helper1_id: personnelIdForRole(full.personnel_assignments, 'helper1') || full.helper1_id || '',
-              helper1_source: full.helper1_source ?? 'direct',
-              helper1_vendor_id: full.helper1_vendor_id ?? '',
-
-              helper2_id: personnelIdForRole(full.personnel_assignments, 'helper2') || full.helper2_id || '',
-              helper2_source: full.helper2_source ?? 'direct',
-              helper2_vendor_id: full.helper2_vendor_id ?? '',
-              
-              driver_included_h1: Boolean(full.driver_included_h1),
-              driver_included_h2: Boolean(full.driver_included_h2),
-              
-              // References
-              client_ref_no: full.client_ref_no ?? '',
-              other_ref_no: full.other_ref_no ?? '',
-              remarks: full.remarks ?? '',
-
-              // Item Details
-              item_details: Array.isArray(full.item_details) && full.item_details.length
-                ? full.item_details.map((item) => ({
-                    item_type_id: item.item_type_id ?? '',
-                    item_description: item.item_description ?? '',
-                    length: item.length ?? '',
-                    width: item.width ?? '',
-                    height: item.height ?? '',
-                    weight: item.weight ?? '',
-                  }))
-                : [createBlankItem()],
-
-              // Booking Photos
-              bk_photos: Array.isArray(full.bk_photos) && full.bk_photos.length
-                  ? full.bk_photos.map(photo => ({
-                      photo_name: photo.photo_name || '',
-                      photo_path: photo.photo_path || '',
-                    }))
-                  : [{ photo_name: '', photo_path: '' }],
-            });
-          }).catch(() => {});
-        }
-      } else {
-        setForm(blankForm);
-        setCompanyOwned(false);
-        setActiveTab('bookinginfo');
-      }
+      setForm({
+        delivery_date: editBooking?.delivery_date ?? '',
+        plate_no: editBooking?.plate_no ?? '',
+      });
+      setCompanyOwned(false);
+      setActiveTab('bookinginfo');
       setErrors({});
       setToast({ type: '', msg: '' });
     }
@@ -495,12 +358,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
           })),
       };
 
-      let saved;
-      if (editBooking && editBooking.booking_id) {
-        saved = await bookingCrud.update(editBooking.booking_id, payload);
-      } else {
-        saved = await bookingCrud.create(payload);
-      }
+      const saved = await bookingCrud.create(payload);
       setToast({ type: 'success', msg: 'Vehicles saved successfully.' });
       setTimeout(() => {
         onSaved(saved);
@@ -716,60 +574,10 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
                 Booking Information
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-                <Field label="Customer" required error={errors.customer_id}>
-                  {renderSelect('customer_id', lookupsData.customers, 'customer_id', 'customer_name', '- Select Customer -')}
-                </Field>
-                <Field label="Booking Type." required error={errors.booking_type_id}>
-                  {renderSelect('booking_type_id', lookupsData.booking_types, 'booking_type_id', 'booking_type', '- Select Booking Type -')}
-                </Field>
                 <Field label="Delivery Date" required error={errors.delivery_date}>
                   {renderInput('delivery_date', '', 'date')}
                 </Field>
-                <Field label="Depot"  required error={errors.depot_id}>
-                  {renderSelect('depot_id', lookupsData.depots, 'depot_id', 'depot_name', '- Select Depot -')}
-                </Field>
-                <Field label="Commodity"  required error={errors.commodity_type_id}>
-                  {renderSelect(
-                    'commodity_type_id',
-                    lookupsData.commodity_type,
-                    'commodity_type_id',
-                    'commodity_type',
-                    '- Select Commodity -',
-                    false,
-                    handleCommoditySelection
-                  )}
-                </Field>
-                  <Field label="Route Code">
-                    {renderInput('route_code', 'e.g. 123456')}
-                </Field>
-                <Field label="Number of Trips">
-                  {renderInput('trips_number', 'e.g. 5', 'number')}
-                </Field>
-               <Field label="Number of drops">
-                  {renderInput('drops_number', 'e.g. 5', 'number')}
-                </Field>
-                <Field label="Origin"  required error={errors.origin_id}>
-                  {renderSelect('origin_id', lookupsData.origins, 'origin_id', 'origin_name', '- Select Origin -')}
-                </Field>
-                <Field label="Destination">
-                  {renderSelect('destination_id', lookupsData.destination, 'destination_id', 'destination_name', '- Select Destination -')}
-                </Field>
-                
-          
-              </div>
-            </fieldset>
-          </div>
-        );
-
-      case 'vehicleassignment':
-        return (
-          <div style={{ padding: 18 }}>
-            <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
-                Vehicle Assignment
-              </legend>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-                <Field label="Plate No."  required error={errors.plate_no}>
+                <Field label="Vehicle No." required error={errors.plate_no}>
                   {renderSelect(
                     'plate_no',
                     vehicleOptions,
@@ -780,57 +588,32 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
                     handlePlateSelection
                   )}
                 </Field>
-                <Field label="Vehicle Type" required error={errors.vehicle_type_id}>
-                  {renderSelect('vehicle_type_id', lookupsData.vh_types, 'vehicle_type_id', 'vehicle_type', '- Select Vehicle Type -')}
+                <Field label="Delivered Date & Time" required error={errors.delivery_datetime}>
+                  {renderInput('delivery_datetime', '', 'datetime-local')}
+                </Field>
+                <Field label="Received Date & Time" required error={errors.delivery_datetime}>
+                  {renderInput('delivery_datetime', '', 'datetime-local')}
+                </Field>
+                <Field label="Odometer Reading" required error={errors.odometer}>
+                  {renderInput('odometer', '', 'number')}
+                </Field>
+                <Field label="Farthest Destination" required error={errors.delivery_date}>
+                  {renderSelect('destination_id', lookupsData.destination, 'destination_id', 'destination_name', '- Select Destination -')}
+                </Field>
+                <Field label="Client Rate" required error={errors.client_rate}>
+                  {renderInput('client_rate', 'e.g. 5', 'number')}
+                </Field>
+                <Field label="No. of Trips" required error={errors.delivery_date}>
+                  {renderInput('trips_number', 'e.g. 5', 'number')}
+                </Field>
+                <Field label="Trip Allowance" required error={errors.trip_allowance}>
+                  {renderInput('trip_allowance', 'e.g. 5', 'number')}
+                </Field>
+                <Field label="Subcon Rate" required error={errors.subcon_rate}>
+                  {renderInput('subcon_rate', 'e.g. 5', 'number')}
                 </Field>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 34 }}>
-                  <label style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>
-                    Subcon
-                  </label>
-                  <input
-                    type="checkbox"
-                    disabled={viewOnly}
-                    checked={companyOwned}
-                    onChange={(e) => {
-                      const checked = e.target.checked;
-                      setCompanyOwned(checked);
-
-                      if (!checked) {
-                        setField('vendor_id', '');
-                      }
-                    }}
-                  />
-                </div>
-
-                {companyOwned && (
-                  <Field label="Subcon (Tracker)">
-                    {renderSelect(
-                      'vendor_id',
-                      lookupsData.vendors,
-                      'vendor_id',
-                      'vendor_name',
-                      '- Select Vendor -'
-                    )}
-                  </Field>
-                )}
-
-              </div>
-            </fieldset>
-          </div>
-        );
-      
-      case 'personnelassignment':
-        return (
-          <div style={{ padding: 18 }}>
-            <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
-                Personnel Assignment
-              </legend>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
-                {renderPersonnelField('driver', 'Assigned Personnel - Driver')}
-                {renderPersonnelField('helper1', 'Assigned Personnel - Helper 1')}
-                {renderPersonnelField('helper2', 'Assigned Personnel - Helper 2')}
+                
               </div>
             </fieldset>
           </div>
@@ -847,8 +630,20 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
                 <Field label="Client Reference No.">
                   {renderInput('client_ref_no', 'e.g. CL-12345')}
                 </Field>
-                <Field label="Other Reference No.">
-                  {renderInput('other_ref_no', 'e.g. OTHER-12345')}
+                <Field label="Charges ">
+                  {renderSelect('transmission', [ 
+                    { value: 'NO CHARGES', label: 'NO CHARGES' }, 
+                    { value: 'CHARGES RECORDED', label: 'CHARGES RECORDED' }], 
+                    'value', 'label', '- Select-')}
+                </Field>
+                <Field label="Fuel (L)">
+                  {renderInput('fuel', 'e.g. CL-12345', 'number')}
+                </Field>
+                <Field label="Fuel P.O.">
+                  {renderInput('fuel_po', 'e.g. CL-12345' )}
+                </Field>
+                <Field label="Fuel Amount.">
+                  {renderInput('fuel_amount', 'e.g. CL-12345', 'number')}
                 </Field>
               </div>
               <Field label="Remarks">
@@ -858,181 +653,50 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
           </div>
         );  
 
-      case 'itemdetails':
+        case 'expenses':
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
               <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
-                Item Details
+                Vehicle Assignment
               </legend>
-              {(form.item_details || []).map((item, index) => (
-                <div
-                  key={`item-${index}`}
-                  style={{
-                    borderBottom: index < form.item_details.length - 1 ? '1px solid #e5e7eb' : 'none',
-                    paddingBottom: 14,
-                    marginBottom: 14,
-                  }}
-                >
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 10 }}>
-                    Item {index + 1}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
-                    <Field label="Item Type">
-                      <select
-                        disabled={viewOnly}
-                        style={viewOnly ? readOnlyStyle : inputStyle}
-                        value={item.item_type_id}
-                        onChange={(e) => updateItem(index, 'item_type_id', e.target.value)}
-                      >
-                        <option value="">- Select Item -</option>
-                        {(Array.isArray(lookupsData.item_types) ? lookupsData.item_types : []).map((option, optionIndex) => (
-                          <option key={`${option.item_type_id}-${optionIndex}`} value={option.item_type_id ?? ''}>
-                            {option.item_type || option.item_type_id}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <Field label="Item Description">
-                      <input
-                        type="text"
-                        disabled={viewOnly}
-                        style={viewOnly ? readOnlyStyle : inputStyle}
-                        value={item.item_description}
-                        placeholder="e.g. High-quality item"
-                        onChange={(e) => updateItem(index, 'item_description', e.target.value)}
-                      />
-                    </Field>
-                    <Field label="Length (cm)">
-                      <input
-                        type="number"
-                        disabled={viewOnly}
-                        style={viewOnly ? readOnlyStyle : inputStyle}
-                        value={item.length}
-                        placeholder="e.g. 100"
-                        onChange={(e) => updateItem(index, 'length', e.target.value)}
-                      />
-                    </Field>
-                    <Field label="Width (cm)">
-                      <input
-                        type="number"
-                        disabled={viewOnly}
-                        style={viewOnly ? readOnlyStyle : inputStyle}
-                        value={item.width}
-                        placeholder="e.g. 100"
-                        onChange={(e) => updateItem(index, 'width', e.target.value)}
-                      />
-                    </Field>
-                    <Field label="Height (cm)">
-                      <input
-                        type="number"
-                        disabled={viewOnly}
-                        style={viewOnly ? readOnlyStyle : inputStyle}
-                        value={item.height}
-                        placeholder="e.g. 100"
-                        onChange={(e) => updateItem(index, 'height', e.target.value)}
-                      />
-                    </Field>
-                    <Field label="Weight (kg)">
-                      <input
-                        type="number"
-                        disabled={viewOnly}
-                        style={viewOnly ? readOnlyStyle : inputStyle}
-                        value={item.weight}
-                        placeholder="e.g. 100"
-                        onChange={(e) => updateItem(index, 'weight', e.target.value)}
-                      />
-                    </Field>
-                  </div>
-                  {!viewOnly && (
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      disabled={!item.item_type_id || !String(item.weight || '').trim()}
-                      onClick={() => addItem(index)}
-                      style={{
-                        color: '#fff',
-                        background: item.item_type_id && String(item.weight || '').trim()
-                          ? '#16a34a'
-                          : '#166534',
-                        borderColor: item.item_type_id && String(item.weight || '').trim()
-                          ? '#16a34a'
-                          : '#166534',
-                        cursor: item.item_type_id && String(item.weight || '').trim()
-                          ? 'pointer'
-                          : 'not-allowed',
-                        opacity: 1,
-                      }}
-                    >
-                      + New Item
-                    </button>
-                  )}
-                </div>
-              ))}
-            </fieldset>
-          </div>
-        );
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                <Field label="Toll Fees">
+                  {renderInput('toll_fees', 'e.g. 1000', 'number')}
+                </Field>
+                <Field label="Extra Drop">
+                  {renderInput('extra_drop', 'e.g. 500', 'number')}
+                </Field>
+                <Field label="Extra Helper">
+                  {renderInput('extra_helper', 'e.g. 200', 'number')}
+                </Field>
+                <Field label="Other Expenses/Fees">
+                  {renderInput('other_expenses', 'e.g. 300', 'number')}
+                </Field>
+                <Field label="Parking Fees">
+                  {renderInput('parking_fees', 'e.g. 100', 'number')}
+                </Field>
+                <Field label="Toll Fees - Non Billable">
+                  {renderInput('toll_fees_non_billable', 'e.g. 500', 'number')}
+                </Field>
+                <Field label="Demurrage Fees">
+                  {renderInput('demurrage_fees', 'e.g. 200', 'number')}
+                </Field>
+                <Field label="Backload Fees">
+                  {renderInput('backload_fees', 'e.g. 300', 'number')}
+                </Field>
+                <Field label="Other Deductions">
+                  {renderInput('other_deductions', 'e.g. 100', 'number')}
+                </Field>
 
-      case 'bookingphotos':
-        return (
-          <div style={{ padding: 18 }}>
-            <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
-                Booking Photos
-              </legend>
-
-              
-
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Photos</div>
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    onClick={() => addAttachmentRow('bk_photos')}
-                    style={{ fontSize: 12 }}
-                  >
-                    + Add Photo
-                  </button>
-                </div>
-
-                {(form.bk_photos || []).map((photo, index) => (
-                  <div key={`photo-${index}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr auto', gap: 10, alignItems: 'end', marginBottom: 10 }}>
-                    <Field label="Photo Name">
-                      <input
-                        type="text"
-                        disabled={viewOnly}
-                        style={viewOnly ? readOnlyStyle : inputStyle}
-                        value={photo.photo_name}
-                        placeholder="e.g. Front view"
-                        onChange={(e) => updateAttachmentRow('bk_photos', index, 'photo_name', e.target.value)}
-                      />
-                    </Field>
-                    <Field label="Photo Path / File Name">
-                      <input
-                        type="text"
-                        disabled={viewOnly}
-                        style={viewOnly ? readOnlyStyle : inputStyle}
-                        value={photo.photo_path}
-                        placeholder="e.g. uploads/front-view.jpg"
-                        onChange={(e) => updateAttachmentRow('bk_photos', index, 'photo_path', e.target.value)}
-                      />
-                    </Field>
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      disabled={viewOnly || (form.bk_photos || []).length === 1}
-                      onClick={() => removeAttachmentRow('bk_photos', index)}
-                      style={{ height: 34, alignSelf: 'flex-end' }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
               </div>
             </fieldset>
           </div>
         );
+
+      
+
+     
         
       
 
@@ -1058,7 +722,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
         }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 600, color: '#111827' }}>
-              {viewOnly ? 'View Booking' : (editBooking ? 'Edit Booking' : 'New Booking')}
+              {viewOnly ? 'View Booking' : 'New Booking'}
             </div>
             {viewOnly && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Read-only mode</div>}
           </div>

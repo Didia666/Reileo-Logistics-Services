@@ -33,8 +33,20 @@ const EMPTY_DELIVERY = {
   other_deductions: '0.00',
 };
 
+const inputStyle = {
+  padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13,
+  outline: 'none', width: '100%', boxSizing: 'border-box', background: '#fff',
+};
+
+const readOnlyStyle = {
+  padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 13,
+  width: '100%', boxSizing: 'border-box', background: '#f9fafb', color: '#4b5563',
+};
+
+
 export default function DeliveryModal({ booking, onClose, onConfirm, saving }) {
   const [activeTab, setActiveTab] = useState('booking');
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(() => ({
     ...EMPTY_DELIVERY,
     delivered_at: new Date().toISOString().slice(0, 16),
@@ -71,12 +83,14 @@ export default function DeliveryModal({ booking, onClose, onConfirm, saving }) {
         placeholder={placeholder}
         onChange={e => update(key, e.target.value)}
         className={errors[key] ? 'input-error' : ''}
+        style={inputStyle}
       />
       {errors[key] && <div className="field-error">{errors[key]}</div>}
     </div>
   );
 
   return (
+    
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
