@@ -12,6 +12,7 @@ $T = [
     'bt' => tableName('booking_types'),
     'bs' => tableName('booking_statuses'),
     'v'  => tableName('vehicle'),
+    'bv' => tableName('bk_vehicles'),
     'd'  => tableName('depots'),
     'o'  => tableName('origin'),
     'dst'=> tableName('destination'),
@@ -44,7 +45,7 @@ function bookingsBaseQuery($T, $db) {
                    c.customer_id, c.customer_name, c.contact_number,
                    bt.booking_type_id, bt.book_type AS booking_type,
                    bs.status_id, bs.status_name, bs.sort_order,
-                   v.vehicle_id, v.plate_no,
+                   bv.vehicle_id AS vehicle_id, COALESCE(NULLIF(bv.plate_no, ''), v.plate_no) AS plate_no,
                    d.depot_id, d.depot_name,
                    o.origin_id, o.origins AS origin_name,
                    dst.destination_id, dst.destination,
@@ -53,7 +54,8 @@ function bookingsBaseQuery($T, $db) {
             LEFT JOIN `{$T['c']}` c   ON b.customer_id = c.customer_id
             LEFT JOIN `{$T['bt']}` bt ON b.booking_type_id = bt.booking_type_id
             LEFT JOIN `{$T['bs']}` bs ON b.status_id = bs.status_id
-            LEFT JOIN `{$T['v']}` v   ON b.vehicle_id = v.vehicle_id
+            LEFT JOIN `{$T['bv']}` bv ON b.booking_id = bv.booking_id
+            LEFT JOIN `{$T['v']}` v   ON bv.vehicle_id = v.vehicle_id
             LEFT JOIN `{$T['d']}` d   ON b.depot_id = d.depot_id
             LEFT JOIN `{$T['o']}` o   ON b.origin_id = o.origin_id
             LEFT JOIN `{$T['dst']}` dst ON b.destination_id = dst.destination_id
@@ -344,9 +346,9 @@ switch ($method) {
             $bCols = bookingHasColumn($db, $T['b'], 'delivery_date');
 
             $cols = ["booking_no","customer_id","booking_type_id","depot_id","commodity_type_id",
-                     "origin_id","destination_id","vehicle_id","status_id",
+                     "origin_id","destination_id","status_id",
                      "created_by","updated_by","created_at","updated_at"];
-            $placeholders = ["?","?","?","?","?","?","?","?","?","?","?","NOW()","NOW()"];
+            $placeholders = ["?","?","?","?","?","?","?","?","?","?","NOW()","NOW()"];
             $vals = [
                 $bookingNo,
                 empty($input['customer_id']) ? null : (int)$input['customer_id'],
@@ -355,7 +357,6 @@ switch ($method) {
                 empty($input['commodity_type_id']) ? null : (int)$input['commodity_type_id'],
                 empty($input['origin_id']) ? null : (int)$input['origin_id'],
                 empty($input['destination_id']) ? null : (int)$input['destination_id'],
-                empty($input['vehicle_id']) ? null : (int)$input['vehicle_id'],
                 empty($input['status_id']) ? 1 : (int)$input['status_id'],
                 (int)$user['user_id'],
                 (int)$user['user_id'],
@@ -383,6 +384,18 @@ switch ($method) {
             $ins = $db->prepare($sql);
             $ins->execute($vals);
             $newId = (int)$db->lastInsertId();
+            $vehicleId = empty($input['vehicle_id']) ? null : (int)$input['vehicle_id'];
+            if ($vehicleId !== null) {
+                $stmtVehicle = $db->prepare(
+                    "INSERT INTO `{$T['bv']}` (booking_id, vehicle_id, vendor_id, plate_no) VALUES (?, ?, ?, ?)"
+                );
+                $stmtVehicle->execute([
+                    $newId,
+                    $vehicleId,
+                    empty($input['vendor_id']) ? null : (int)$input['vendor_id'],
+                    $input['plate_no'] ?? null,
+                ]);
+            }
             setBookingPersonnel($db, $T, $newId, $input['personnel'] ?? []);
             setBookingItems($db, $T, $newId, $input['items'] ?? []);
             setBookingPhotos($db, $T, $newId, $input['photos'] ?? []);
@@ -410,7 +423,6 @@ switch ($method) {
                 "commodity_type_id = ?",
                 "origin_id = ?",
                 "destination_id = ?",
-                "vehicle_id = ?",
                 "status_id = ?",
                 "updated_by = ?",
                 "updated_at = NOW()",
@@ -422,7 +434,6 @@ switch ($method) {
                 empty($input['commodity_type_id']) ? null : (int)$input['commodity_type_id'],
                 empty($input['origin_id']) ? null : (int)$input['origin_id'],
                 empty($input['destination_id']) ? null : (int)$input['destination_id'],
-                empty($input['vehicle_id']) ? null : (int)$input['vehicle_id'],
                 empty($input['status_id']) ? 1 : (int)$input['status_id'],
                 (int)$user['user_id'],
             ];
@@ -447,6 +458,32 @@ switch ($method) {
             $sql = "UPDATE `{$T['b']}` SET " . implode(', ', $sets) . " WHERE booking_id = ?";
             $upd = $db->prepare($sql);
             $upd->execute($vals);
+            $vehicleId = empty($input['vehicle_id']) ? null : (int)$input['vehicle_id'];
+            $stmtVehicleExists = $db->prepare(
+                "SELECT booking_id FROM `{$T['bv']}` WHERE booking_id = ? LIMIT 1"
+            );
+            $stmtVehicleExists->execute([$id]);
+            if ($stmtVehicleExists->fetch()) {
+                $stmtVehicle = $db->prepare(
+                    "UPDATE `{$T['bv']}` SET vehicle_id = ?, vendor_id = ?, plate_no = ? WHERE booking_id = ?"
+                );
+                $stmtVehicle->execute([
+                    $vehicleId,
+                    empty($input['vendor_id']) ? null : (int)$input['vendor_id'],
+                    $input['plate_no'] ?? null,
+                    $id,
+                ]);
+            } elseif ($vehicleId !== null) {
+                $stmtVehicle = $db->prepare(
+                    "INSERT INTO `{$T['bv']}` (booking_id, vehicle_id, vendor_id, plate_no) VALUES (?, ?, ?, ?)"
+                );
+                $stmtVehicle->execute([
+                    $id,
+                    $vehicleId,
+                    empty($input['vendor_id']) ? null : (int)$input['vendor_id'],
+                    $input['plate_no'] ?? null,
+                ]);
+            }
             setBookingPersonnel($db, $T, $id, $input['personnel'] ?? []);
             setBookingItems($db, $T, $id, $input['items'] ?? []);
             setBookingPhotos($db, $T, $id, $input['photos'] ?? []);

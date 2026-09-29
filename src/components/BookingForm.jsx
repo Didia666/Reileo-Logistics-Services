@@ -5,6 +5,7 @@ import { bookingCrud, lookups } from '../services/api.js';
 const TABS = [
   { key: 'bookinginfo',      label: 'Booking Information' },
   { key: 'vehicleassignment',         label: 'Vehicle Assignment' },
+  { key: 'fueltripallowance',  label: 'Fuel and Trip Allowance' },
   { key: 'personnelassignment',  label: 'Personnel Assignment' },
   { key: 'references', label: 'References' },
   { key: 'itemdetails',   label: 'Item Details' },
@@ -93,7 +94,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
     commodity_type: '',
 
     // Fuel and Trip Allowance
-    trip_allowance: '',
+    charges: '',
     fuel: '',
     fuel_po: '',
     fuel_amount: '',
@@ -223,7 +224,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
             vendor_id: editBooking.vendor_id ?? '',
 
             // Fuel and Trip Allowance
-            trip_allowance: editBooking.trip_allowance ?? '',
+            charges: editBooking.charges ?? '',
             fuel: editBooking.fuel ?? '',
             fuel_po: editBooking.fuel_po ?? '',
             fuel_amount: editBooking.fuel_amount ?? '',
@@ -287,7 +288,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
               vendor_id: full.vendor_id ?? '',
 
               // Fuel and Trip Allowance
-              trip_allowance: full.trip_allowance ?? '',
+              charges: full.charges ?? '',
               fuel: full.fuel ?? '',
               fuel_po: full.fuel_po ?? '',
               fuel_amount: full.fuel_amount ?? '',
@@ -501,7 +502,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
       } else {
         saved = await bookingCrud.create(payload);
       }
-      setToast({ type: 'success', msg: 'Vehicles saved successfully.' });
+      setToast({ type: 'success', msg: 'Booking saved successfully.' });
       setTimeout(() => {
         onSaved(saved);
         onClose();
@@ -512,6 +513,11 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
       setSubmitting(false);
     }
   };
+
+  const fuelTripStatuses = ['Dispatched', 'Delivered', 'Completed'];
+  const visibleTabs = TABS.filter(tab => (
+    tab.key !== 'fueltripallowance' || fuelTripStatuses.includes(editBooking?.status_name)
+  ));
 
   if (!isOpen) return null;
 
@@ -819,6 +825,37 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
             </fieldset>
           </div>
         );
+
+      case 'fueltripallowance':
+        return (
+          <div style={{ padding: 18 }}>
+            <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
+              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+                Fuel and Trip Allowance
+              </legend>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                <Field label="Charges ">
+                  {renderSelect('charges', [ 
+                    { value: 'NO CHARGES', label: 'NO CHARGES' }, 
+                    { value: 'CHARGES RECORDED', label: 'CHARGES RECORDED' }], 
+                    'value', 'label', '- Select-')}
+                </Field>
+                <Field label="Fuel (L)">
+                  {renderInput('fuel', 'e.g. CL-12345', 'number')}
+                </Field>
+                <Field label="Fuel P.O.">
+                  {renderInput('fuel_po', 'e.g. CL-12345' )}
+                </Field>
+                <Field label="Fuel Amount.">
+                  {renderInput('fuel_amount', 'e.g. CL-12345', 'number')}
+                </Field>
+              </div>
+              <Field label="Remarks">
+                {renderTextarea('remarks', 'Additional notes…')}
+              </Field>
+            </fieldset>
+          </div>
+        );
       
       case 'personnelassignment':
         return (
@@ -1090,7 +1127,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
           display: 'flex', borderBottom: '1px solid #e5e7eb',
           background: '#fafafa', padding: '0 10px', overflowX: 'auto',
         }}>
-          {TABS.map(t => (
+          {visibleTabs.map(t => (
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}

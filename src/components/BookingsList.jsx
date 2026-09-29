@@ -857,21 +857,50 @@ export default function BookingsList() {
       <BookingFormModal
         isOpen={formOpen}
         onClose={closeForm}
-        onSaved={() => closeForm()}
+        onSaved={(saved) => {
+          setAll(prev => {
+            const exists = prev.some(r => String(r.booking_id) === String(saved.booking_id));
+            if (exists) {
+              return prev.map(r => String(r.booking_id) === String(saved.booking_id) ? saved : r);
+            } else {
+              return [...prev, saved];
+            }
+          });
+          closeForm();
+        }}
         editBooking={editBooking}
         viewOnly={viewOnly}
       />
       <UnderReviewModal
         isOpen={Boolean(underReviewBooking)}
         onClose={() => setUnderReviewBooking(null)}
-        onSaved={() => setUnderReviewBooking(null)}
+        onSaved={(saved) => {
+          setAll(prev => prev.map(row => (
+            String(row.booking_id) === String(saved.booking_id)
+              ? { ...row, status_id: saved.status_id, status_name: saved.status_name }
+              : row
+          )));
+          setUnderReviewBooking(null);
+        }}
         editBooking={underReviewBooking}
       />
       <DeliveryModal
         isOpen={Boolean(deliveryBooking)}
         editBooking={deliveryBooking}
         onClose={() => setDeliveryBooking(null)}
-        onSaved={() => setDeliveryBooking(null)}
+        onSaved={(saved) => {
+          const deliveredStatus = statuses.find(status => status.status_name === 'Delivered');
+          setAll(prev => prev.map(row => (
+            String(row.booking_id) === String(deliveryBooking?.booking_id)
+              ? {
+                  ...row,
+                  status_id: saved?.status_id ?? deliveredStatus?.status_id ?? row.status_id,
+                  status_name: saved?.status_name ?? deliveredStatus?.status_name ?? 'Delivered',
+                }
+              : row
+          )));
+          setDeliveryBooking(null);
+        }}
         viewOnly={false}
       />
       {completeBooking && (

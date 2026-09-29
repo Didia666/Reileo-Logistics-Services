@@ -19,7 +19,9 @@ try {
                 b.customer_id, c.customer_name, b.booking_type_id, bt.book_type AS booking_type,
                 b.commodity_type_id, ct.commodity_type, bs.status_name, d.depot_id, d.depot_name,
                 b.origin_id, o.origin_name, dest.destination_id, dest.destination_name,
-                v.plate_no, v.vehicle_id, v.vendor_id, vd.vendor_name, r.client_ref_no, r.other_ref_no,
+                COALESCE(NULLIF(bv.plate_no, ''), v.plate_no) AS plate_no,
+                bv.vehicle_id, COALESCE(bv.vendor_id, v.vendor_id) AS vendor_id,
+                vd.vendor_name, r.client_ref_no, r.other_ref_no,
                 r.remarks, b.route_code, b.trips_number, b.drops_number, f.area, f.trip_allowance,
                 f.fuel, f.fuel_po, f.fuel_amount, b.created_at,
                 u.username AS created_by,
@@ -45,9 +47,10 @@ try {
                 LEFT JOIN origin o ON o.origin_id = b.origin_id
                 LEFT JOIN destination dest ON dest.destination_id = b.destination_id
                 LEFT JOIN commodity_type ct ON ct.commodity_type_id = b.commodity_type_id
-                LEFT JOIN vehicles v ON v.vehicle_id = b.vehicle_id
+                LEFT JOIN bk_vehicles bv ON bv.booking_id = b.booking_id
+                LEFT JOIN vehicles v ON v.vehicle_id = bv.vehicle_id
                 LEFT JOIN vh_types vt ON vt.vehicle_type_id = v.vehicle_type_id
-                LEFT JOIN vendor vd ON vd.vendor_id = v.vendor_id
+                LEFT JOIN vendor vd ON vd.vendor_id = COALESCE(bv.vendor_id, v.vendor_id)
                 LEFT JOIN bk_references r ON r.booking_id = b.booking_id
                 LEFT JOIN bk_fuel_trip f ON f.booking_id = b.booking_id
                 LEFT JOIN reileo_logistics_services_users u ON u.user_id = b.created_by

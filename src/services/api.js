@@ -180,9 +180,9 @@ export const bookingUnderReviewCrud = {
     const q = new URLSearchParams(params).toString();
     return request(`/bookings_underreview.php${q ? '?' + q : ''}`);
   },
-  get: (id) => request(`/booking_underreview.php?id=${id}`),
-  create: (payload) =>
-    request('/bookings_underreview.php', { method: 'POST', body: JSON.stringify(payload) }),
+  get: (id) => request(`/bookings_underreview.php?id=${id}`),
+  create: (bookingId, payload) =>
+    request(`/bookings_underreview.php?id=${bookingId}`, { method: 'POST', body: JSON.stringify(payload) }),
   update: (id, payload) =>
     request(`/bookings_underreview.php?id=${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   cancel: (id) => request(`/booking_underreview.php?action=cancel&id=${id}`, { method: 'POST' }),
@@ -196,8 +196,8 @@ export const bookingDeliveryCrud = {
     return request(`/booking_delivered.php${q ? '?' + q : ''}`);
   },
   get: (id) => request(`/bookings_delivered.php?id=${id}`),
-  create: (payload) =>
-    request('/bookings_delivered.php', { method: 'POST', body: JSON.stringify(payload) }),
+  create: (bookingId, payload) =>
+    request(`/bookings_delivered.php?id=${bookingId}`, { method: 'POST', body: JSON.stringify(payload) }),
   update: (id, payload) =>
     request(`/bookings_delivered.php?id=${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   cancel: (id) => request(`/bookings_delivered.php?action=cancel&id=${id}`, { method: 'POST' }),

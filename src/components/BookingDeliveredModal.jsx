@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X, Loader2, Save } from 'lucide-react';
-import { bookingCrud, lookups } from '../services/api.js';
+import { bookingDeliveryCrud, lookups } from '../services/api.js';
 
 const TABS = [
   { key: 'bookinginfo', label: 'Booking Information' },
@@ -35,31 +35,31 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ type: '', msg: '' });
   const [lookupsData, setLookupsData] = useState({
-    customers: [],
-    booking_types: [],
-    depots: [],
-    commodity_type: [],
-    origins: [],
+    // customers: [],
+    // booking_types: [],
+    // depots: [],
+    // commodity_type: [],
+    // origins: [],
     destination: [],
     vehicles: [],
-    personnel:[],
-    vehicle_statuses: [],
-    item_types: [],
-    vh_types: [],
-    vh_manufacturers: [],
-    vh_models: [],
-    category_types: [],
-    vendors: [],
+    // personnel:[],
+    // vehicle_statuses: [],
+    // item_types: [],
+    // vh_types: [],
+    // vh_manufacturers: [],
+    // vh_models: [],
+    // category_types: [],
+    // vendors: [],
   });
   
-  const createBlankItem = () => ({
-    item_type_id: '',
-    item_description: '',
-    length: '',
-    width: '',
-    height: '',
-    weight: '',
-  });
+  // const createBlankItem = () => ({
+  //   item_type_id: '',
+  //   item_description: '',
+  //   length: '',
+  //   width: '',
+  //   height: '',
+  //   weight: '',
+  // });
 
   const personnelIdForRole = (assignments, role) => {
     const assignment = Array.isArray(assignments)
@@ -70,63 +70,37 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
   
 
   const blankForm = {
-    item_details: [createBlankItem()],
+    // item_details: [createBlankItem()],
 
-    customer_id: '',
-    booking_type_id: '',
+    // booking information
     delivery_date: '',
-    depot_id: '',
-    commodity_type_id: '',
-    route_code: '',
-    trips_number: '',
-    drops_number: '',
-    origin_id: '',
-    destination_id: '',
-
-    // Vehicle Assignment
-    vehicle_id: '',
     plate_no: '',
-    vehicle_type_id: '',
-    commodity_type: '',
+    delivered_datetime: '',
+    received_datetime: '',
+    odometer: '',
+    destination_id: '',
+    client_rate: '',
+    trips_number: '',
+    subcon_rate: '',
 
-    // Fuel and Trip Allowance
-    area: '',
-    trip_allowance: '',
+    // references
+    client_ref_no: '',
+    charges: '',
     fuel: '',
     fuel_po: '',
     fuel_amount: '',
-
-    // Personnel assignment
-    driver_id: '',
-    driver_source: 'direct',
-    driver_vendor_id: '',
-    helper1_id: '',
-    helper1_source: 'direct',
-    helper1_vendor_id: '',
-    driver_included_h1: false,
-    helper2_id: '',
-    helper2_source: 'direct',
-    helper2_vendor_id: '',
-    driver_included_h2: false,
-
-    // References
-    client_ref_no: '',
-    other_ref_no: '',
     remarks: '',
 
-    // Item Details
-    item_type_id: '',
-    item_description: '',
-    length: '',
-    width: '',
-    height: '',
-    weight: '',
-
-    // Vehicle Photos and Documents
-    bk_photos: [{ photo_name: '', photo_path: '' }],
-
-
-    
+    // expenses
+    b_toll_fees: '',
+    b_extra_drop: '',
+    b_extra_helper: '',
+    b_other_expenses: '',
+    nb_parking_fees: '',
+    nb_toll_fees_non_billable: '',
+    nb_demurrage_fees: '',
+    nb_backload_fees: '',
+    nb_other_deductions: '',
   };
 
   const [form, setForm] = useState(blankForm);
@@ -136,77 +110,137 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
   const loadLookups = async () => {
     try {
       const [
-        customers,
-        bookingTypes,
-        depots,
-        commodityTypes,
-        origins,
+        // customers,
+        // bookingTypes,
+        // depots,
+        // commodityTypes,
+        // origins,
         destination,
         vehicles,
-        personnel,
-        itemTypes,
-        vehicleStatuses,
-        vhTypes,
-        vhManufacturers,
-        vhModels,
-        categoryTypes,
-        vendors,
+        // personnel,
+        // itemTypes,
+        // vehicleStatuses,
+        // vhTypes,
+        // vhManufacturers,
+        // vhModels,
+        // categoryTypes,
+        // vendors,
       ] = await Promise.all([
-        lookups.customers ? lookups.customers().catch(() => []) : Promise.resolve([]),
-        lookups.bookingTypes ? lookups.bookingTypes().catch(() => []) : Promise.resolve([]),
-        lookups.depots ? lookups.depots().catch(() => []) : Promise.resolve([]),
-        lookups.commodity_type ? lookups.commodity_type().catch(() => []) : Promise.resolve([]),
-        lookups.origins ? lookups.origins().catch(() => []) : Promise.resolve([]),
+        // lookups.customers ? lookups.customers().catch(() => []) : Promise.resolve([]),
+        // lookups.bookingTypes ? lookups.bookingTypes().catch(() => []) : Promise.resolve([]),
+        // lookups.depots ? lookups.depots().catch(() => []) : Promise.resolve([]),
+        // lookups.commodity_type ? lookups.commodity_type().catch(() => []) : Promise.resolve([]),
+        // lookups.origins ? lookups.origins().catch(() => []) : Promise.resolve([]),
         lookups.destination ? lookups.destination().catch(() => []) : Promise.resolve([]),
         lookups.vehicles ? lookups.vehicles().catch(() => []) : Promise.resolve([]),
-        lookups.personnel ? lookups.personnel().catch(() => []) : Promise.resolve([]),
-        lookups.item_types ? lookups.item_types().catch(() => []) : Promise.resolve([]),
-        lookups.vehicle_statuses ? lookups.vehicle_statuses().catch(() => []) : Promise.resolve([]),
-        lookups.vh_types ? lookups.vh_types().catch(() => []) : Promise.resolve([]),
-        lookups.vh_manufacturers ? lookups.vh_manufacturers().catch(() => []) : Promise.resolve([]),
-        lookups.vh_models ? lookups.vh_models().catch(() => []) : Promise.resolve([]),
-        lookups.category_types ? lookups.category_types().catch(() => []) : Promise.resolve([]),
-        lookups.vendors ? lookups.vendors().catch(() => []) : Promise.resolve([]),
+        // lookups.personnel ? lookups.personnel().catch(() => []) : Promise.resolve([]),
+        // lookups.item_types ? lookups.item_types().catch(() => []) : Promise.resolve([]),
+        // lookups.vehicle_statuses ? lookups.vehicle_statuses().catch(() => []) : Promise.resolve([]),
+        // lookups.vh_types ? lookups.vh_types().catch(() => []) : Promise.resolve([]),
+        // lookups.vh_manufacturers ? lookups.vh_manufacturers().catch(() => []) : Promise.resolve([]),
+        // lookups.vh_models ? lookups.vh_models().catch(() => []) : Promise.resolve([]),
+        // lookups.category_types ? lookups.category_types().catch(() => []) : Promise.resolve([]),
+        // lookups.vendors ? lookups.vendors().catch(() => []) : Promise.resolve([]),
       ]);
 
       const normalize = (data) => (Array.isArray(data) ? data : (data?.data || []));
 
       setLookupsData({
-        customers: normalize(customers),
-        bookingTypes: normalize(bookingTypes),
-        depots: normalize(depots),
-        origins: normalize(origins),
+        // customers: normalize(customers),
+        // bookingTypes: normalize(bookingTypes),
+        // depots: normalize(depots),
+        // origins: normalize(origins),
         destination: normalize(destination),
-        booking_types: normalize(bookingTypes),
+        // booking_types: normalize(bookingTypes),
         vehicles: normalize(vehicles),
-        personnel: normalize(personnel),
-        item_types: normalize(itemTypes),
-        vehicle_statuses: normalize(vehicleStatuses),
-        vh_types: normalize(vhTypes),
-        vh_manufacturers: normalize(vhManufacturers),
-        vh_models: normalize(vhModels),
-        commodity_type: normalize(commodityTypes),
-        category_types: normalize(categoryTypes),
-        vendors: normalize(vendors),
+        // personnel: normalize(personnel),
+        // item_types: normalize(itemTypes),
+        // vehicle_statuses: normalize(vehicleStatuses),
+        // vh_types: normalize(vhTypes),
+        // vh_manufacturers: normalize(vhManufacturers),
+        // vh_models: normalize(vhModels),
+        // commodity_type: normalize(commodityTypes),
+        // category_types: normalize(categoryTypes),
+        // vendors: normalize(vendors),
       });
     } catch {
       /* no-op */
     }
   };
 
+  // useEffect(() => {
+  //   if (isOpen) {
+  //     loadLookups();
+  //     setForm({
+  //       delivery_date: editBooking?.delivery_date ?? '',
+  //       plate_no: editBooking?.plate_no ?? '',
+  //     });
+  //     setCompanyOwned(false);
+  //     setActiveTab('bookinginfo');
+  //     setErrors({});
+  //     setToast({ type: '', msg: '' });
+  //   }
+  // }, [isOpen, editBooking]);
+
   useEffect(() => {
-    if (isOpen) {
+      if (!isOpen || !editBooking?.booking_id) return undefined;
+  
+      let cancelled = false;
       loadLookups();
-      setForm({
-        delivery_date: editBooking?.delivery_date ?? '',
-        plate_no: editBooking?.plate_no ?? '',
-      });
+      setForm({ ...blankForm });
       setCompanyOwned(false);
       setActiveTab('bookinginfo');
       setErrors({});
       setToast({ type: '', msg: '' });
-    }
-  }, [isOpen, editBooking]);
+  
+      bookingDeliveryCrud.get(editBooking.booking_id)
+        .then((booking) => {
+          if (cancelled) return;
+          const deliveredDatetime = booking.delivered_datetime
+            ? String(booking.delivered_datetime).replace(' ', 'T').slice(0, 16)
+            : '';
+          setForm({
+            ...blankForm,
+            delivery_date: booking.delivery_date || '',
+            plate_no: booking.plate_no || '',
+            delivered_datetime: deliveredDatetime,
+            received_datetime: booking.received_datetime || '',
+            odometer: booking.odometer || '',
+            destination_id: booking.destination_id || '',
+            client_rate: booking.client_rate || '',
+            trips_number: booking.trips_number || '',
+            subcon_rate: booking.subcon_rate || '',
+
+            client_ref_no: booking.client_ref_no || '',
+            charges: booking.charges || '',
+            fuel: booking.fuel || '',
+            fuel_po: booking.fuel_po || '',
+            fuel_amount: booking.fuel_amount || '',
+            remarks: booking.remarks || '',
+
+            // expenses
+            b_toll_fees: booking.b_toll_fees || '',
+            b_extra_drop: booking.b_extra_drop || '',
+            b_extra_helper: booking.b_extra_helper || '',
+            b_other_expenses: booking.b_other_expenses || '',
+            nb_parking_fees: booking.nb_parking_fees || '',
+            nb_toll_fees_non_billable: booking.nb_toll_fees_non_billable || '',
+            nb_demurrage_fees: booking.nb_demurrage_fees || '',
+            nb_backload_fees: booking.nb_backload_fees || '',
+            nb_other_deductions: booking.nb_other_deductions || '',
+
+          });
+        })
+        .catch((error) => {
+          if (!cancelled) {
+            setToast({ type: 'error', msg: error.message || 'Failed to load booking details.' });
+          }
+        });
+  
+      return () => {
+        cancelled = true;
+      };
+    }, [isOpen, editBooking]);
 
   const setField = (path, value) => {
     setForm(prev => {
@@ -221,69 +255,69 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
     });
   };
 
-  const addAttachmentRow = (type) => {
-    setForm(prev => ({
-      ...prev,
-      [type]: [
-        ...(prev[type] || []),
-        type === 'vh_documents'
-          ? { document_name: '', document_path: '' }
-          : { photo_name: '', photo_path: '' },
-      ],
-    }));
-  };
+  // const addAttachmentRow = (type) => {
+  //   setForm(prev => ({
+  //     ...prev,
+  //     [type]: [
+  //       ...(prev[type] || []),
+  //       type === 'vh_documents'
+  //         ? { document_name: '', document_path: '' }
+  //         : { photo_name: '', photo_path: '' },
+  //     ],
+  //   }));
+  // };
 
-  const removeAttachmentRow = (type, index) => {
-    setForm(prev => ({
-      ...prev,
-      [type]: (prev[type] || []).filter((_, i) => i !== index),
-    }));
-  };
+  // const removeAttachmentRow = (type, index) => {
+  //   setForm(prev => ({
+  //     ...prev,
+  //     [type]: (prev[type] || []).filter((_, i) => i !== index),
+  //   }));
+  // };
 
-  const updateAttachmentRow = (type, index, field, value) => {
-    setForm(prev => ({
-      ...prev,
-      [type]: (prev[type] || []).map((row, i) => i === index ? { ...row, [field]: value } : row),
-    }));
-  };
+  // const updateAttachmentRow = (type, index, field, value) => {
+  //   setForm(prev => ({
+  //     ...prev,
+  //     [type]: (prev[type] || []).map((row, i) => i === index ? { ...row, [field]: value } : row),
+  //   }));
+  // };
 
-  const updateItem = (index, field, value) => {
-    setForm(prev => ({
-      ...prev,
-      item_details: (prev.item_details || []).map((item, itemIndex) => (
-        itemIndex === index ? { ...item, [field]: value } : item
-      )),
-    }));
-  };
+  // const updateItem = (index, field, value) => {
+  //   setForm(prev => ({
+  //     ...prev,
+  //     item_details: (prev.item_details || []).map((item, itemIndex) => (
+  //       itemIndex === index ? { ...item, [field]: value } : item
+  //     )),
+  //   }));
+  // };
 
-  const addItem = (index) => {
-    setForm(prev => {
-      const items = prev.item_details || [];
-      const currentItem = items[index];
+  // const addItem = (index) => {
+  //   setForm(prev => {
+  //     const items = prev.item_details || [];
+  //     const currentItem = items[index];
 
-      if (!currentItem?.item_type_id || !String(currentItem.weight || '').trim()) {
-        return prev;
-      }
+  //     if (!currentItem?.item_type_id || !String(currentItem.weight || '').trim()) {
+  //       return prev;
+  //     }
 
-      return {
-        ...prev,
-        item_details: [
-          ...items.slice(0, index + 1),
-          createBlankItem(),
-          ...items.slice(index + 1),
-        ],
-      };
-    });
-  };
+  //     return {
+  //       ...prev,
+  //       item_details: [
+  //         ...items.slice(0, index + 1),
+  //         createBlankItem(),
+  //         ...items.slice(index + 1),
+  //       ],
+  //     };
+  //   });
+  // };
 
   const validate = () => {
     const errs = {};
-    // if (!form.last_name.trim())  errs.last_name  = 'Required';
-    // if (!form.first_name.trim()) errs.first_name = 'Required';
-    // if (!form.status)            errs.status     = 'Required';
-    // if (!form.employment.personnel_type_id) errs['employment.personnel_type_id'] = 'Required';
-    // if (!form.employment.depot_id)          errs['employment.depot_id']          = 'Required';
-    // if (!form.employment.employment_type)   errs['employment.employment_type']   = 'Required';
+    if (!form.delivery_date.trim()) errs.delivery_date = 'Delivery date is required.';
+    if (!form.delivered_datetime.trim()) errs.delivered_datetime = 'Delivered date & time is required.';
+    if (!form.received_datetime.trim()) errs.received_datetime = 'Received date & time is required.';
+    if (!form.destination_id) errs.destination_id = 'Destination is required.';
+    if (!form.client_rate || isNaN(Number(form.client_rate))) errs.client_rate = 'Client rate is required and must be a number.';
+    if (!form.trips_number || isNaN(Number(form.trips_number))) errs.trips_number = 'No. of trips is required and must be a number.';
     // setErrors(errs);
     if (Object.keys(errs).length) {
       setToast({ type: 'error', msg: 'Please fill in all required fields.' });
@@ -301,64 +335,46 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
       const payload = {
         // Booking Info
         booking_info: {
-          customer_id: form.customer_id ? Number(form.customer_id) : null,
-          booking_type_id: form.booking_type_id ? Number(form.booking_type_id) : null,
           delivery_date: form.delivery_date.trim() || null,
-          depot_id: form.depot_id ? Number(form.depot_id) : null,
-          commodity_type_id: form.commodity_type_id ? Number(form.commodity_type_id) : null,
-          route_code: form.route_code.trim() || null,
-          trips_number: form.trips_number ? Number(form.trips_number) : null, 
-          drops_number: form.drops_number ? Number(form.drops_number) : null, 
-          origin_id: form.origin_id ? Number(form.origin_id) : null,
-          destination_id: form.destination_id ? Number(form.destination_id) : null,
-        },
-        // Vehicle Assignment
-        vehicle_assignment: {
-          vehicle_id: form.vehicle_id ? Number(form.vehicle_id) : null,
           plate_no: form.plate_no.trim() || null,
-          vehicle_type_id: form.vehicle_type_id ? Number(form.vehicle_type_id) : null,
-          commodity_type_id: form.commodity_type_id ? Number(form.commodity_type_id) : null,
-          vendor_id: form.vendor_id ? Number(form.vendor_id) : null, 
-        },
-        // Personnel Assignment
-        personnel_assignment: {
-          driver_id: form.driver_id ? Number(form.driver_id) : null,
-          driver_source: form.driver_source || 'direct',
-          driver_vendor_id: form.driver_vendor_id ? Number(form.driver_vendor_id) : null,
-          helper1_id: form.helper1_id ? Number(form.helper1_id) : null,
-          helper1_source: form.helper1_source || 'direct',
-          helper1_vendor_id: form.helper1_vendor_id ? Number(form.helper1_vendor_id) : null,
-          helper2_id: form.helper2_id ? Number(form.helper2_id) : null,
-          helper2_source: form.helper2_source || 'direct',
-          helper2_vendor_id: form.helper2_vendor_id ? Number(form.helper2_vendor_id) : null,
-          driver_included_h1: Boolean(form.driver_included_h1),
-          driver_included_h2: Boolean(form.driver_included_h2),
+          delivered_datetime: form.delivered_datetime.trim() || null,
+          received_datetime: form.received_datetime.trim() || null,
+          odometer: form.odometer ? Number(form.odometer) : null,          
+          destination_id: form.destination_id ? Number(form.destination_id) : null,
+          client_rate: form.client_rate ? Number(form.client_rate) : null,
+          trips_number: form.trips_number ? Number(form.trips_number) : null, 
+          subcon_rate: form.subcon_rate ? Number(form.subcon_rate) : null,
         },
 
+        //fueltripallowance
+        fuel_trip: {
+          charges: form.charges.trim() || null,
+          fuel: form.fuel ? Number(form.fuel) : null,
+          fuel_po: form.fuel_po.trim() || null,
+          fuel_amount: form.fuel_amount ? Number(form.fuel_amount) : null,
+        },
+
+        // References
         references: {
           client_ref_no: form.client_ref_no.trim() || null,
-          other_ref_no: form.other_ref_no.trim() || null,
-          remarks: form.remarks.trim() || null,
+          remarks : form.remarks.trim() || null,
         },
-        
-        item_details: (form.item_details || []).map((item) => ({
-          item_type_id: item.item_type_id || null,
-          item_description: item.item_description?.trim() || null,
-          length: item.length || null,
-          width: item.width || null,
-          height: item.height || null,
-          weight: item.weight || null,
-        })),
 
-        bk_photos: (form.bk_photos || [])
-          .filter(row => row.photo_name.trim() || row.photo_path.trim())
-          .map(row => ({
-            photo_name: row.photo_name.trim() || null,
-            photo_path: row.photo_path.trim() || null,
-          })),
+        expenses: {
+          b_toll_fees: form.b_toll_fees ? Number(form.b_toll_fees) : null,
+          b_extra_drop: form.b_extra_drop ? Number(form.b_extra_drop) : null,
+          b_extra_helper: form.b_extra_helper ? Number(form.b_extra_helper) : null,
+          b_other_fees: form.b_other_fees ? Number(form.b_other_fees) : null,
+          nb_parking_fees: form.nb_parking_fees ? Number(form.nb_parking_fees) : null,
+          nb_toll_fees: form.nb_toll_fees ? Number(form.nb_toll_fees) : null,
+          nb_demurrage_fees: form.nb_demurrage_fees ? Number(form.nb_demurrage_fees) : null,
+          nb_backload_fees: form.nb_backload_fees ? Number(form.nb_backload_fees) : null,
+          nb_other_deductions: form.nb_other_deductions ? Number(form.nb_other_deductions) : null,
+        }
+        
       };
 
-      const saved = await bookingCrud.create(payload);
+      const saved = await bookingDeliveryCrud.create(editBooking?.booking_id, payload);
       setToast({ type: 'success', msg: 'Vehicles saved successfully.' });
       setTimeout(() => {
         onSaved(saved);
@@ -379,7 +395,7 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
       <input
         type={type}
         disabled={viewOnly || disabled}
-        style={viewOnly ? readOnlyStyle : inputStyle}
+        style={viewOnly || disabled ? readOnlyStyle : inputStyle}
         value={v}
         placeholder={placeholder}
         onChange={(e) => setField(path, e.target.value)}
@@ -394,7 +410,7 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
     return (
       <select
         disabled={viewOnly || disabled}
-        style={viewOnly ? readOnlyStyle : inputStyle}
+        style={viewOnly || disabled ? readOnlyStyle : inputStyle}
         value={v}
         onChange={(e) => {
           if (onChange) onChange(e);
@@ -432,93 +448,93 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
     );
   };
 
-  const setPersonnelSource = (role, source) => {
-    setField(`${role}_source`, source);
-    if (source === 'direct') {
-      setField(`${role}_vendor_id`, '');
-    }
-  };
+  // const setPersonnelSource = (role, source) => {
+  //   setField(`${role}_source`, source);
+  //   if (source === 'direct') {
+  //     setField(`${role}_vendor_id`, '');
+  //   }
+  // };
 
-  const renderPersonnelField = (role, label) => {
-    const source = form[`${role}_source`] || 'direct';
-    const driverIncluded = role === 'helper1'
-      ? Boolean(form.driver_included_h1)
-      : role === 'helper2'
-        ? Boolean(form.driver_included_h2)
-        : false;
-    const personnelOptions = lookupsData.personnel.filter((person) => {
-      const personnelType = String(person.personnel_type || '').toLowerCase();
-      const hasVendor = person.vendor_id !== null && person.vendor_id !== undefined && person.vendor_id !== '' && String(person.vendor_id) !== '0';
+  // const renderPersonnelField = (role, label) => {
+  //   const source = form[`${role}_source`] || 'direct';
+  //   const driverIncluded = role === 'helper1'
+  //     ? Boolean(form.driver_included_h1)
+  //     : role === 'helper2'
+  //       ? Boolean(form.driver_included_h2)
+  //       : false;
+  //   const personnelOptions = lookupsData.personnel.filter((person) => {
+  //     const personnelType = String(person.personnel_type || '').toLowerCase();
+  //     const hasVendor = person.vendor_id !== null && person.vendor_id !== undefined && person.vendor_id !== '' && String(person.vendor_id) !== '0';
 
-      if (role === 'driver') {
-        if (source === 'direct') {
-          return personnelType.includes('driver') && !hasVendor;
-        }
-        return personnelType.includes('driver') && hasVendor;
-      }
+  //     if (role === 'driver') {
+  //       if (source === 'direct') {
+  //         return personnelType.includes('driver') && !hasVendor;
+  //       }
+  //       return personnelType.includes('driver') && hasVendor;
+  //     }
 
-      if (source === 'direct') {
-        return !hasVendor && (driverIncluded || !personnelType.includes('driver'));
-      }
+  //     if (source === 'direct') {
+  //       return !hasVendor && (driverIncluded || !personnelType.includes('driver'));
+  //     }
 
-      return hasVendor && (driverIncluded || !personnelType.includes('driver'));
-    });
+  //     return hasVendor && (driverIncluded || !personnelType.includes('driver'));
+  //   });
 
-    const handlePersonnelSelection = (e) => {
-      const selectedId = e.target.value;
-      const matchedPerson = lookupsData.personnel.find((person) => String(person.personnel_id) === String(selectedId));
+  //   const handlePersonnelSelection = (e) => { 
+  //     const selectedId = e.target.value;
+  //     const matchedPerson = lookupsData.personnel.find((person) => String(person.personnel_id) === String(selectedId));
 
-      setField(`${role}_id`, selectedId);
-      if (matchedPerson) {
-        setField(`${role}_vendor_id`, matchedPerson.vendor_id ?? '');
-      }
-    };
+  //     setField(`${role}_id`, selectedId);
+  //     if (matchedPerson) {
+  //       setField(`${role}_vendor_id`, matchedPerson.vendor_id ?? '');
+  //     }
+  //   };
 
-    return (
-      <Field label={label} required error={errors[`${role}_id`]}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12, color: '#374151' }}>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <input
-              type="checkbox"
-              disabled={viewOnly}
-              checked={source === 'direct'}
-              onChange={() => setPersonnelSource(role, 'direct')}
-            />
-            Direct Hired
-          </label>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <input
-              type="checkbox"
-              disabled={viewOnly}
-              checked={source === 'outsource'}
-              onChange={() => setPersonnelSource(role, 'outsource')}
-            />
-            Outsourced
-          </label>
-        </div>
-        {source === 'outsource' && (
-          <Field label="Outsourced Vendor">
-            {renderSelect(`${role}_vendor_id`, lookupsData.vendors, 'vendor_id', 'vendor_name', '- Select Vendor -')}
-          </Field>
-        )}
-        {renderSelect(`${role}_id`, personnelOptions, 'personnel_id', 'full_name', `- Select ${label} -`, false, handlePersonnelSelection)}
-        {role !== 'driver' && (
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 12, color: '#374151' }}>
-            <input
-              type="checkbox"
-              disabled={viewOnly}
-              checked={driverIncluded}
-              onChange={(e) => setField(
-                role === 'helper1' ? 'driver_included_h1' : 'driver_included_h2',
-                e.target.checked
-              )}
-            />
-            Driver Included
-          </label>
-        )}
-      </Field>
-    );
-  };
+  //   return (
+  //     <Field label={label} required error={errors[`${role}_id`]}>
+  //       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12, color: '#374151' }}>
+  //         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+  //           <input
+  //             type="checkbox"
+  //             disabled={viewOnly}
+  //             checked={source === 'direct'}
+  //             onChange={() => setPersonnelSource(role, 'direct')}
+  //           />
+  //           Direct Hired
+  //         </label>
+  //         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+  //           <input
+  //             type="checkbox"
+  //             disabled={viewOnly}
+  //             checked={source === 'outsource'}
+  //             onChange={() => setPersonnelSource(role, 'outsource')}
+  //           />
+  //           Outsourced
+  //         </label>
+  //       </div>
+  //       {source === 'outsource' && (
+  //         <Field label="Outsourced Vendor">
+  //           {renderSelect(`${role}_vendor_id`, lookupsData.vendors, 'vendor_id', 'vendor_name', '- Select Vendor -')}
+  //         </Field>
+  //       )}
+  //       {renderSelect(`${role}_id`, personnelOptions, 'personnel_id', 'full_name', `- Select ${label} -`, false, handlePersonnelSelection)}
+  //       {role !== 'driver' && (
+  //         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 12, color: '#374151' }}>
+  //           <input
+  //             type="checkbox"
+  //             disabled={viewOnly}
+  //             checked={driverIncluded}
+  //             onChange={(e) => setField(
+  //               role === 'helper1' ? 'driver_included_h1' : 'driver_included_h2',
+  //               e.target.checked
+  //             )}
+  //           />
+  //           Driver Included
+  //         </label>
+  //       )}
+  //     </Field>
+  //   );
+  // };
 
     
 
@@ -527,6 +543,9 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
   const renderTab = () => {
     const selectedCommodity = form.commodity_type_id;
     const selectedVendor = form.vendor_id;
+    const clientRate = Number(form.client_rate) || 0;
+    const tripsNumber = Number(form.trips_number) || 0;
+    const totalAmount = (clientRate * tripsNumber).toFixed(2);
 
     const vehicleOptions = lookupsData.vehicles.filter((vehicle) => {
       const matchesCommodity = !selectedCommodity || String(vehicle.commodity_type_id ?? '') === String(selectedCommodity);
@@ -542,6 +561,14 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
 
       return matchesCommodity;
     });
+
+    const selectedVehicle = lookupsData.vehicles.find((vehicle) => (
+      String(vehicle.plate_no ?? '') === String(form.plate_no ?? '')
+    ));
+    const hasVehicleVendor = selectedVehicle?.vendor_id !== null
+      && selectedVehicle?.vendor_id !== undefined
+      && String(selectedVehicle.vendor_id).trim() !== ''
+      && String(selectedVehicle.vendor_id) !== '0';
 
     const handlePlateSelection = (e) => {
       const plateNo = e.target.value;
@@ -574,44 +601,52 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
                 Booking Information
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-                <Field label="Delivery Date" required error={errors.delivery_date}>
-                  {renderInput('delivery_date', '', 'date')}
+                <Field label="Delivery Date">
+                  {renderInput('delivery_date', '', 'date', true)}
                 </Field>
-                <Field label="Vehicle No." required error={errors.plate_no}>
+                <Field label="Vehicle No.">
                   {renderSelect(
                     'plate_no',
                     vehicleOptions,
                     'plate_no',
                     'plate_no',
                     '- Select Plate No. -',
-                    false,
+                    true,
                     handlePlateSelection
                   )}
                 </Field>
-                <Field label="Delivered Date & Time" required error={errors.delivery_datetime}>
-                  {renderInput('delivery_datetime', '', 'datetime-local')}
+                <Field label="Delivered Date & Time" required error={errors.delivered_datetime}>
+                  {renderInput('delivered_datetime', '', 'datetime-local')}
                 </Field>
-                <Field label="Received Date & Time" required error={errors.delivery_datetime}>
-                  {renderInput('delivery_datetime', '', 'datetime-local')}
+                <Field label="Received Date & Time" required error={errors.received_datetime}>
+                  {renderInput('received_datetime', '', 'datetime-local')}
                 </Field>
-                <Field label="Odometer Reading" required error={errors.odometer}>
+                <Field label="Odometer Reading">
                   {renderInput('odometer', '', 'number')}
                 </Field>
                 <Field label="Farthest Destination" required error={errors.delivery_date}>
-                  {renderSelect('destination_id', lookupsData.destination, 'destination_id', 'destination_name', '- Select Destination -')}
+                  {renderSelect('destination_id', lookupsData.destination, 'destination_id', 'destination', '- Select Destination -')}
                 </Field>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
                 <Field label="Client Rate" required error={errors.client_rate}>
                   {renderInput('client_rate', 'e.g. 5', 'number')}
                 </Field>
                 <Field label="No. of Trips" required error={errors.delivery_date}>
                   {renderInput('trips_number', 'e.g. 5', 'number')}
                 </Field>
-                <Field label="Trip Allowance" required error={errors.trip_allowance}>
-                  {renderInput('trip_allowance', 'e.g. 5', 'number')}
+                <Field label="Total Amount">
+                  <output aria-live="polite" style={{ ...readOnlyStyle, fontWeight: 600 }}>
+                    {totalAmount}
+                  </output>
                 </Field>
-                <Field label="Subcon Rate" required error={errors.subcon_rate}>
-                  {renderInput('subcon_rate', 'e.g. 5', 'number')}
-                </Field>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                {hasVehicleVendor && (
+                  <Field label="Subcon Rate">
+                    {renderInput('subcon_rate', 'e.g. 5', 'number')}
+                  </Field>
+                )}
 
                 
               </div>
@@ -631,7 +666,7 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
                   {renderInput('client_ref_no', 'e.g. CL-12345')}
                 </Field>
                 <Field label="Charges ">
-                  {renderSelect('transmission', [ 
+                  {renderSelect('charges', [ 
                     { value: 'NO CHARGES', label: 'NO CHARGES' }, 
                     { value: 'CHARGES RECORDED', label: 'CHARGES RECORDED' }], 
                     'value', 'label', '- Select-')}
@@ -658,38 +693,52 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
               <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
-                Vehicle Assignment
+                Expenses
+              </legend>
+              <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
+              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+                Billable
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
                 <Field label="Toll Fees">
-                  {renderInput('toll_fees', 'e.g. 1000', 'number')}
+                  {renderInput('b_toll_fees', 'e.g. 1000', 'number')}
                 </Field>
                 <Field label="Extra Drop">
-                  {renderInput('extra_drop', 'e.g. 500', 'number')}
+                  {renderInput('b_extra_drop', 'e.g. 500', 'number')}
                 </Field>
                 <Field label="Extra Helper">
-                  {renderInput('extra_helper', 'e.g. 200', 'number')}
+                  {renderInput('b_extra_helper', 'e.g. 200', 'number')}
                 </Field>
                 <Field label="Other Expenses/Fees">
-                  {renderInput('other_expenses', 'e.g. 300', 'number')}
+                  {renderInput('b_other_fees', 'e.g. 300', 'number')}
                 </Field>
+                </div>
+                </fieldset>
+                
+
+                <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
+                <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+                  Non-Billable
+                </legend>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
                 <Field label="Parking Fees">
-                  {renderInput('parking_fees', 'e.g. 100', 'number')}
+                  {renderInput('nb_parking_fees', 'e.g. 100', 'number')}
                 </Field>
                 <Field label="Toll Fees - Non Billable">
-                  {renderInput('toll_fees_non_billable', 'e.g. 500', 'number')}
+                  {renderInput('nb_toll_fees', 'e.g. 500', 'number')}
                 </Field>
                 <Field label="Demurrage Fees">
-                  {renderInput('demurrage_fees', 'e.g. 200', 'number')}
+                  {renderInput('nb_demurrage_fees', 'e.g. 200', 'number')}
                 </Field>
                 <Field label="Backload Fees">
-                  {renderInput('backload_fees', 'e.g. 300', 'number')}
+                  {renderInput('nb_backload_fees', 'e.g. 300', 'number')}
                 </Field>
                 <Field label="Other Deductions">
-                  {renderInput('other_deductions', 'e.g. 100', 'number')}
+                  {renderInput('nb_other_deductions', 'e.g. 100', 'number')}
                 </Field>
+                </div>
+                </fieldset>
 
-              </div>
             </fieldset>
           </div>
         );

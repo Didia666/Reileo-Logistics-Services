@@ -76,7 +76,7 @@ function generateBookingNo($db, $table) {
 
 
 
-function listSql($tblBookings, $tblBStatuses, $tblCustomers, $tblBFuel, $tblBTypes, $tblDepots, $tblOrigins, $tblVehicles, $tblReferences) {
+function listSql($tblBookings, $tblBStatuses, $tblCustomers, $tblBFuel, $tblBTypes, $tblDepots, $tblOrigins, $tblVehicles, $tblReferences, $tblBVehicles) {
     return "SELECT 
                     b.booking_id,
                     b.booking_no,
@@ -90,8 +90,8 @@ function listSql($tblBookings, $tblBStatuses, $tblCustomers, $tblBFuel, $tblBTyp
                     o.origin_name,
                     b.depot_id,
                     d.depot_name,
-                    b.vehicle_id,
-                    v.plate_no,
+                    bv.vehicle_id AS vehicle_id,
+                    COALESCE(NULLIF(bv.plate_no, ''), v.plate_no) AS plate_no,
                     r.client_ref_no,
                     b.status_id,
                     bs.status_name,
@@ -103,7 +103,8 @@ function listSql($tblBookings, $tblBStatuses, $tblCustomers, $tblBFuel, $tblBTyp
             LEFT JOIN `{$tblBTypes}` bt ON b.booking_type_id = bt.booking_type_id
             LEFT JOIN `{$tblOrigins}` o ON b.origin_id = o.origin_id
             LEFT JOIN `{$tblDepots}` d ON b.depot_id = d.depot_id
-            LEFT JOIN `{$tblVehicles}` v ON b.vehicle_id = v.vehicle_id
+            LEFT JOIN `{$tblBVehicles}` bv ON b.booking_id = bv.booking_id
+            LEFT JOIN `{$tblVehicles}` v ON bv.vehicle_id = v.vehicle_id
             LEFT JOIN `{$tblReferences}` r ON b.booking_id = r.booking_id";
 }
 
@@ -147,8 +148,8 @@ function detailSql(
                     o.origin_name,
                     b.destination_id,
                     dest.destination_name,
-                    COALESCE(bv.vehicle_id, b.vehicle_id) AS vehicle_id,
-                    COALESCE(bv.plate_no, v.plate_no) AS plate_no,
+                    bv.vehicle_id AS vehicle_id,
+                    COALESCE(NULLIF(bv.plate_no, ''), v.plate_no) AS plate_no,
                     v.vehicle_type_id,
                     vt.vehicle_type,
                     v.commodity_type_id AS vehicle_commodity_type_id,
@@ -183,7 +184,7 @@ function detailSql(
             LEFT JOIN `{$tblCommodityTypes}` ct ON b.commodity_type_id = ct.commodity_type_id
             LEFT JOIN `{$tblDestination}` dest ON b.destination_id = dest.destination_id
             LEFT JOIN `{$tblBVehicles}` bv ON b.booking_id = bv.booking_id
-            LEFT JOIN `{$tblVehicles}` v ON COALESCE(bv.vehicle_id, b.vehicle_id) = v.vehicle_id
+            LEFT JOIN `{$tblVehicles}` v ON bv.vehicle_id = v.vehicle_id
             LEFT JOIN `{$tblTypes}` vt ON v.vehicle_type_id = vt.vehicle_type_id
             LEFT JOIN `{$tblVendors}` vd ON COALESCE(bv.vendor_id, v.vendor_id) = vd.vendor_id
             LEFT JOIN `{$tblBReferences}` r ON b.booking_id = r.booking_id
@@ -263,7 +264,7 @@ switch ($method) {
                 $params[] = $statusFilter;
             }
             if ($search !== '') {
-                $where .= " AND (b.booking_no LIKE ? OR c.customer_name LIKE ? OR o.origin_name LIKE ? OR d.depot_name LIKE ? OR v.plate_no LIKE ?)";
+                $where .= " AND (b.booking_no LIKE ? OR c.customer_name LIKE ? OR o.origin_name LIKE ? OR d.depot_name LIKE ? OR COALESCE(NULLIF(bv.plate_no, ''), v.plate_no) LIKE ?)";
                 $searchTerm = "%{$search}%";
                 $params[] = $searchTerm;
                 $params[] = $searchTerm;
@@ -280,7 +281,8 @@ switch ($method) {
                 $tblDepots,
                 $tblOrigins,
                 $tblVehicles,
-                $tblBReferences
+                $tblBReferences,
+                $tblBVehicles
             ) . $where . " ORDER BY b.booking_id DESC";
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
@@ -542,7 +544,6 @@ switch ($method) {
         $helper2_vendor_id = (int)($personnel_assignment['helper2_vendor_id'] ?? NULL);
 
         //fueltrip_allowance
-        $area = trim($fueltrip_allowance['area'] ?? '');
         $trip_allowance = trim($fueltrip_allowance['trip_allowance'] ?? '');
         $fuel = trim($fueltrip_allowance['fuel'] ?? '');
         $fuel_po = $fueltrip_allowance['fuel_po'] ?? null;
@@ -613,23 +614,22 @@ switch ($method) {
             $stmtVl = $db->prepare($sql);
             $stmtVl->execute($blParams);
 
-            $bsCols = []; $bsPh = []; $bsParams = [];
-            foreach ([
-                'booking_id'=>$booking_id,
-                'area'=>$area,
-                'trip_allowance'=>$trip_allowance,
-                'fuel'=>$fuel,
-                'fuel_po'=>$fuel_po,
-                'fuel_amount'=>$fuel_amount,
-            ] as $k=>$v) {
-                $bsCols[] = "`{$k}`";
-                $bsPh[]   = '?';
-                $bsParams[] = $v;
-            }
+            // $bsCols = []; $bsPh = []; $bsParams = [];
+            // foreach ([
+            //     'booking_id'=>$booking_id,
+            //     'trip_allowance'=>$trip_allowance,
+            //     'fuel'=>$fuel,
+            //     'fuel_po'=>$fuel_po,
+            //     'fuel_amount'=>$fuel_amount,
+            // ] as $k=>$v) {
+            //     $bsCols[] = "`{$k}`";
+            //     $bsPh[]   = '?';
+            //     $bsParams[] = $v;
+            // }
 
-            $sql = "INSERT INTO `{$tblBFuel}` (" . implode(', ', $bsCols) . ") VALUES (" . implode(', ', $bsPh) . ")";
-            $stmtBs = $db->prepare($sql);
-            $stmtBs->execute($bsParams);
+            // $sql = "INSERT INTO `{$tblBFuel}` (" . implode(', ', $bsCols) . ") VALUES (" . implode(', ', $bsPh) . ")";
+            // $stmtBs = $db->prepare($sql);
+            // $stmtBs->execute($bsParams);
 
             $roleBindings = [
                 ['driver', $driver_id],
@@ -794,7 +794,6 @@ switch ($method) {
             $helper2_vendor_id = (int)($personnel_assignment['helper2_vendor_id'] ?? NULL);
 
             //fueltrip_allowance
-            $area = trim($fueltrip_allowance['area'] ?? '');
             $trip_allowance = trim($fueltrip_allowance['trip_allowance'] ?? '');
             $fuel = trim($fueltrip_allowance['fuel'] ?? '');
             $fuel_po = $fueltrip_allowance['fuel_po'] ?? null;
@@ -854,30 +853,29 @@ switch ($method) {
                 $stmtEI->execute($ev);
             }
 
-            if (array_key_exists('fueltrip_allowance', $input)) {
-                $stmtChkBf = $db->prepare("SELECT booking_id FROM `{$tblBFuel}` WHERE booking_id = ? LIMIT 1");
-                $stmtChkBf->execute([$id]);
-                $exBf = $stmtChkBf->fetch();
-                $BfData = [
-                    'booking_id'=>$id,
-                    'area'=>$area,
-                    'trip_allowance'=>$trip_allowance,
-                    'fuel'=>$fuel,
-                    'fuel_po'=>$fuel_po,
-                    'fuel_amount'=>$fuel_amount,
-                ];
-                if ($exBf) {
-                    $stmtBU = $db->prepare(
-                        "UPDATE `{$tblBFuel}`
-                         SET area = ?, trip_allowance = ?, fuel = ?, fuel_po = ?, fuel_amount = ?
-                         WHERE booking_id = ?"
-                    );
-                    $stmtBU->execute([$area, $trip_allowance, $fuel, $fuel_po, $fuel_amount, $id]);
-                } else {
-                    $stmtBI = $db->prepare("INSERT INTO `{$tblBFuel}` (booking_id, area, trip_allowance, fuel, fuel_po, fuel_amount) VALUES (?, ?, ?, ?, ?, ?)");
-                    $stmtBI->execute(array_values($BfData));
-                }
-            }
+            // if (array_key_exists('fueltrip_allowance', $input)) {
+            //     $stmtChkBf = $db->prepare("SELECT booking_id FROM `{$tblBFuel}` WHERE booking_id = ? LIMIT 1");
+            //     $stmtChkBf->execute([$id]);
+            //     $exBf = $stmtChkBf->fetch();
+            //     $BfData = [
+            //         'booking_id'=>$id,
+            //         'trip_allowance'=>$trip_allowance,
+            //         'fuel'=>$fuel,
+            //         'fuel_po'=>$fuel_po,
+            //         'fuel_amount'=>$fuel_amount,
+            //     ];
+            //     if ($exBf) {
+            //         $stmtBU = $db->prepare(
+            //             "UPDATE `{$tblBFuel}`
+            //              SET trip_allowance = ?, fuel = ?, fuel_po = ?, fuel_amount = ?
+            //              WHERE booking_id = ?"
+            //         );
+            //         $stmtBU->execute([$trip_allowance, $fuel, $fuel_po, $fuel_amount, $id]);
+            //     } else {
+            //         $stmtBI = $db->prepare("INSERT INTO `{$tblBFuel}` (booking_id, trip_allowance, fuel, fuel_po, fuel_amount) VALUES (?, ?, ?, ?, ?)");
+            //         $stmtBI->execute(array_values($BfData));
+            //     }
+            // }
 
             $roleBindings = [
                 ['driver', $driver_id],
