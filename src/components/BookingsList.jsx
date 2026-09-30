@@ -10,7 +10,7 @@ import CompleteBookingModal from './BookingCompleteModal.jsx';
 const STATUS_TABS = [
   { key: 'all',                 label: 'All',         variant: 'default' },
   { key: 'Under Review',        label: 'Under Review', variant: 'info' },
-  { key: 'Approved',            label: 'Approved',     variant: 'warning' },
+  // { key: 'Approved',            label: 'Approved',     variant: 'warning' },
   { key: 'Dispatched',          label: 'Dispatched',   variant: 'info' },
   { key: 'Delivered',           label: 'Delivered',    variant: 'success' },
   { key: 'Completed',           label: 'Completed',    variant: 'success' },
@@ -484,11 +484,11 @@ function ActionMenu({ booking, onOpen, onClose, isOpen, onView, onEdit, onApprov
               ✓ Dispatch
             </button>
           )}
-          {booking.status_name === 'Approved' && (
+          {/* {booking.status_name === 'Approved' && (
             <button onClick={() => { onClose(); onDispatch(booking); }} style={{ color: '#059669' }}>
               ✓ Dispatch
             </button>
-          )}
+          )} */}
           {booking.status_name === 'Dispatched' && (
             <button onClick={() => { onClose(); onDeliver(booking); }} style={{ color: '#059669' }}>
               ✓ Deliver

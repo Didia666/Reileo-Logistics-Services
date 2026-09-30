@@ -113,7 +113,7 @@ function detailSql(
                     e.nb_toll_fees,
                     e.nb_demurrage_fees,
                     e.nb_backload_fees,
-                    e.nb_other_deduction,	
+                    e.nb_other_deductions,	
                     b.status_id,
                     bs.status_name,
                     b.created_at
@@ -417,32 +417,32 @@ switch ($method) {
             $destination_id = ($destinationValue === null || $destinationValue === '' || (int)$destinationValue === 0)
                 ? null
                 : (int)$destinationValue;
-            $client_rate = (int)($booking_info['client_rate'] ?? NULL);
-            $trips_number = (int)($booking_info['trips_number'] ?? NULL);
-            $total_amount = (int)($booking_info['total_amount'] ?? NULL);
-            $subcon_rate = (int)($booking_info['subcon_rate'] ?? NULL);
+            $client_rate = (float)($booking_info['client_rate'] ?? NULL);
+            $trips_number = (float)($booking_info['trips_number'] ?? NULL);
+            $total_amount = (float)($booking_info['total_amount'] ?? NULL);
+            $subcon_rate = (float)($booking_info['subcon_rate'] ?? NULL);
 
 
             //fueltrip_allowance
             $charges = trim($fuel_trip['charges'] ?? '');
-            $fuel = trim($fuel_trip['fuel'] ?? '');
+            $fuel = ($fuel_trip['fuel'] ?? '') !== '' ? (float)$fuel_trip['fuel'] : null;
             $fuel_po = $fuel_trip['fuel_po'] ?? null;
-            $fuel_amount = $fuel_trip['fuel_amount'] ?? null;
+            $fuel_amount = ($fuel_trip['fuel_amount'] ?? '') !== '' ? (float)$fuel_trip['fuel_amount'] : null;
 
             //references
             $client_ref_no = trim($references['client_ref_no'] ?? '');
             $remarks = trim($references['remarks'] ?? '');
 
             //expenses
-            $b_toll_fees = trim($expenses['b_toll_fees'] ?? '');
-            $b_extra_drop = trim($expenses['b_extra_drop'] ?? '');
-            $b_extra_helper = trim($expenses['b_extra_helper'] ?? '');
-            $b_other_fees = trim($expenses['b_other_fees'] ?? '');
-            $nb_parking_fees = trim($expenses['nb_parking_fees'] ?? '');
-            $nb_toll_fees = trim($expenses['nb_toll_fees'] ?? '');
-            $nb_demurrage_fees = trim($expenses['nb_demurrage_fees'] ?? '');
-            $nb_backload_fees = trim($expenses['nb_backload_fees'] ?? '');
-            $nb_other_deductions = trim($expenses['nb_other_deductions'] ?? '');
+            $b_toll_fees = ($expenses['b_toll_fees'] ?? '') !== '' ? (float)$expenses['b_toll_fees'] : null;
+            $b_extra_drop = ($expenses['b_extra_drop'] ?? '') !== '' ? (float)$expenses['b_extra_drop'] : null;
+            $b_extra_helper = ($expenses['b_extra_helper'] ?? '') !== '' ? (float)$expenses['b_extra_helper'] : null;
+            $b_other_fees = ($expenses['b_other_fees'] ?? '') !== '' ? (float)$expenses['b_other_fees'] : null;
+            $nb_parking_fees = ($expenses['nb_parking_fees'] ?? '') !== '' ? (float)$expenses['nb_parking_fees'] : null;
+            $nb_toll_fees = ($expenses['nb_toll_fees'] ?? '') !== '' ? (float)$expenses['nb_toll_fees'] : null;
+            $nb_demurrage_fees = ($expenses['nb_demurrage_fees'] ?? '') !== '' ? (float)$expenses['nb_demurrage_fees'] : null;
+            $nb_backload_fees = ($expenses['nb_backload_fees'] ?? '') !== '' ? (float)$expenses['nb_backload_fees'] : null;
+            $nb_other_deductions = ($expenses['nb_other_deductions'] ?? '') !== '' ? (float)$expenses['nb_other_deductions'] : null;
 
             if ($plate_no  === '') echoJson(['error' => 'Plate Number is required'], 400);
             if ($delivered_datetime === '') echoJson(['error' => 'Delivered Date is required'], 400);
@@ -480,17 +480,22 @@ switch ($method) {
                 $delivered_datetime, $received_datetime, $destination_id, $trips_number, $deliveredStatusId, $id
             ]);
 
-            $stmtBP = $db->prepare(
-                "INSERT INTO `{$tblBClientCost}` SET
-                    client_rate = ?,
-                    total_amount = ?,
-                    subcon_rate = ?
-                 WHERE booking_id = ?"
-            );
-
-            $stmtBP->execute([
-                $client_rate, $total_amount, $subcon_rate, $id
-            ]);
+            $stmtChkCost = $db->prepare("SELECT booking_id FROM `{$tblBClientCost}` WHERE booking_id = ? LIMIT 1");
+            $stmtChkCost->execute([$id]);
+            if ($stmtChkCost->fetch()) {
+                $stmtCost = $db->prepare(
+                    "UPDATE `{$tblBClientCost}`
+                     SET client_rate = ?, total_amount = ?, subcon_rate = ?
+                     WHERE booking_id = ?"
+                );
+                $stmtCost->execute([$client_rate, $total_amount, $subcon_rate, $id]);
+            } else {
+                $stmtCost = $db->prepare(
+                    "INSERT INTO `{$tblBClientCost}` (booking_id, client_rate, total_amount, subcon_rate)
+                     VALUES (?, ?, ?, ?)"
+                );
+                $stmtCost->execute([$id, $client_rate, $total_amount, $subcon_rate]);
+            }
 
             $stmtOdo = $db->prepare("UPDATE `{$tblBVehicles}` SET odometer = ? WHERE booking_id = ?");
             $stmtOdo->execute([$odometer, $id]);
@@ -515,7 +520,7 @@ switch ($method) {
                     );
                     $stmtBU->execute([$charges, $fuel, $fuel_po, $fuel_amount, $id]);
                 } else {
-                    $stmtBI = $db->prepare("INSERT INTO `{$tblBFuel}` (booking_id, charges, fuel, fuel_po, fuel_amount) VALUES (?, ?, ?, ?, ?, ?)");
+                    $stmtBI = $db->prepare("INSERT INTO `{$tblBFuel}` (booking_id, charges, fuel, fuel_po, fuel_amount) VALUES (?, ?, ?, ?, ?)");
                     $stmtBI->execute(array_values($BfData));
                 }
             }
@@ -540,32 +545,54 @@ switch ($method) {
                 $stmtEMI->execute([$id, $RData['client_ref_no'], $RData['remarks']]);
             }
 
-            $stmtBP = $db->prepare(
-                "INSERT INTO `{$tblBExpenses}` SET
-                    b_toll_fees = ?,
-                    b_extra_drop = ?,
-                    b_extra_helper = ?,
-                    b_other_fees = ?,
-                    nb_parking_fees = ?,
-                    nb_toll_fees = ?,
-                    nb_demurrage_fees = ?,
-                    nb_backload_fees = ?,
-                    nb_other_deductions = ?
-                 WHERE booking_id = ?"
-            );
-
-            $stmtBP->execute([
-                $b_toll_fees,
-                $b_extra_drop,
-                $b_extra_helper,
-                $b_other_fees,
-                $nb_parking_fees,
-                $nb_toll_fees,
-                $nb_demurrage_fees,
-                $nb_backload_fees,
-                $nb_other_deductions,
-                $id
-            ]);
+            $stmtChkExpenses = $db->prepare("SELECT booking_id FROM `{$tblBExpenses}` WHERE booking_id = ? LIMIT 1");
+            $stmtChkExpenses->execute([$id]);
+            if ($stmtChkExpenses->fetch()) {
+                $stmtExpenses = $db->prepare(
+                    "UPDATE `{$tblBExpenses}` SET
+                        b_toll_fees = ?,
+                        b_extra_drop = ?,
+                        b_extra_helper = ?,
+                        b_other_fees = ?,
+                        nb_parking_fees = ?,
+                        nb_toll_fees = ?,
+                        nb_demurrage_fees = ?,
+                        nb_backload_fees = ?,
+                        nb_other_deductions = ?
+                     WHERE booking_id = ?"
+                );
+                $stmtExpenses->execute([
+                    $b_toll_fees,
+                    $b_extra_drop,
+                    $b_extra_helper,
+                    $b_other_fees,
+                    $nb_parking_fees,
+                    $nb_toll_fees,
+                    $nb_demurrage_fees,
+                    $nb_backload_fees,
+                    $nb_other_deductions,
+                    $id
+                ]);
+            } else {
+                $stmtExpenses = $db->prepare(
+                    "INSERT INTO `{$tblBExpenses}`
+                        (booking_id, b_toll_fees, b_extra_drop, b_extra_helper, b_other_fees,
+                         nb_parking_fees, nb_toll_fees, nb_demurrage_fees, nb_backload_fees, nb_other_deductions)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                );
+                $stmtExpenses->execute([
+                    $id,
+                    $b_toll_fees,
+                    $b_extra_drop,
+                    $b_extra_helper,
+                    $b_other_fees,
+                    $nb_parking_fees,
+                    $nb_toll_fees,
+                    $nb_demurrage_fees,
+                    $nb_backload_fees,
+                    $nb_other_deductions
+                ]);
+            }
 
 
             $db->commit();

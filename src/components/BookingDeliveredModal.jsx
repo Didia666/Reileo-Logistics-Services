@@ -513,7 +513,7 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 Booking Information
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
@@ -574,7 +574,7 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 References
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
@@ -608,11 +608,11 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 Expenses
               </legend>
               <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 Billable
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
@@ -633,7 +633,7 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
                 
 
                 <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-                <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+                <legend style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                   Non-Billable
                 </legend>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
@@ -687,7 +687,7 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
         }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 600, color: '#111827' }}>
-              {viewOnly ? 'View Booking' : 'New Booking'}
+              {viewOnly ? 'View Booking' : <>Update status to DELIVERED -  <span style={{ color: '#2563eb' }}>Booking #:</span>  <span style={{ fontWeight: 400 }}>{editBooking?.booking_no}</span></>}
             </div>
             {viewOnly && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Read-only mode</div>}
           </div>
@@ -715,27 +715,19 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
           </div>
         </div>
 
-        <div style={{
-          display: 'flex', borderBottom: '1px solid #e5e7eb',
-          background: '#fafafa', padding: '0 10px', overflowX: 'auto',
-        }}>
+        <div className="tabs" style={{ margin: '0 10px 16px', flexWrap: 'nowrap', overflowX: 'auto' }}>
           {TABS.map(t => (
             <button
               key={t.key}
+              type="button"
+              className={activeTab === t.key ? 'active' : ''}
               onClick={() => setActiveTab(t.key)}
-              style={{
-                padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap',
-                fontWeight: activeTab === t.key ? 600 : 400,
-                color: activeTab === t.key ? '#1d4ed8' : '#4b5563',
-                background: 'transparent', border: 'none', borderBottom: activeTab === t.key ? '2px solid #1d4ed8' : '2px solid transparent',
-                marginBottom: -1, cursor: 'pointer',
-              }}
             >
               {t.label}
             </button>
           ))}
         </div>
-
+        
         <div style={{ flex: 1, overflowY: 'auto', background: '#fff' }}>
           {renderTab()}
         </div>

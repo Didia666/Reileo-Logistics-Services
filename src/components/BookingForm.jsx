@@ -10,6 +10,8 @@ const TABS = [
   { key: 'references', label: 'References' },
   { key: 'itemdetails',   label: 'Item Details' },
   { key: 'bookingphotos', label: 'Booking Photos' },
+  { key: 'expenses', label: 'Expenses' },
+  { key: 'pricingdetails', label: 'Pricing Details' },
 ];
 
 function Field({ label, required, error, children, hint, style }) {
@@ -515,8 +517,12 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
   };
 
   const fuelTripStatuses = ['Dispatched', 'Delivered', 'Completed'];
+  const expenses = ['Delivered', 'Completed'];
+  const pricingdetail = ['Delivered', 'Completed'];
   const visibleTabs = TABS.filter(tab => (
-    tab.key !== 'fueltripallowance' || fuelTripStatuses.includes(editBooking?.status_name)
+    tab.key !== 'fueltripallowance' || fuelTripStatuses.includes(editBooking?.status_name),
+    tab.key !== 'expenses' || expenses.includes(editBooking?.status_name),
+    tab.key !== 'pricingdetails' || pricingdetail.includes(editBooking?.status_name)
   ));
 
   if (!isOpen) return null;
@@ -623,7 +629,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
     };
 
     return (
-      <Field label={label} required error={errors[`${role}_id`]}>
+      <Field label={label} required={role === 'driver'} error={errors[`${role}_id`]}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12, color: '#374151' }}>
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <input
@@ -675,6 +681,9 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
   const renderTab = () => {
     const selectedCommodity = form.commodity_type_id;
     const selectedVendor = form.vendor_id;
+    const clientRate = Number(form.client_rate) || 0;
+    const tripsNumber = Number(form.trips_number) || 0;
+    const totalAmount = (clientRate * tripsNumber).toFixed(2);
 
     const vehicleOptions = lookupsData.vehicles.filter((vehicle) => {
       const matchesCommodity = !selectedCommodity || String(vehicle.commodity_type_id ?? '') === String(selectedCommodity);
@@ -718,7 +727,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 Booking Information
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
@@ -771,7 +780,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 Vehicle Assignment
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
@@ -830,7 +839,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 Fuel and Trip Allowance
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
@@ -861,7 +870,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 Personnel Assignment
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
@@ -877,7 +886,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 References
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
@@ -899,7 +908,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 Item Details
               </legend>
               {(form.item_details || []).map((item, index) => (
@@ -1014,7 +1023,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 Booking Photos
               </legend>
 
@@ -1070,6 +1079,114 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
             </fieldset>
           </div>
         );
+
+        case 'pricingdetails':
+          return (
+            <div style={{ padding: 18 }}>
+              <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
+                Booking Information
+              </legend>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                  <Field label="Client Rate" required error={errors.client_rate}>
+                    {renderInput('client_rate', 'e.g. 5', 'number')}
+                  </Field>
+                  <Field label="Total Amount">
+                    <output aria-live="polite" style={{ ...readOnlyStyle, fontWeight: 600 }}>
+                      {totalAmount}
+                    </output>
+                  </Field>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                  {form.driver_id && (
+                    <>
+                      <Field label="Driver Rate">
+                        {renderInput('driver_rate', 'e.g. 5', 'number')}
+                      </Field>
+                      <Field label="Driver Allowance">
+                        {renderInput('driver_allowance', 'e.g. 5', 'number')}
+                      </Field>
+                    </>
+                  )}
+                  {form.helper1_id && (
+                    <>
+                      <Field label="Helper 1 Rate">
+                        {renderInput('helper1_rate', 'e.g. 5', 'number')}
+                      </Field>
+                      <Field label="Helper 1 Allowance">
+                        {renderInput('helper1_allowance', 'e.g. 5', 'number')}
+                      </Field>
+                    </>
+                  )}
+                  {form.helper2_id && (
+                    <>
+                      <Field label="Helper 2 Rate">
+                        {renderInput('helper2_rate', 'e.g. 5', 'number')}
+                      </Field>
+                      <Field label="Helper 2 Allowance">
+                        {renderInput('helper2_allowance', 'e.g. 5', 'number')}
+                      </Field>
+                    </>
+                  )}
+                </div>
+              </fieldset>
+            </div>
+          );
+
+        case 'expenses':
+        return (
+          <div style={{ padding: 18 }}>
+            <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
+                Expenses
+              </legend>
+              <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
+              <legend style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
+                Billable
+              </legend>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                <Field label="Toll Fees">
+                  {renderInput('b_toll_fees', 'e.g. 1000', 'number')}
+                </Field>
+                <Field label="Extra Drop">
+                  {renderInput('b_extra_drop', 'e.g. 500', 'number')}
+                </Field>
+                <Field label="Extra Helper">
+                  {renderInput('b_extra_helper', 'e.g. 200', 'number')}
+                </Field>
+                <Field label="Other Expenses/Fees">
+                  {renderInput('b_other_fees', 'e.g. 300', 'number')}
+                </Field>
+                </div>
+                </fieldset>
+                
+
+                <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
+                <legend style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
+                  Non-Billable
+                </legend>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                <Field label="Parking Fees">
+                  {renderInput('nb_parking_fees', 'e.g. 100', 'number')}
+                </Field>
+                <Field label="Toll Fees - Non Billable">
+                  {renderInput('nb_toll_fees', 'e.g. 500', 'number')}
+                </Field>
+                <Field label="Demurrage Fees">
+                  {renderInput('nb_demurrage_fees', 'e.g. 200', 'number')}
+                </Field>
+                <Field label="Backload Fees">
+                  {renderInput('nb_backload_fees', 'e.g. 300', 'number')}
+                </Field>
+                <Field label="Other Deductions">
+                  {renderInput('nb_other_deductions', 'e.g. 100', 'number')}
+                </Field>
+                </div>
+                </fieldset>
+
+            </fieldset>
+          </div>
+        );
         
       
 
@@ -1095,7 +1212,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
         }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 600, color: '#111827' }}>
-              {viewOnly ? 'View Booking' : (editBooking ? 'Edit Booking' : 'New Booking')}
+              {viewOnly ? 'View Booking' : <>Edit <span style={{ color: '#2563eb' }}>Booking #:</span> <span style={{ fontWeight: 400 }}>{editBooking?.booking_no}</span></>}
             </div>
             {viewOnly && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Read-only mode</div>}
           </div>
@@ -1123,21 +1240,13 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
           </div>
         </div>
 
-        <div style={{
-          display: 'flex', borderBottom: '1px solid #e5e7eb',
-          background: '#fafafa', padding: '0 10px', overflowX: 'auto',
-        }}>
+        <div className="tabs" style={{ margin: '0 10px 16px', flexWrap: 'nowrap', overflowX: 'auto' }}>
           {visibleTabs.map(t => (
             <button
               key={t.key}
+              type="button"
+              className={activeTab === t.key ? 'active' : ''}
               onClick={() => setActiveTab(t.key)}
-              style={{
-                padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap',
-                fontWeight: activeTab === t.key ? 600 : 400,
-                color: activeTab === t.key ? '#1d4ed8' : '#4b5563',
-                background: 'transparent', border: 'none', borderBottom: activeTab === t.key ? '2px solid #1d4ed8' : '2px solid transparent',
-                marginBottom: -1, cursor: 'pointer',
-              }}
             >
               {t.label}
             </button>
