@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import {
   LayoutDashboard, Home, ClipboardList, Receipt, Car, Bell,
-  AlertTriangle, Wrench, Package, Fuel, BarChart3, FileText, LogOut, Settings2, Users, UserCheck,
+  AlertTriangle, Wrench, Package, Fuel, BarChart3, FileText, LogOut, Settings2, Users, UserCheck, UserCog,
 } from 'lucide-react';
+import AccountManagementModal from './AccountManagementModal.jsx';
 
 const NAV = [
   { to: '/dashboard',    label: 'Dashboard',        Icon: LayoutDashboard },
@@ -27,8 +28,9 @@ const NAV = [
 ];
 
 export default function Sidebar() {
-  const { user, logout } = useAuth();
+  const { user, logout, refresh } = useAuth();
   const navigate = useNavigate();
+  const [accountOpen, setAccountOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -36,6 +38,7 @@ export default function Sidebar() {
   };
 
   return (
+    <>
     <aside className="sidebar">
       <div className="sidebar-brand">
         <img src="/images/logo.png" alt="Reileo Logistics Services" />
@@ -48,13 +51,28 @@ export default function Sidebar() {
         ))}
       </nav>
       <div className="sidebar-user">
-        <div className="u-name">{user?.username || 'User'}</div>
-        <div className="u-role">{(user?.role || '').toUpperCase()}</div>
+        <button
+          type="button"
+          className="sidebar-account-trigger"
+          onClick={() => setAccountOpen(true)}
+        >
+          <UserCog size={15} />
+          <span>
+            <span className="u-name">{user?.username || 'User'}</span>
+            <span className="u-role">Manage account</span>
+          </span>
+        </button>
         <button onClick={handleLogout}>
           <LogOut size={12} style={{ verticalAlign: -2, marginRight: 6 }} />
           Logout
         </button>
       </div>
     </aside>
+    <AccountManagementModal
+      isOpen={accountOpen}
+      onClose={() => setAccountOpen(false)}
+      onUpdated={refresh}
+    />
+    </>
   );
 }

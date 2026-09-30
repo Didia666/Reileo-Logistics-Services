@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Truck, Loader2 } from 'lucide-react';
 
@@ -70,6 +70,9 @@ export default function Login() {
             {submitting ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
+        <p className="login-links">
+          Forgot your password? <Link to="/forgot-password">Reset it here</Link>
+        </p>
         <div className="hint">
           <strong>Default credentials</strong> (run <code>api/db_setup.sql</code> once):<br />
           <code>admin / password</code>, <code>employee / password</code>, <code>customer / password</code>

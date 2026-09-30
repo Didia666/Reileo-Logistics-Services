@@ -35,7 +35,8 @@ async function request(path, options = {}) {
   if (
     isMutation &&
     !isAuditRequest &&
-    !path.includes('/login.php')
+    !path.includes('/login.php') &&
+    !path.includes('/password_reset.php')
   ) {
     const query = new URLSearchParams(
       path.split('?')[1] || ''
@@ -64,8 +65,10 @@ async function request(path, options = {}) {
         ? JSON.parse(options.body)
         : null;
 
-      if (changes?.password) {
-        delete changes.password;
+      if (changes && typeof changes === 'object') {
+        Object.keys(changes).forEach((key) => {
+          if (/password/i.test(key)) delete changes[key];
+        });
       }
     } catch {
       /* no-op */
@@ -603,4 +606,34 @@ export const bookingCompleteCrud = {
         body: JSON.stringify(payload),
       }
     ),
+};
+
+export const account = {
+  get: () => request('/account.php'),
+
+  update: (payload) =>
+    request('/account.php', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  changePassword: (payload) =>
+    request('/account.php?action=password', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+};
+
+export const passwordReset = {
+  request: (email) =>
+    request('/password_reset.php?action=request', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  reset: (token, newPassword) =>
+    request('/password_reset.php?action=reset', {
+      method: 'POST',
+      body: JSON.stringify({ token, new_password: newPassword }),
+    }),
 };

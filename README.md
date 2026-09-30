@@ -16,6 +16,15 @@ npm run dev
 
 Then open the printed local URL (usually http://localhost:5173).
 
+## Password recovery email
+
+Password reset uses the bundled PHPMailer SMTP client. Copy
+`api/mail_config.example.php` to `api/mail_config.local.php` and set the
+SMTP host, port, username, password, sender address, and app URL there.
+The local config file is ignored by Git. For local Vite use
+`http://localhost:5173` as the app URL. For Gmail, use an app password and
+revoke any SMTP credentials that were previously committed in source files.
+
 ## What's included
 
 - `src/components/Sidebar.jsx` — left nav (Dashboard, Home, Bookings, Billing

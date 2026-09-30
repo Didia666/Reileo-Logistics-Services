@@ -54,6 +54,22 @@ html, body, #root { margin: 0; padding: 0; height: 100%; font-family: -apple-sys
 }
 .sidebar-user .u-name { font-weight: 600; }
 .sidebar-user .u-role { color: #94a3b8; font-size: 12px; margin-bottom: 6px; }
+.sidebar-user .sidebar-account-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-align: left;
+  background: transparent;
+  color: #e2e8f0;
+  border: 0;
+  padding: 0 0 10px;
+  cursor: pointer;
+}
+.sidebar-account-trigger > span { min-width: 0; display: flex; flex-direction: column; }
+.sidebar-account-trigger .u-name { overflow: hidden; text-overflow: ellipsis; }
+.sidebar-account-trigger .u-role { margin: 2px 0 0; }
+.sidebar-user .sidebar-account-trigger:hover { color: white; }
 .sidebar-user button {
   width: 100%; background: #1e293b; color: #e2e8f0; border: none;
   padding: 7px 10px; border-radius: 5px; cursor: pointer; font-size: 12px;
@@ -72,6 +88,9 @@ html, body, #root { margin: 0; padding: 0; height: 100%; font-family: -apple-sys
 }
 .login-card h1 { margin: 0 0 4px; font-size: 22px; color: #0f172a; }
 .login-card p.subtitle { margin: 0 0 24px; color: #64748b; font-size: 14px; }
+.login-links { margin: 16px 0 0; text-align: center; color: #64748b; font-size: 13px; }
+.login-links a { color: #2563eb; font-weight: 600; text-decoration: none; }
+.login-links a:hover { text-decoration: underline; }
 .login-card .brand {
   display: flex; align-items: center; gap: 10px; margin-bottom: 24px;
 }
@@ -694,6 +713,37 @@ table.data-table tr:hover td { background: #fafbff; }
   justify-content: flex-end;
   gap: 10px;
   background: #f8fafc;
+}
+.account-modal { max-height: calc(100vh - 40px); overflow-y: auto; }
+.account-profile-heading { text-align: center; margin-bottom: 22px; }
+.account-avatar {
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  color: #64748b;
+  background: #f1f5f9;
+}
+.account-profile-heading h4 { margin: 0; color: #334155; font-size: 15px; }
+.account-details { display: grid; gap: 0; }
+.account-detail-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(0, 1.4fr);
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #eef2f7;
+  font-size: 13px;
+}
+.account-detail-row span { color: #64748b; }
+.account-detail-row strong { color: #334155; overflow-wrap: anywhere; }
+.account-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+.account-actions .btn { min-height: 40px; }
+.account-form .form-group:last-child { margin-bottom: 0; }
+@media (max-width: 480px) {
+  .account-actions { grid-template-columns: 1fr; }
+  .account-detail-row { grid-template-columns: 1fr; gap: 4px; }
 }
 
 /* Animate spin (for Loader2) */
