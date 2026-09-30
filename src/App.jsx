@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate, NavLink } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
 import Login from './components/Login.jsx';
+import PasswordRecovery from './components/PasswordRecovery.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import BookingsList from './components/BookingsList.jsx';
 import BookingForm from './components/BookingForm.jsx';
@@ -80,6 +81,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
+      <Route path="/forgot-password" element={<PublicOnly><PasswordRecovery mode="request" /></PublicOnly>} />
+      <Route path="/reset-password" element={<PublicOnly><PasswordRecovery mode="reset" /></PublicOnly>} />
       <Route path="/*" element={<ProtectedRoute><Layout /></ProtectedRoute>} />
     </Routes>
   );

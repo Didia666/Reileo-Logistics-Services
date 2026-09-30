@@ -646,43 +646,10 @@ export default function BookingsList() {
     }
   };
 
-  const confirmComplete = async (form) => {
+  const confirmComplete = async (payload) => {
     if (!completeBooking) return;
     setCompleteSaving(true);
     try {
-      const payload = {
-        completed_at: form.completed_at || null,
-        client_cost: {
-          origin_id: form.origin_id || null,
-          farthest_destination_id: form.farthest_destination_id || null,
-          client_rate: form.client_rate !== '' ? parseFloat(form.client_rate) : null,
-          no_of_trips: form.no_of_trips !== '' ? parseInt(form.no_of_trips) : null,
-          total_amount: form.total_amount !== '' ? parseFloat(form.total_amount) : null,
-          subcon_rate: form.subcon_rate !== '' ? parseFloat(form.subcon_rate) : null,
-        },
-        expenses: {
-          toll_fees: form.toll_fees || 0,
-          extra_drop: form.extra_drop || 0,
-          extra_helper: form.extra_helper || 0,
-          other_expenses: form.other_expenses || 0,
-          parking_fees: form.parking_fees || 0,
-          toll_fees_non_billable: form.toll_fees_non_billable || 0,
-          demurrage_fees: form.demurrage_fees || 0,
-          backload_fees: form.backload_fees || 0,
-          other_deductions: form.other_deductions || 0,
-        },
-        personnel_fee: {
-          driver_id: form.driver_id || null,
-          driver_rate: form.driver_rate !== '' ? parseFloat(form.driver_rate) : null,
-          driver_allowance: form.driver_allowance !== '' ? parseFloat(form.driver_allowance) : null,
-          helper1_id: form.helper1_id || null,
-          helper1_rate: form.helper1_rate !== '' ? parseFloat(form.helper1_rate) : null,
-          helper1_allowance: form.helper1_allowance !== '' ? parseFloat(form.helper1_allowance) : null,
-          helper2_id: form.helper2_id || null,
-          helper2_rate: form.helper2_rate !== '' ? parseFloat(form.helper2_rate) : null,
-          helper2_allowance: form.helper2_allowance !== '' ? parseFloat(form.helper2_allowance) : null,
-        },
-      };
       await bookings.complete(completeBooking.booking_id, payload);
       setAll(prev => prev.map(r => r.booking_id === completeBooking.booking_id ? { ...r, status_name: 'Completed', status_id: 6 } : r));
       setCompleteBooking(null);
