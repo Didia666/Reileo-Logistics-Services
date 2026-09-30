@@ -320,7 +320,7 @@ switch ($method) {
             $fuel_po = trim((string)($underreview['fuel_po'] ?? ''));
             $fuel_po = $fuel_po !== '' ? $fuel_po : null;
             $odometer = ($underreview['odometer'] ?? '') !== ''
-                ? (int)$underreview['odometer']
+                ? (float)$underreview['odometer']
                 : null;
             $remarks = trim($underreview['remarks'] ?? '');
 

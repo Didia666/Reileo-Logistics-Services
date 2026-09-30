@@ -61,12 +61,12 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
   //   weight: '',
   // });
 
-  const personnelIdForRole = (assignments, role) => {
-    const assignment = Array.isArray(assignments)
-      ? assignments.find((item) => item.assignment_role === role)
-      : null;
-    return assignment?.personnel_id ?? '';
-  };
+  // const personnelIdForRole = (assignments, role) => {
+  //   const assignment = Array.isArray(assignments)
+  //     ? assignments.find((item) => item.assignment_role === role)
+  //     : null;
+  //   return assignment?.personnel_id ?? '';
+  // };
   
 
   const blankForm = {
@@ -332,6 +332,7 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
     if (!validate()) return;
     setSubmitting(true);
     try {
+      const totalAmount = Number((Number(form.client_rate) * Number(form.trips_number)).toFixed(2));
       const payload = {
         // Booking Info
         booking_info: {
@@ -343,6 +344,7 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
           destination_id: form.destination_id ? Number(form.destination_id) : null,
           client_rate: form.client_rate ? Number(form.client_rate) : null,
           trips_number: form.trips_number ? Number(form.trips_number) : null, 
+          total_amount: totalAmount,
           subcon_rate: form.subcon_rate ? Number(form.subcon_rate) : null,
         },
 
@@ -448,93 +450,7 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
     );
   };
 
-  // const setPersonnelSource = (role, source) => {
-  //   setField(`${role}_source`, source);
-  //   if (source === 'direct') {
-  //     setField(`${role}_vendor_id`, '');
-  //   }
-  // };
-
-  // const renderPersonnelField = (role, label) => {
-  //   const source = form[`${role}_source`] || 'direct';
-  //   const driverIncluded = role === 'helper1'
-  //     ? Boolean(form.driver_included_h1)
-  //     : role === 'helper2'
-  //       ? Boolean(form.driver_included_h2)
-  //       : false;
-  //   const personnelOptions = lookupsData.personnel.filter((person) => {
-  //     const personnelType = String(person.personnel_type || '').toLowerCase();
-  //     const hasVendor = person.vendor_id !== null && person.vendor_id !== undefined && person.vendor_id !== '' && String(person.vendor_id) !== '0';
-
-  //     if (role === 'driver') {
-  //       if (source === 'direct') {
-  //         return personnelType.includes('driver') && !hasVendor;
-  //       }
-  //       return personnelType.includes('driver') && hasVendor;
-  //     }
-
-  //     if (source === 'direct') {
-  //       return !hasVendor && (driverIncluded || !personnelType.includes('driver'));
-  //     }
-
-  //     return hasVendor && (driverIncluded || !personnelType.includes('driver'));
-  //   });
-
-  //   const handlePersonnelSelection = (e) => { 
-  //     const selectedId = e.target.value;
-  //     const matchedPerson = lookupsData.personnel.find((person) => String(person.personnel_id) === String(selectedId));
-
-  //     setField(`${role}_id`, selectedId);
-  //     if (matchedPerson) {
-  //       setField(`${role}_vendor_id`, matchedPerson.vendor_id ?? '');
-  //     }
-  //   };
-
-  //   return (
-  //     <Field label={label} required error={errors[`${role}_id`]}>
-  //       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12, color: '#374151' }}>
-  //         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-  //           <input
-  //             type="checkbox"
-  //             disabled={viewOnly}
-  //             checked={source === 'direct'}
-  //             onChange={() => setPersonnelSource(role, 'direct')}
-  //           />
-  //           Direct Hired
-  //         </label>
-  //         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-  //           <input
-  //             type="checkbox"
-  //             disabled={viewOnly}
-  //             checked={source === 'outsource'}
-  //             onChange={() => setPersonnelSource(role, 'outsource')}
-  //           />
-  //           Outsourced
-  //         </label>
-  //       </div>
-  //       {source === 'outsource' && (
-  //         <Field label="Outsourced Vendor">
-  //           {renderSelect(`${role}_vendor_id`, lookupsData.vendors, 'vendor_id', 'vendor_name', '- Select Vendor -')}
-  //         </Field>
-  //       )}
-  //       {renderSelect(`${role}_id`, personnelOptions, 'personnel_id', 'full_name', `- Select ${label} -`, false, handlePersonnelSelection)}
-  //       {role !== 'driver' && (
-  //         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 12, color: '#374151' }}>
-  //           <input
-  //             type="checkbox"
-  //             disabled={viewOnly}
-  //             checked={driverIncluded}
-  //             onChange={(e) => setField(
-  //               role === 'helper1' ? 'driver_included_h1' : 'driver_included_h2',
-  //               e.target.checked
-  //             )}
-  //           />
-  //           Driver Included
-  //         </label>
-  //       )}
-  //     </Field>
-  //   );
-  // };
+  
 
     
 
