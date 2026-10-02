@@ -72,26 +72,13 @@ function Field({ label, required, error, children, hint, style }) {
 
 
 const inputStyle = {
-  padding: '8px 10px',
-  border: '1px solid #d1d5db',
-  borderRadius: 6,
-  fontSize: 13,
-  outline: 'none',
-  width: '100%',
-  boxSizing: 'border-box',
-  background: '#fff',
+  padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13,
+  outline: 'none', width: '100%', boxSizing: 'border-box', background: '#fff',
 };
 
-
 const readOnlyStyle = {
-  padding: '8px 10px',
-  border: '1px solid #e5e7eb',
-  borderRadius: 6,
-  fontSize: 13,
-  width: '100%',
-  boxSizing: 'border-box',
-  background: '#f1f5f9',
-  color: '#4b5563',
+  padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 13,
+  width: '100%', boxSizing: 'border-box', background: '#f9fafb', color: '#4b5563',
 };
 
 
@@ -1724,12 +1711,30 @@ export default function CompleteBookingModal({
       onClick={() => {
         if (!busy) onClose();
       }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(17, 24, 39, 0.5)',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+        padding: '2vh 2vw',
+        overflow: 'auto',
+      }}
     >
       <div
-        className="modal modal-lg"
+        className="modal"
         style={{
-          height: 'min(760px, 92vh)',
-          maxHeight: '92vh',
+          background: '#fff',
+          borderRadius: 10,
+          width: '100%',
+          maxWidth: 1100,
+          maxHeight: '96vh',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+          overflow: 'hidden',
         }}
         onClick={(event) =>
           event.stopPropagation()
@@ -1739,7 +1744,7 @@ export default function CompleteBookingModal({
             HEADER
         =================================================== */}
         <div className="modal-header">
-          <h3>
+          <h3 style={{ fontSize: 18 }}>
             Update status to COMPLETED
           </h3>
 

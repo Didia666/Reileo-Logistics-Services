@@ -10,8 +10,8 @@ const TABS = [
   { key: 'references', label: 'References' },
   { key: 'itemdetails',   label: 'Item Details' },
   { key: 'bookingphotos', label: 'Booking Photos' },
-  { key: 'expenses', label: 'Expenses' },
   { key: 'pricingdetails', label: 'Pricing Details' },
+  { key: 'expenses', label: 'Expenses' },
 ];
 
 function Field({ label, required, error, children, hint, style }) {
@@ -36,6 +36,11 @@ const readOnlyStyle = {
   padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 13,
   width: '100%', boxSizing: 'border-box', background: '#f9fafb', color: '#4b5563',
 };
+
+const nullableNumber = (value) =>
+  value === '' || value === null || value === undefined
+    ? null
+    : Number(value);
 export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking, viewOnly }) {
   const [activeTab, setActiveTab] = useState('bookinginfo');
   const [submitting, setSubmitting] = useState(false);
@@ -97,6 +102,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
 
     // Fuel and Trip Allowance
     charges: '',
+    trip_allowance: '',
     fuel: '',
     fuel_po: '',
     fuel_amount: '',
@@ -130,8 +136,28 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
     // Vehicle Photos and Documents
     bk_photos: [{ photo_name: '', photo_path: '' }],
 
-
+    // Pricing Details
+    client_rate: '',
+    total_amount: '',
+    subcon_rate: '',
+    driver_rate: '',
+    driver_allowance: '',
+    helper1_rate: '',
+    helper1_allowance: '',
+    helper2_rate: '',
+    helper2_allowance: '',
     
+    // Expenses 
+    b_toll_fees: '',
+    b_extra_drop: '',
+    b_extra_helper: '',
+    b_other_fees: '',
+    nb_parking_fees: '',
+    nb_toll_fees: '',
+    nb_demurrage_fees: '',
+    nb_backload_fees: '',
+    nb_other_deductions: '',
+
   };
 
   const [form, setForm] = useState(blankForm);
@@ -227,6 +253,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
 
             // Fuel and Trip Allowance
             charges: editBooking.charges ?? '',
+            trip_allowance: editBooking.trip_allowance ?? '',
             fuel: editBooking.fuel ?? '',
             fuel_po: editBooking.fuel_po ?? '',
             fuel_amount: editBooking.fuel_amount ?? '',
@@ -266,7 +293,31 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
                     photo_path: photo.photo_path || '',
                   }))
                 : [{ photo_name: '', photo_path: '' }],
+
+            // Pricing Details
+            client_rate: editBooking.client_rate ?? '',
+            total_amount: editBooking.total_amount ?? '',
+            subcon_rate: editBooking.subcon_rate ?? '',
+            driver_rate: editBooking.driver_rate ?? '',
+            driver_allowance: editBooking.driver_allowance ?? '',
+            helper1_rate: editBooking.helper1_rate ?? '',
+            helper1_allowance: editBooking.helper1_allowance ?? '',
+            helper2_rate: editBooking.helper2_rate ?? '',
+            helper2_allowance: editBooking.helper2_allowance ?? '',
+
+
+            // Expenses
+            b_toll_fees: editBooking.b_toll_fees ?? '',
+            b_extra_drop: editBooking.b_extra_drop ?? '',
+            b_extra_helper: editBooking.b_extra_helper ?? '',
+            b_other_fees: editBooking.b_other_fees ?? '',
+            nb_parking_fees: editBooking.nb_parking_fees ?? '',
+            nb_toll_fees: editBooking.nb_toll_fees ?? '',
+            nb_demurrage_fees: editBooking.nb_demurrage_fees ?? '',
+            nb_backload_fees: editBooking.nb_backload_fees ?? '',
+            nb_other_deductions: editBooking.nb_other_deductions ?? ''
           });
+          
 
         } else {
           bookingCrud.get(editBooking.booking_id).then(full => {
@@ -291,6 +342,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
 
               // Fuel and Trip Allowance
               charges: full.charges ?? '',
+              trip_allowance: full.trip_allowance ?? '',
               fuel: full.fuel ?? '',
               fuel_po: full.fuel_po ?? '',
               fuel_amount: full.fuel_amount ?? '',
@@ -335,8 +387,35 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
                       photo_path: photo.photo_path || '',
                     }))
                   : [{ photo_name: '', photo_path: '' }],
+
+              // Pricing Details
+              client_rate: full.client_rate ?? '',
+              total_amount: full.total_amount ?? '',
+              subcon_rate: full.subcon_rate ?? '',
+              driver_rate: full.driver_rate ?? '',
+              driver_allowance: full.driver_allowance ?? '',
+              helper1_rate: full.helper1_rate ?? '',
+              helper1_allowance: full.helper1_allowance ?? '',
+              helper2_rate: full.helper2_rate ?? '',
+              helper2_allowance: full.helper2_allowance ?? '',
+
+              // Expenses
+              b_toll_fees: full.b_toll_fees ?? '',
+              b_extra_drop: full.b_extra_drop ?? '',
+              b_extra_helper: full.b_extra_helper ?? '',
+              b_other_fees: full.b_other_fees ?? '',
+              nb_parking_fees: full.nb_parking_fees ?? '',
+              nb_toll_fees: full.nb_toll_fees ?? '',
+              nb_demurrage_fees: full.nb_demurrage_fees ?? '',
+              nb_backload_fees: full.nb_backload_fees ?? '',
+              nb_other_deductions: full.nb_other_deductions ?? ''
             });
-          }).catch(() => {});
+          }).catch((error) => {
+            setToast({
+              type: 'error',
+              msg: error?.message || 'Unable to load booking details.',
+            });
+          });
         }
       } else {
         setForm(blankForm);
@@ -460,6 +539,15 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
           commodity_type_id: form.commodity_type_id ? Number(form.commodity_type_id) : null,
           vendor_id: form.vendor_id ? Number(form.vendor_id) : null, 
         },
+
+        // Fuel and Trip Allowance
+        fueltrip_allowance: {
+          charges: form.charges.trim() || null,
+          trip_allowance: nullableNumber(form.trip_allowance),
+          fuel: nullableNumber(form.fuel),
+          fuel_po: nullableNumber(form.fuel_po),
+          fuel_amount: nullableNumber(form.fuel_amount),
+        },
         // Personnel Assignment
         personnel_assignment: {
           driver_id: form.driver_id ? Number(form.driver_id) : null,
@@ -496,6 +584,31 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
             photo_name: row.photo_name.trim() || null,
             photo_path: row.photo_path.trim() || null,
           })),
+
+        pricing_details: {
+          client_rate: nullableNumber(form.client_rate),
+          total_amount: nullableNumber(form.total_amount),
+          subcon_rate: nullableNumber(form.subcon_rate),
+          driver_rate: nullableNumber(form.driver_rate),
+          driver_allowance: nullableNumber(form.driver_allowance),
+          helper1_rate: nullableNumber(form.helper1_rate),
+          helper1_allowance: nullableNumber(form.helper1_allowance),
+          helper2_rate: nullableNumber(form.helper2_rate),
+          helper2_allowance: nullableNumber(form.helper2_allowance),
+        },
+
+        expenses: {
+          b_toll_fees: nullableNumber(form.b_toll_fees),
+          b_extra_drop: nullableNumber(form.b_extra_drop),
+          b_extra_helper: nullableNumber(form.b_extra_helper),
+          b_other_fees: nullableNumber(form.b_other_fees),
+          nb_parking_fees: nullableNumber(form.nb_parking_fees),
+          nb_toll_fees: nullableNumber(form.nb_toll_fees),
+          nb_demurrage_fees: nullableNumber(form.nb_demurrage_fees),
+          nb_backload_fees: nullableNumber(form.nb_backload_fees),
+          nb_other_deductions: nullableNumber(form.nb_other_deductions),
+        },
+
       };
 
       let saved;
@@ -849,6 +962,10 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
                     { value: 'CHARGES RECORDED', label: 'CHARGES RECORDED' }], 
                     'value', 'label', '- Select-')}
                 </Field>
+                <Field label="Trip Allowance (PHP)">
+                  {renderInput('trip_allowance', 'e.g. CL-12345', 'number')}
+                </Field>
+                  
                 <Field label="Fuel (L)">
                   {renderInput('fuel', 'e.g. CL-12345', 'number')}
                 </Field>
@@ -859,9 +976,9 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
                   {renderInput('fuel_amount', 'e.g. CL-12345', 'number')}
                 </Field>
               </div>
-              <Field label="Remarks">
+              {/* <Field label="Remarks">
                 {renderTextarea('remarks', 'Additional notes…')}
-              </Field>
+              </Field> */}
             </fieldset>
           </div>
         );
@@ -1095,6 +1212,11 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
                     <output aria-live="polite" style={{ ...readOnlyStyle, fontWeight: 600 }}>
                       {totalAmount}
                     </output>
+                  </Field>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                  <Field label="Subcon Rate">
+                    {renderInput('subcon_rate', 'e.g. 5', 'number')}
                   </Field>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
