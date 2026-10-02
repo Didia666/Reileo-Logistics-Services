@@ -1,6 +1,7 @@
-import React from 'react';
-import { Routes, Route, Navigate, NavLink } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Routes, Route, Navigate, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
+import { bookingCrud } from './services/api.js';
 import Login from './components/Login.jsx';
 import PasswordRecovery from './components/PasswordRecovery.jsx';
 import Sidebar from './components/Sidebar.jsx';
@@ -14,6 +15,8 @@ import Customers from './components/Customers.jsx';
 import Personnel from './components/Personnel.jsx';
 import Logs from './components/Logs.jsx';
 import Reports from './components/Reports.jsx';
+import Dashboard from './components/Dashboard.jsx';
+import { Loader2 } from 'lucide-react';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -38,6 +41,62 @@ function DashboardPlaceholder({ title }) {
   );
 }
 
+function BookingEditRoute({ viewOnly = false }) {
+  const { id } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [booking, setBooking] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
+
+    bookingCrud.get(id)
+      .then((data) => {
+        if (active) setBooking(data);
+      })
+      .catch((requestError) => {
+        if (active) setError(requestError.message || 'Unable to load this booking.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  const close = () => navigate(location.state?.from || '/bookings', { replace: true });
+
+  if (loading) {
+    return <div className="loading"><Loader2 className="animate-spin" size={20} /> Loading booking…</div>;
+  }
+
+  if (error || !booking) {
+    return (
+      <div className="page-placeholder">
+        <h2>Unable to open booking</h2>
+        <p>{error || 'The requested booking was not found.'}</p>
+        <button type="button" className="btn btn-primary" onClick={close}>Back</button>
+      </div>
+    );
+  }
+
+  return (
+    <BookingForm
+      isOpen
+      editBooking={booking}
+      viewOnly={viewOnly}
+      onClose={close}
+      onSaved={() => {}}
+    />
+  );
+}
+
 function Layout() {
   return (
     <div className="app-layout">
@@ -45,13 +104,14 @@ function Layout() {
       <main className="main-content">
         <Routes>
           <Route path="/" element={<Navigate to="/home" replace />} />
-          <Route path="/dashboard" element={<DashboardPlaceholder title="Dashboard" />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/home" element={<Home />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/personnel" element={<Personnel />} />
           <Route path="/bookings" element={<BookingsList />} />
           <Route path="/bookings/new" element={<BookingForm />} />
-          <Route path="/bookings/:id/edit" element={<BookingForm />} />
+          <Route path="/bookings/:id/edit" element={<BookingEditRoute />} />
+          <Route path="/bookings/:id/view" element={<BookingEditRoute viewOnly />} />
           <Route path="/billing" element={<DashboardPlaceholder title="Billing Management" />} />
           <Route path="/assets" element={<DashboardPlaceholder title="Asset Management" />} />
           <Route path="/vehicles" element={<Vehicles />} />

@@ -151,6 +151,11 @@ export const reports = {
     ),
 };
 
+export const dashboard = {
+  summary: (date) =>
+    request(`/dashboard.php?date=${encodeURIComponent(date)}`),
+};
+
 
 // ============================================================
 // BOOKINGS
