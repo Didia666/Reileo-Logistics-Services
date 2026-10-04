@@ -149,12 +149,43 @@ export default function Vehicles() {
     setFormOpen(true);
   };
 
-  const handleSaved = (savedData) => {
-    if (editVehicle && editVehicle.vehicle_id) {
-      setAll(prev => prev.map(r => r.vehicle_id === savedData.vehicle_id ? savedData : r));
-    } else {
-      setAll(prev => [...prev, savedData]);
+  const handleSaved = async (savedData) => {
+    try {
+      const refreshed = await vehicleCrud.list({ limit: 1000 });
+      const rows = Array.isArray(refreshed)
+        ? refreshed
+        : (Array.isArray(refreshed?.data) ? refreshed.data : []);
+
+      setAll(rows);
+      setTotal(refreshed?.total || rows.length);
+    } catch (error) {
+      const statusName = statuses.find(
+        status => String(status.status_id) === String(savedData.status_id)
+      )?.status_name;
+
+      setAll(prev => {
+        const existingVehicle = prev.find(
+          row => String(row.vehicle_id) === String(savedData.vehicle_id)
+        );
+        const savedVehicle = {
+          ...existingVehicle,
+          ...savedData,
+          status_name: statusName || existingVehicle?.status_name || 'Unknown',
+        };
+
+        return existingVehicle
+          ? prev.map(row => (
+              String(row.vehicle_id) === String(savedData.vehicle_id)
+                ? savedVehicle
+                : row
+            ))
+          : [...prev, savedVehicle];
+      });
+      setTotal(prev => (editVehicle ? prev : prev + 1));
+      setToast(error.message || 'Vehicle saved, but the list could not be refreshed.');
+      setTimeout(() => setToast(''), 4000);
     }
+
     setEditVehicle(null);
     setViewOnly(false);
   };

@@ -101,6 +101,12 @@ export default function CompleteBookingModal({
   });
 
   const [lookupsData, setLookupsData] = useState({
+    customers: [],
+    bookingTypes: [],
+    depots: [],
+    vehicles: [],
+    vehicleTypes: [],
+    commodityTypes: [],
     origins: [],
     destination: [],
     personnel: [],
@@ -116,13 +122,18 @@ export default function CompleteBookingModal({
     completed_at: '',
 
     customer_name: '',
+    customer_id: '',
     booking_type: '',
+    booking_type_id: '',
     depot_name: '',
+    depot_id: '',
 
     vehicle_id: '',
     plate_no: '',
     vehicle_type: '',
+    vehicle_type_id: '',
     commodity_type: '',
+    commodity_type_id: '',
 
 
     // =========================================================
@@ -213,10 +224,40 @@ export default function CompleteBookingModal({
   const loadLookups = async () => {
     try {
       const [
+        customers,
+        bookingTypes,
+        depots,
+        vehicles,
+        vehicleTypes,
+        commodityTypes,
         origins,
         destination,
         personnel,
       ] = await Promise.all([
+        lookupApi.customers
+          ? lookupApi.customers().catch(() => [])
+          : Promise.resolve([]),
+
+        lookupApi.bookingTypes
+          ? lookupApi.bookingTypes().catch(() => [])
+          : Promise.resolve([]),
+
+        lookupApi.depots
+          ? lookupApi.depots().catch(() => [])
+          : Promise.resolve([]),
+
+        lookupApi.vehicles
+          ? lookupApi.vehicles().catch(() => [])
+          : Promise.resolve([]),
+
+        lookupApi.vh_types
+          ? lookupApi.vh_types().catch(() => [])
+          : Promise.resolve([]),
+
+        lookupApi.commodity_type
+          ? lookupApi.commodity_type().catch(() => [])
+          : Promise.resolve([]),
+
         lookupApi.origins
           ? lookupApi.origins().catch(() => [])
           : Promise.resolve([]),
@@ -238,12 +279,24 @@ export default function CompleteBookingModal({
 
 
       setLookupsData({
+        customers: normalize(customers),
+        bookingTypes: normalize(bookingTypes),
+        depots: normalize(depots),
+        vehicles: normalize(vehicles),
+        vehicleTypes: normalize(vehicleTypes),
+        commodityTypes: normalize(commodityTypes),
         origins: normalize(origins),
         destination: normalize(destination),
         personnel: normalize(personnel),
       });
     } catch {
       setLookupsData({
+        customers: [],
+        bookingTypes: [],
+        depots: [],
+        vehicles: [],
+        vehicleTypes: [],
+        commodityTypes: [],
         origins: [],
         destination: [],
         personnel: [],
@@ -319,15 +372,30 @@ export default function CompleteBookingModal({
         booking?.customer_name ||
         '',
 
+      customer_id:
+        detail.customer_id ??
+        booking?.customer_id ??
+        '',
+
       booking_type:
         detail.book_type ||
         detail.booking_type ||
         booking?.booking_type ||
         '',
 
+      booking_type_id:
+        detail.booking_type_id ??
+        booking?.booking_type_id ??
+        '',
+
       depot_name:
         detail.depot_name ||
         booking?.depot_name ||
+        '',
+
+      depot_id:
+        detail.depot_id ??
+        booking?.depot_id ??
         '',
 
       vehicle_id:
@@ -345,8 +413,18 @@ export default function CompleteBookingModal({
         detail.truck_type ||
         '',
 
+      vehicle_type_id:
+        detail.vehicle_type_id ??
+        booking?.vehicle_type_id ??
+        '',
+
       commodity_type:
         detail.commodity_type ||
+        '',
+
+      commodity_type_id:
+        detail.commodity_type_id ??
+        booking?.commodity_type_id ??
         '',
 
 
@@ -512,6 +590,61 @@ export default function CompleteBookingModal({
   };
 
 
+  const handleCommodityTypeChange = (event) => {
+    const commodityTypeId = event.target.value;
+    setField('commodity_type_id', commodityTypeId);
+    const selectedVehicle = lookupsData.vehicles.find(
+      (vehicle) => String(vehicle.vehicle_id) === String(form.vehicle_id)
+    );
+
+    if (
+      form.vehicle_id &&
+      (!selectedVehicle || (
+        commodityTypeId &&
+        String(selectedVehicle.commodity_type_id ?? '') !== String(commodityTypeId)
+      ))
+    ) {
+      setField('vehicle_id', '');
+      setField('plate_no', '');
+    }
+  };
+
+
+  const handleVehicleTypeChange = (event) => {
+    const vehicleTypeId = event.target.value;
+    setField('vehicle_type_id', vehicleTypeId);
+    const selectedType = lookupsData.vehicleTypes.find(
+      (vehicleType) => String(vehicleType.vehicle_type_id) === String(vehicleTypeId)
+    );
+    setField('vehicle_type', selectedType?.vehicle_type || '');
+
+    const selectedVehicle = lookupsData.vehicles.find(
+      (vehicle) => String(vehicle.vehicle_id) === String(form.vehicle_id)
+    );
+    if (
+      !vehicleTypeId ||
+      !selectedVehicle ||
+      String(selectedVehicle.vehicle_type_id) !== String(vehicleTypeId)
+    ) {
+      setField('vehicle_id', '');
+      setField('plate_no', '');
+    }
+  };
+
+
+  const handleVehicleChange = (event) => {
+    const vehicleId = event.target.value;
+    const selectedVehicle = lookupsData.vehicles.find(
+      (vehicle) => String(vehicle.vehicle_id) === String(vehicleId)
+    );
+
+    setField('vehicle_id', vehicleId);
+    setField('plate_no', selectedVehicle?.plate_no || '');
+    setField('vehicle_type_id', selectedVehicle?.vehicle_type_id ?? '');
+    setField('vehicle_type', selectedVehicle?.vehicle_type || '');
+  };
+
+
   // =========================================================
   // TOTAL AMOUNT
   // =========================================================
@@ -533,6 +666,12 @@ export default function CompleteBookingModal({
 
 
     // Booking Information
+    if (!form.customer_id) errs.customer_id = 'Customer is required.';
+    if (!form.booking_type_id) errs.booking_type_id = 'Booking type is required.';
+    if (!form.depot_id) errs.depot_id = 'Depot is required.';
+    if (!form.commodity_type_id) errs.commodity_type_id = 'Commodity type is required.';
+    if (!form.vehicle_type_id) errs.vehicle_type_id = 'Truck type is required.';
+    if (!form.vehicle_id) errs.vehicle_id = 'Vehicle number is required.';
     if (!String(form.completed_at || '').trim()) {
       errs.completed_at =
         'Completed date & time is required.';
@@ -596,7 +735,15 @@ export default function CompleteBookingModal({
 
 
     if (Object.keys(errs).length) {
-      if (errs.completed_at) {
+      if (
+        errs.customer_id ||
+        errs.booking_type_id ||
+        errs.depot_id ||
+        errs.commodity_type_id ||
+        errs.vehicle_type_id ||
+        errs.vehicle_id ||
+        errs.completed_at
+      ) {
         setActiveTab('bookinginfo');
       } else if (
         errs.farthest_destination_id ||
@@ -658,6 +805,18 @@ export default function CompleteBookingModal({
        */
     const payload = {
       completed_at: form.completed_at.trim() || null,
+
+      booking_info: {
+        customer_id: Number(form.customer_id),
+        booking_type_id: Number(form.booking_type_id),
+        depot_id: Number(form.depot_id),
+        commodity_type_id: Number(form.commodity_type_id),
+      },
+
+      vehicle_assignment: {
+        vehicle_id: Number(form.vehicle_id),
+        vehicle_type_id: Number(form.vehicle_type_id),
+      },
 
       client_cost: {
         origin_id: form.origin_id
@@ -1059,6 +1218,14 @@ export default function CompleteBookingModal({
   // =========================================================
 
   const renderTab = () => {
+    const vehicleOptions = lookupsData.vehicles.filter((vehicle) => {
+      const matchesCommodity = !form.commodity_type_id ||
+        String(vehicle.commodity_type_id ?? '') === String(form.commodity_type_id);
+      const matchesType = !form.vehicle_type_id ||
+        String(vehicle.vehicle_type_id ?? '') === String(form.vehicle_type_id);
+      return matchesCommodity && matchesType;
+    });
+
     switch (activeTab) {
 
 
@@ -1119,16 +1286,6 @@ export default function CompleteBookingModal({
                 </Field>
 
 
-                <Field label="Vehicle Type">
-                  {renderReadOnly(
-                    form.vehicle_type
-                  )}
-                </Field>
-
-
-                <div />
-
-
                 <Field
                   label="Completed Date & Time"
                   required
@@ -1149,9 +1306,14 @@ export default function CompleteBookingModal({
                 </Field>
 
 
-                <Field label="Customer">
-                  {renderReadOnly(
-                    form.customer_name
+                <Field label="Customer" required error={errors.customer_id}>
+                  {renderSelect(
+                    'customer_id',
+                    lookupsData.customers,
+                    'customer_id',
+                    'customer_name',
+                    '- Select Customer -',
+                    false
                   )}
                 </Field>
 
@@ -1159,37 +1321,63 @@ export default function CompleteBookingModal({
                 <div />
 
 
-                <Field label="Booking Type">
-                  {renderReadOnly(
-                    form.booking_type
+                <Field label="Booking Type" required error={errors.booking_type_id}>
+                  {renderSelect(
+                    'booking_type_id',
+                    lookupsData.bookingTypes,
+                    'booking_type_id',
+                    'book_type',
+                    '- Select Booking Type -'
                   )}
                 </Field>
 
 
-                <Field label="Depot">
-                  {renderReadOnly(
-                    form.depot_name
+                <Field label="Depot" required error={errors.depot_id}>
+                  {renderSelect(
+                    'depot_id',
+                    lookupsData.depots,
+                    'depot_id',
+                    'depot_name',
+                    '- Select Depot -'
                   )}
                 </Field>
 
 
-                <Field label="Vehicle No.">
-                  {renderReadOnly(
-                    form.plate_no
+                <Field label="Vehicle No." required error={errors.vehicle_id}>
+                  {renderSelect(
+                    'vehicle_id',
+                    vehicleOptions,
+                    'vehicle_id',
+                    'plate_no',
+                    '- Select Vehicle -',
+                    false,
+                    handleVehicleChange
                   )}
                 </Field>
 
 
-                <Field label="Truck Type">
-                  {renderReadOnly(
-                    form.vehicle_type
+                <Field label="Truck Type" required error={errors.vehicle_type_id}>
+                  {renderSelect(
+                    'vehicle_type_id',
+                    lookupsData.vehicleTypes,
+                    'vehicle_type_id',
+                    'vehicle_type',
+                    '- Select Truck Type -',
+                    false,
+                    handleVehicleTypeChange
                   )}
                 </Field>
 
 
-                <Field label="Commodity Type">
-                  {renderReadOnly(
-                    form.commodity_type
+                <Field label="Commodity Type" required error={errors.commodity_type_id}>
+                  {renderSelect(
+                    'commodity_type_id',
+                    lookupsData.commodityTypes,
+                    'commodity_type_id',
+                    'commodity_type',
+                    '- Select Commodity Type -',
+                    false,
+                    handleCommodityTypeChange
                   )}
                 </Field>
               </div>
@@ -1569,121 +1757,51 @@ export default function CompleteBookingModal({
                 Personnel Fee
               </legend>
 
-
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns:
-                    '1fr 1fr 1fr',
+                  gridTemplateColumns: '1fr 1fr 1fr',
                   gap: 18,
                 }}
               >
-                {/* DRIVER */}
                 <Field label="Driver">
-                  {renderReadOnly(
-                    getPersonnelName(
-                      form.driver_id
-                    )
-                  )}
+                  {renderReadOnly(getPersonnelName(form.driver_id))}
                 </Field>
-
-
-                <div />
-
-
-                <Field
-                  label="Driver Rate"
-                  error={errors.driver_rate}
-                >
-                  {renderInput(
-                    'driver_rate',
-                    '0.00',
-                    'number'
-                  )}
+                <Field label="Driver Rate" error={errors.driver_rate}>
+                  {renderInput('driver_rate', '0.00', 'number')}
                 </Field>
-
-
                 <Field label="Driver Allowance">
-                  {renderInput(
-                    'driver_allowance',
-                    '0.00',
-                    'number'
-                  )}
+                  {renderInput('driver_allowance', '0.00', 'number')}
                 </Field>
 
+                {form.helper1_id && (
+                  <>
+                    <Field label="Helper 1">
+                      {renderReadOnly(getPersonnelName(form.helper1_id))}
+                    </Field>
+                    <Field
+                      label="Helper 1 Rate"
+                      required
+                      error={errors.helper1_rate}
+                    >
+                      {renderInput('helper1_rate', '0.00', 'number')}
+                    </Field>
+                    <Field label="Helper 1 Allowance">
+                      {renderInput('helper1_allowance', '0.00', 'number')}
+                    </Field>
+                  </>
+                )}
 
-                {/* HELPER 1 */}
-                <Field label="Helper 1">
-                  {renderReadOnly(
-                    getPersonnelName(
-                      form.helper1_id
-                    )
-                  )}
-                </Field>
-
-
-                <div />
-
-
-                <Field
-                  label="Helper 1 Rate"
-                  required={Boolean(
-                    form.helper1_id
-                  )}
-                  error={errors.helper1_rate}
-                >
-                  {renderInput(
-                    'helper1_rate',
-                    '0.00',
-                    'number',
-                    !form.helper1_id
-                  )}
-                </Field>
-
-
-                <Field label="Helper 1 Allowance">
-                  {renderInput(
-                    'helper1_allowance',
-                    '0.00',
-                    'number',
-                    !form.helper1_id
-                  )}
-                </Field>
-
-
-                {/* HELPER 2 */}
                 {form.helper2_id && (
                   <>
                     <Field label="Helper 2">
-                      {renderReadOnly(
-                        getPersonnelName(
-                          form.helper2_id
-                        )
-                      )}
+                      {renderReadOnly(getPersonnelName(form.helper2_id))}
                     </Field>
-
-
-                    <div />
-
-
-                    <Field
-                      label="Helper 2 Rate"
-                      error={errors.helper2_rate}
-                    >
-                      {renderInput(
-                        'helper2_rate',
-                        '0.00',
-                        'number'
-                      )}
+                    <Field label="Helper 2 Rate" error={errors.helper2_rate}>
+                      {renderInput('helper2_rate', '0.00', 'number')}
                     </Field>
-
-
                     <Field label="Helper 2 Allowance">
-                      {renderInput(
-                        'helper2_allowance',
-                        '0.00',
-                        'number'
-                      )}
+                      {renderInput('helper2_allowance', '0.00', 'number')}
                     </Field>
                   </>
                 )}

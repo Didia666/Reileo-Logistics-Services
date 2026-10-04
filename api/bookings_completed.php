@@ -106,8 +106,12 @@ if ($method === 'GET') {
         $sql = "SELECT
                     b.booking_id,
                     b.booking_no,
+                    b.customer_id,
+                    b.booking_type_id,
                     b.delivery_date,
                     b.completed_at,
+                    b.depot_id,
+                    b.commodity_type_id,
                     b.trips_number,
                     b.origin_id,
                     b.destination_id,
@@ -122,7 +126,9 @@ if ($method === 'GET') {
                     dest.destination_name,
 
                     bv.vehicle_id,
+                    bv.vendor_id,
                     COALESCE(NULLIF(bv.plate_no, ''), v.plate_no) AS plate_no,
+                    v.vehicle_type_id,
                     vt.vehicle_type,
 
                     cc.client_rate,
@@ -229,7 +235,7 @@ if ($method === 'POST') {
     try {
         // Confirm booking exists before starting the transaction.
         $stmtBookingExists = $db->prepare(
-            "SELECT booking_id, status_id
+            "SELECT booking_id, status_id, customer_id, booking_type_id, depot_id, commodity_type_id
              FROM `{$tblBookings}`
              WHERE booking_id = ?
              LIMIT 1"
@@ -264,10 +270,14 @@ if ($method === 'POST') {
         }
 
         $clientCost = $input['client_cost'] ?? [];
+        $bookingInfo = $input['booking_info'] ?? [];
+        $vehicleAssignment = $input['vehicle_assignment'] ?? [];
         $expenses = $input['expenses'] ?? [];
         $personnelData = $input['personnel'] ?? [];
 
         if (!is_array($clientCost)) $clientCost = [];
+        if (!is_array($bookingInfo)) $bookingInfo = [];
+        if (!is_array($vehicleAssignment)) $vehicleAssignment = [];
         if (!is_array($expenses)) $expenses = [];
         if (!is_array($personnelData)) {
         $personnelData = [];
@@ -281,6 +291,12 @@ if ($method === 'POST') {
         $noOfTrips = nullableInt($clientCost['no_of_trips'] ?? null);
         $clientRate = nullableFloat($clientCost['client_rate'] ?? null);
         $subconRate = nullableFloat($clientCost['subcon_rate'] ?? null);
+        $customerId = nullableInt($bookingInfo['customer_id'] ?? $bookingRow['customer_id']);
+        $bookingTypeId = nullableInt($bookingInfo['booking_type_id'] ?? $bookingRow['booking_type_id']);
+        $depotId = nullableInt($bookingInfo['depot_id'] ?? $bookingRow['depot_id']);
+        $commodityTypeId = nullableInt($bookingInfo['commodity_type_id'] ?? $bookingRow['commodity_type_id']);
+        $vehicleId = nullableInt($vehicleAssignment['vehicle_id'] ?? null);
+        $vehicleTypeId = nullableInt($vehicleAssignment['vehicle_type_id'] ?? null);
 
         if ($clientRate === null) {
             echoJson(['error' => 'Client rate is required.'], 422);
@@ -290,6 +306,34 @@ if ($method === 'POST') {
         }
         if ($farthestDestinationId === null) {
             echoJson(['error' => 'Farthest destination is required.'], 422);
+        }
+        if (
+            $customerId === null ||
+            $bookingTypeId === null ||
+            $depotId === null ||
+            $commodityTypeId === null ||
+            $vehicleId === null ||
+            $vehicleTypeId === null
+        ) {
+            echoJson(['error' => 'Customer, booking type, depot, commodity type, vehicle, and truck type are required.'], 422);
+        }
+
+        $stmtVehicle = $db->prepare(
+            "SELECT vehicle_id, plate_no, vehicle_type_id, commodity_type_id, vendor_id
+             FROM `{$tblVehicles}`
+             WHERE vehicle_id = ?
+             LIMIT 1"
+        );
+        $stmtVehicle->execute([$vehicleId]);
+        $vehicle = $stmtVehicle->fetch();
+        if (!$vehicle) {
+            echoJson(['error' => 'Selected vehicle was not found.'], 422);
+        }
+        if ((int)$vehicle['vehicle_type_id'] !== $vehicleTypeId) {
+            echoJson(['error' => 'Selected truck type does not match the selected vehicle.'], 422);
+        }
+        if ((int)($vehicle['commodity_type_id'] ?? 0) !== $commodityTypeId) {
+            echoJson(['error' => 'Selected commodity type does not match the selected vehicle.'], 422);
         }
 
         $totalAmount = nullableFloat($clientCost['total_amount'] ?? null);
@@ -353,7 +397,11 @@ if ($method === 'POST') {
         // ---------------------------------------------------------------------
         $stmtBooking = $db->prepare(
             "UPDATE `{$tblBookings}`
-             SET completed_at = ?,
+             SET customer_id = ?,
+                 booking_type_id = ?,
+                 depot_id = ?,
+                 commodity_type_id = ?,
+                 completed_at = ?,
                  destination_id = ?,
                  trips_number = ?,
                  updated_by = ?,
@@ -361,12 +409,49 @@ if ($method === 'POST') {
              WHERE booking_id = ?"
         );
         $stmtBooking->execute([
+            $customerId,
+            $bookingTypeId,
+            $depotId,
+            $commodityTypeId,
             $completedAt,
             $farthestDestinationId,
             $noOfTrips,
             (int)$currentUser['user_id'],
             $id
         ]);
+
+        $stmtVehicleAssignmentExists = $db->prepare(
+            "SELECT booking_id
+             FROM `{$tblBVehicles}`
+             WHERE booking_id = ?
+             LIMIT 1"
+        );
+        $stmtVehicleAssignmentExists->execute([$id]);
+        if ($stmtVehicleAssignmentExists->fetch()) {
+            $stmtVehicleAssignment = $db->prepare(
+                "UPDATE `{$tblBVehicles}`
+                 SET vehicle_id = ?, vendor_id = ?, plate_no = ?
+                 WHERE booking_id = ?"
+            );
+            $stmtVehicleAssignment->execute([
+                $vehicleId,
+                nullableInt($vehicle['vendor_id'] ?? null),
+                $vehicle['plate_no'],
+                $id,
+            ]);
+        } else {
+            $stmtVehicleAssignment = $db->prepare(
+                "INSERT INTO `{$tblBVehicles}`
+                    (booking_id, vehicle_id, vendor_id, plate_no)
+                 VALUES (?, ?, ?, ?)"
+            );
+            $stmtVehicleAssignment->execute([
+                $id,
+                $vehicleId,
+                nullableInt($vehicle['vendor_id'] ?? null),
+                $vehicle['plate_no'],
+            ]);
+        }
 
         // ---------------------------------------------------------------------
         // 2) Client Cost UPSERT

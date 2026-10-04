@@ -377,13 +377,13 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
       };
 
       const saved = await bookingDeliveryCrud.create(editBooking?.booking_id, payload);
-      setToast({ type: 'success', msg: 'Vehicles saved successfully.' });
+      setToast({ type: 'success', msg: 'Booking Delivered successfully.' });
       setTimeout(() => {
         onSaved(saved);
         onClose();
       }, 800);
     } catch (e) {
-      setToast({ type: 'error', msg: e.message || 'Failed to save vehicles.' });
+      setToast({ type: 'error', msg: e.message || 'Failed to deliver booking.' });
     } finally {
       setSubmitting(false);
     }

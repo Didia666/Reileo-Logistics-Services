@@ -74,6 +74,12 @@ function generateBookingNo($db, $table) {
     return $prefix . str_pad((string)$nextNumber, 4, '0', STR_PAD_LEFT);
 }
 
+function isSupportedPhotoBinary($data) {
+    return substr($data, 0, 3) === "\xFF\xD8\xFF"
+        || substr($data, 0, 8) === "\x89PNG\r\n\x1A\n"
+        || (substr($data, 0, 4) === 'RIFF' && substr($data, 8, 4) === 'WEBP');
+}
+
 
 
 function listSql($tblBookings, $tblBStatuses, $tblCustomers, $tblBFuel, $tblBTypes, $tblDepots, $tblOrigins, $tblVehicles, $tblReferences, $tblBVehicles) {
@@ -229,10 +235,45 @@ switch ($method) {
                 $row = $stmt->fetch();
                 if (!$row) echoJson(['error' => 'Booking not found'], 404);
 
-                $stmtPhotos = $db->prepare("SELECT * FROM `{$tblBPhotos}` WHERE booking_id = ? ORDER BY bk_photos_id ASC");
-                $stmtPhotos->execute([$id]);
-                $row['bk_photos'] = $stmtPhotos->fetchAll() ?: [];
+                $stmtPhotos = $db->prepare("
+                    SELECT
+                        bk_photos_id,
+                        booking_id,
+                        photo_name,
+                        photo_data
+                    FROM `{$tblBPhotos}`
+                    WHERE booking_id = ?
+                    ORDER BY bk_photos_id ASC
+                ");
 
+                $stmtPhotos->execute([$id]);
+
+                $photos = $stmtPhotos->fetchAll() ?: [];
+
+                foreach ($photos as &$photo) {
+                    if (
+                        isset($photo['photo_data']) &&
+                        $photo['photo_data'] !== null
+                    ) {
+                        $photoData = (string)$photo['photo_data'];
+                        $decodedPhoto = base64_decode($photoData, true);
+
+                        if (
+                            $decodedPhoto !== false
+                            && isSupportedPhotoBinary($decodedPhoto)
+                            && !isSupportedPhotoBinary($photoData)
+                        ) {
+                            $photoData = $decodedPhoto;
+                        }
+
+                        $photo['photo_data'] =
+                            base64_encode($photoData);
+                    }
+                }
+
+                unset($photo);
+
+                $row['bk_photos'] = $photos;
                 $stmtItems = $db->prepare(
                     "SELECT item_type_id, item_description, length, width, height, weight
                      FROM `{$tblBItems}`
@@ -743,27 +784,35 @@ switch ($method) {
             }
         
 
-            if (is_array($bk_photos)) {
+            if (isset($input['bk_photos']) && is_array($input['bk_photos'])) {
                 $stmtPhoto = $db->prepare("
                     INSERT INTO `{$tblBPhotos}`
-                    (booking_id, photo_name, photo_path)
+                    (booking_id, photo_name, photo_data)
                     VALUES (?, ?, ?)
                 ");
 
                 foreach ($bk_photos as $row) {
-                    $photoName = trim($row['photo_name'] ?? '');
-                    $photoPath = trim($row['photo_path'] ?? '');
+                    $photoName = trim((string)($row['photo_name'] ?? ''));
+                    $photoData = trim((string)($row['photo_data'] ?? $row['photo_base64'] ?? ''));
+                    // $photoPath = trim((string)($row['photo_path'] ?? ''));
+                    $storedPhoto = null;
 
-                    // Ignore completely empty rows
-                    if ($photoName === '' && $photoPath === '') {
+                    if ($photoData !== '') {
+                        $decodedPhoto = base64_decode($photoData, true);
+
+                        if ($decodedPhoto !== false) {
+                            $storedPhoto = $decodedPhoto;
+                        }
+                    }
+
+                    if ($photoName === '' || $storedPhoto === null) {
                         continue;
                     }
 
-                    $stmtPhoto->execute([
-                        $booking_id,
-                        $photoName !== '' ? $photoName : null,
-                        $photoPath !== '' ? $photoPath : null
-                    ]);
+                    $stmtPhoto->bindValue(1, $booking_id, PDO::PARAM_INT);
+                    $stmtPhoto->bindValue(2, $photoName, PDO::PARAM_STR);
+                    $stmtPhoto->bindValue(3, $storedPhoto, PDO::PARAM_LOB);
+                    $stmtPhoto->execute();
                 }
             }
 
@@ -1066,29 +1115,65 @@ switch ($method) {
             ");
             $stmtPhotoDel->execute([$id]);
 
-            if (is_array($bk_photos)) {
-
+            if (
+                isset($input['bk_photos']) &&
+                is_array($input['bk_photos'])
+            ) {
                 $stmtPhoto = $db->prepare("
                     INSERT INTO `{$tblBPhotos}`
-                    (booking_id, photo_name, photo_path)
+                    (
+                        booking_id,
+                        photo_name,
+                        photo_data
+                    )
                     VALUES (?, ?, ?)
                 ");
 
                 foreach ($bk_photos as $row) {
+                    $photoName = trim(
+                        (string)($row['photo_name'] ?? '')
+                    );
 
-                    $photoName = trim($row['photo_name'] ?? '');
-                    $photoPath = trim($row['photo_path'] ?? '');
+                    $photoData =
+                        $row['photo_data'] ??
+                        $row['photo_base64'] ??
+                        '';
 
-                    // Ignore completely empty rows
-                    if ($photoName === '' && $photoPath === '') {
+                    if (
+                        $photoName === '' ||
+                        $photoData === ''
+                    ) {
                         continue;
                     }
 
-                    $stmtPhoto->execute([
+                    $storedPhoto = base64_decode(
+                        $photoData,
+                        true
+                    );
+
+                    if ($storedPhoto === false) {
+                        continue;
+                    }
+
+                    $stmtPhoto->bindValue(
+                        1,
                         $id,
-                        $photoName !== '' ? $photoName : null,
-                        $photoPath !== '' ? $photoPath : null
-                    ]);
+                        PDO::PARAM_INT
+                    );
+
+                    $stmtPhoto->bindValue(
+                        2,
+                        $photoName,
+                        PDO::PARAM_STR
+                    );
+
+                    $stmtPhoto->bindValue(
+                        3,
+                        $storedPhoto,
+                        PDO::PARAM_LOB
+                    );
+
+                    $stmtPhoto->execute();
                 }
             }
 
@@ -1175,5 +1260,24 @@ switch ($method) {
                 error_log('Booking update failed: ' . $e->getMessage());
                 echoJson(['error' => 'Booking update failed: ' . $e->getMessage()], 500);
             }
-    }
 
+        break;
+
+    case 'DELETE':
+        if ($id <= 0) echoJson(['error' => 'ID is required'], 400);
+            $stmtChk = $db->prepare("SELECT booking_id FROM `{$tblBookings}` WHERE booking_id = ? LIMIT 1");
+            $stmtChk->execute([$id]);
+            if (!$stmtChk->fetch()) echoJson(['error' => 'Booking not found'], 404);
+
+        try {
+            $db->beginTransaction();
+            $stmtD = $db->prepare("UPDATE `{$tblBookings}` set status_id = 6 WHERE booking_id = ?");
+            $stmtD->execute([$id]);
+            $db->commit();
+            echoJson(['message' => 'Booking cancelled successfully'], 200);
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            error_log('Booking cancellation failed: ' . $e->getMessage());
+            echoJson(['error' => 'Booking cancellation failed: ' . $e->getMessage()], 500);
+        }
+    }

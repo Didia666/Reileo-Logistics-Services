@@ -151,11 +151,6 @@ export const reports = {
     ),
 };
 
-export const dashboard = {
-  summary: (date) =>
-    request(`/dashboard.php?date=${encodeURIComponent(date)}`),
-};
-
 
 // ============================================================
 // BOOKINGS
@@ -225,7 +220,7 @@ export const bookings = {
     request(
       `/bookings.php?action=cancel&id=${id}`,
       {
-        method: 'POST'
+        method: 'DELETE'
       }
     ),
 
@@ -642,3 +637,8 @@ export const passwordReset = {
       body: JSON.stringify({ token, new_password: newPassword }),
     }),
 };
+
+// export const dashboard = {
+//   stats: () => request('/dashboard.php?action=stats'),
+//   summary: () => request('/dashboard.php?action=summary'),
+// };

@@ -40,6 +40,12 @@ function echoJson($data, $code = 200) {
     exit;
 }
 
+function isSupportedVehiclePhotoBinary($data) {
+    return substr($data, 0, 3) === "\xFF\xD8\xFF"
+        || substr($data, 0, 8) === "\x89PNG\r\n\x1A\n"
+        || (substr($data, 0, 4) === 'RIFF' && substr($data, 8, 4) === 'WEBP');
+}
+
 
 function listSql($tblV, $tblModels, $tblManufacturers, $tblTypes, $tblCategories, $tblVendor, $tblStatuses, $tblLocation, $tblOrigins, $tblDepots) {
     return "SELECT
@@ -196,7 +202,27 @@ switch ($method) {
 
                 $stmtPhotos = $db->prepare("SELECT * FROM `{$tblPhotos}` WHERE vehicle_id = ? ORDER BY vh_photos_id ASC");
                 $stmtPhotos->execute([$id]);
-                $row['vh_photos'] = $stmtPhotos->fetchAll() ?: [];
+                $photos = $stmtPhotos->fetchAll() ?: [];
+
+                foreach ($photos as &$photo) {
+                    if (isset($photo['photo_data']) && $photo['photo_data'] !== null) {
+                        $photoData = (string)$photo['photo_data'];
+                        $decodedPhoto = base64_decode($photoData, true);
+
+                        if (
+                            $decodedPhoto !== false
+                            && isSupportedVehiclePhotoBinary($decodedPhoto)
+                            && !isSupportedVehiclePhotoBinary($photoData)
+                        ) {
+                            $photoData = $decodedPhoto;
+                        }
+
+                        $photo['photo_data'] = base64_encode($photoData);
+                    }
+                }
+
+                unset($photo);
+                $row['vh_photos'] = $photos;
 
                 $stmtDocs = $db->prepare("SELECT * FROM `{$tblDocuments}` WHERE vehicle_id = ? ORDER BY vh_documents_id ASC");
                 $stmtDocs->execute([$id]);
@@ -485,27 +511,35 @@ switch ($method) {
                 }
             }
 
-            if (is_array($vh_photos)) {
+            if (isset($input['vh_photos']) && is_array($input['vh_photos'])) {
                 $stmtPhoto = $db->prepare("
                     INSERT INTO `{$tblPhotos}`
-                    (vehicle_id, photo_name, photo_path)
+                    (vehicle_id, photo_name, photo_data)
                     VALUES (?, ?, ?)
                 ");
 
                 foreach ($vh_photos as $row) {
-                    $photoName = trim($row['photo_name'] ?? '');
-                    $photoPath = trim($row['photo_path'] ?? '');
+                    $photoName = trim((string)($row['photo_name'] ?? ''));
+                    $photoData = trim((string)($row['photo_data'] ?? $row['photo_base64'] ?? ''));
+                    // $photoPath = trim((string)($row['photo_path'] ?? ''));
+                    $storedPhoto = null;
 
-                    // Ignore completely empty rows
-                    if ($photoName === '' && $photoPath === '') {
+                    if ($photoData !== '') {
+                        $decodedPhoto = base64_decode($photoData, true);
+
+                        if ($decodedPhoto !== false) {
+                            $storedPhoto = $decodedPhoto;
+                        }
+                    }
+
+                    if ($photoName === '' || $storedPhoto === null) {
                         continue;
                     }
 
-                    $stmtPhoto->execute([
-                        $vehicle_id,
-                        $photoName !== '' ? $photoName : null,
-                        $photoPath !== '' ? $photoPath : null
-                    ]);
+                    $stmtPhoto->bindValue(1, $vehicle_id, PDO::PARAM_INT);
+                    $stmtPhoto->bindValue(2, $photoName, PDO::PARAM_STR);
+                    $stmtPhoto->bindValue(3, $storedPhoto, PDO::PARAM_LOB);
+                    $stmtPhoto->execute();
                 }
             }
 
@@ -824,29 +858,61 @@ switch ($method) {
             ");
             $stmtPhotoDel->execute([$id]);
 
-            if (is_array($vh_photos)) {
-
+            if (
+                isset($input['vh_photos']) &&
+                is_array($input['vh_photos'])
+            ) {
                 $stmtPhoto = $db->prepare("
                     INSERT INTO `{$tblPhotos}`
-                    (vehicle_id, photo_name, photo_path)
+                    (vehicle_id, photo_name, photo_data)
                     VALUES (?, ?, ?)
                 ");
 
                 foreach ($vh_photos as $row) {
+                    $photoName = trim(
+                        (string)($row['photo_name'] ?? '')
+                    );
 
-                    $photoName = trim($row['photo_name'] ?? '');
-                    $photoPath = trim($row['photo_path'] ?? '');
+                    $photoData =
+                        $row['photo_data'] ??
+                        $row['photo_base64'] ??
+                        '';
 
-                    // Ignore completely empty rows
-                    if ($photoName === '' && $photoPath === '') {
+                    if (
+                        $photoName === '' ||
+                        $photoData === ''
+                    ) {
                         continue;
                     }
 
-                    $stmtPhoto->execute([
+                    $storedPhoto = base64_decode(
+                        $photoData,
+                        true
+                    );
+
+                    if ($storedPhoto === false) {
+                        continue;
+                    }
+
+                    $stmtPhoto->bindValue(
+                        1,
                         $id,
-                        $photoName !== '' ? $photoName : null,
-                        $photoPath !== '' ? $photoPath : null
-                    ]);
+                        PDO::PARAM_INT
+                    );
+
+                    $stmtPhoto->bindValue(
+                        2,
+                        $photoName,
+                        PDO::PARAM_STR
+                    );
+
+                    $stmtPhoto->bindValue(
+                        3,
+                        $storedPhoto,
+                        PDO::PARAM_LOB
+                    );
+
+                    $stmtPhoto->execute();
                 }
             }
 

@@ -590,11 +590,11 @@ export default function BookingsList() {
     if (!confirm(`Cancel booking ${b.booking_no}?`)) return;
     try {
       await bookings.cancel(b.booking_id);
-      setAll(prev => prev.map(r => r.booking_id === b.booking_id ? { ...r, status_name: 'Cancelled', status_id: 7 } : r));
+      setAll(prev => prev.map(r => r.booking_id === b.booking_id ? { ...r, status_name: 'Cancelled', status_id: 6 } : r));
       setToast(`Booking ${b.booking_no} cancelled.`);
       setTimeout(() => setToast(''), 3000);
     } catch (e) { setToast(e.message); setTimeout(() => setToast(''), 4000); }
-  };
+  }; 
 
   const handleApprove = async (b) => {
     if (!confirm(`Approve booking ${b.booking_no}?`)) return;
@@ -610,7 +610,7 @@ export default function BookingsList() {
     setUnderReviewBooking(b);
   };
 
-  const handleDeliver = async (b) => {
+  const handleDeliver = (b) => {
     setDeliveryBooking(b);
   };
 
@@ -824,7 +824,8 @@ export default function BookingsList() {
       <BookingFormModal
         isOpen={formOpen}
         onClose={closeForm}
-        onSaved={(saved) => {
+        onSaved={async (saved) => {
+          const isNewBooking = !editBooking;
           setAll(prev => {
             const exists = prev.some(r => String(r.booking_id) === String(saved.booking_id));
             if (exists) {
@@ -834,6 +835,23 @@ export default function BookingsList() {
             }
           });
           closeForm();
+          try {
+            const refreshed = await bookings.list({ limit: 1000 });
+            const rows = Array.isArray(refreshed)
+              ? refreshed
+              : (Array.isArray(refreshed?.data) ? refreshed.data : []);
+            setAll(rows);
+            setTotal(refreshed?.total || rows.length);
+            if (isNewBooking) {
+              setToast(`Booking No.: ${saved.booking_no} added.`);
+              setTimeout(() => setToast(''), 4000);
+            }
+          } catch (e) {
+            setToast(isNewBooking
+              ? `Booking No.: ${saved.booking_no} added. The table could not be refreshed.`
+              : e.message || 'Booking saved, but the table could not be refreshed.');
+            setTimeout(() => setToast(''), 4000);
+          }
         }}
         editBooking={editBooking}
         viewOnly={viewOnly}
@@ -866,6 +884,8 @@ export default function BookingsList() {
                 }
               : row
           )));
+          setToast(`Booking ${deliveryBooking?.booking_no} marked as delivered.`);
+          setTimeout(() => setToast(''), 3000);
           setDeliveryBooking(null);
         }}
         viewOnly={false}

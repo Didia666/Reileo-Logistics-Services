@@ -35,6 +35,62 @@ const readOnlyStyle = {
   padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 13,
   width: '100%', boxSizing: 'border-box', background: '#f9fafb', color: '#4b5563',
 };
+
+const getPhotoSource = (photo) => {
+  const source = photo?.photo_data || photo?.photo_path || '';
+
+  if (!source) return '';
+  if (/^data:image\//i.test(source) || /^https?:\/\//i.test(source)) return source;
+
+  if (/^[A-Za-z0-9+/]+={0,2}$/.test(source) && source.length > 32) {
+    const mimeType = source.startsWith('/9j/')
+      ? 'image/jpeg'
+      : source.startsWith('iVBORw0KGgo')
+        ? 'image/png'
+        : source.startsWith('UklGR')
+          ? 'image/webp'
+          : 'image/jpeg';
+
+    return `data:${mimeType};base64,${source}`;
+  }
+
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(source)) return source;
+
+  return source;
+};
+
+const getDocumentSource = (document) => {
+  const source = document?.document_data || document?.document_path || '';
+
+  if (!source) return '';
+  if (/^data:[^,]+;base64,/i.test(source) || /^https?:\/\//i.test(source)) {
+    return source;
+  }
+
+  const extension = String(document?.document_name || document?.document_path || '')
+    .split('.')
+    .pop()
+    ?.toLowerCase();
+  const mimeTypes = {
+    pdf: 'application/pdf',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+  };
+
+  if (/^[A-Za-z0-9+/]+={0,2}$/.test(source) && source.length > 32) {
+    return `data:${mimeTypes[extension] || 'application/octet-stream'};base64,${source}`;
+  }
+
+  if (/^(\/|\.{1,2}\/)/.test(source)) return source;
+
+  return '';
+};
+
 export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicle, viewOnly }) {
   const [activeTab, setActiveTab] = useState('vehicleinfo');
   const [submitting, setSubmitting] = useState(false);
@@ -65,8 +121,8 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
     // license: { driver_license_no: '', license_expiry: '' },
     // dl_code_ids: [],
 
-    vh_documents: [{ document_name: '', document_path: '' }],
-    vh_photos: [{ photo_name: '', photo_path: '' }],
+    vh_documents: [{ document_name: '', document_data: '', document_path: '' }],
+    vh_photos: [{ photo_name: '', photo_data: '' }],
     // Vehicle information
     status_id: '',
     vehicle_type_id: '',
@@ -212,15 +268,17 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
             vh_documents: Array.isArray(editVehicle.vh_documents) && editVehicle.vh_documents.length
               ? editVehicle.vh_documents.map(doc => ({
                   document_name: doc.document_name || '',
+                  document_data: doc.document_data || '',
                   document_path: doc.document_path || '',
                 }))
-              : [{ document_name: '', document_path: '' }],
+              : [{ document_name: '', document_data: '', document_path: '' }],
             vh_photos: Array.isArray(editVehicle.vh_photos) && editVehicle.vh_photos.length
               ? editVehicle.vh_photos.map(photo => ({
                   photo_name: photo.photo_name || '',
+                  photo_data: photo.photo_data || photo.photo_path || '',
                   photo_path: photo.photo_path || '',
                 }))
-              : [{ photo_name: '', photo_path: '' }],
+              : [{ photo_name: '', photo_data: '', photo_path: '' }],
             // vehicle info
             status_id: editVehicle.status_id ?? editVehicle.vehicle_status_id ?? '',
             vehicle_type_id: editVehicle.vehicle_type_id ?? editVehicle.vh_types_id ?? '',
@@ -313,15 +371,17 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
               vh_documents: Array.isArray(full.vh_documents) && full.vh_documents.length
                 ? full.vh_documents.map(doc => ({
                     document_name: doc.document_name || '',
+                    document_data: doc.document_data || '',
                     document_path: doc.document_path || '',
                   }))
-                : [{ document_name: '', document_path: '' }],
+                : [{ document_name: '', document_data: '', document_path: '' }],
               vh_photos: Array.isArray(full.vh_photos) && full.vh_photos.length
                 ? full.vh_photos.map(photo => ({
                     photo_name: photo.photo_name || '',
+                    photo_data: photo.photo_data || photo.photo_path || '',
                     photo_path: photo.photo_path || '',
                   }))
-                : [{ photo_name: '', photo_path: '' }],
+                : [{ photo_name: '', photo_data: '', photo_path: '' }],
               vendor_id: full.vendor_id ?? '',
               // vehicle info
               status_id: full.status_id ?? full.vehicle_status_id ?? '',
@@ -409,8 +469,8 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
       [type]: [
         ...(prev[type] || []),
         type === 'vh_documents'
-          ? { document_name: '', document_path: '' }
-          : { photo_name: '', photo_path: '' },
+          ? { document_name: '', document_data: '', document_path: '' }
+          : { photo_name: '', photo_data: '', photo_path: '' },
       ],
     }));
   };
@@ -427,6 +487,98 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
       ...prev,
       [type]: (prev[type] || []).map((row, i) => i === index ? { ...row, [field]: value } : row),
     }));
+  };
+
+  const handlePhotoFile = (index, file) => {
+    if (!file) return;
+
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    const extension = file.name
+      .split('.')
+      .pop()
+      ?.toLowerCase();
+
+    if (!allowedExtensions.includes(extension)) {
+      setToast({
+        type: 'error',
+        msg: 'Only JPG, JPEG, PNG, and WEBP images are allowed.',
+      });
+
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = String(reader.result);
+
+      // Removes:
+      // data:image/jpeg;base64,
+      //
+      // leaving only the Base64 image data.
+      const base64Data = result.split(',')[1] || '';
+
+      setForm(prev => ({
+        ...prev,
+
+        vh_photos: (prev.vh_photos || []).map((photo, i) =>
+          i === index
+            ? {
+                ...photo,
+                photo_name: file.name,
+                photo_data: base64Data,
+                photo_path: '',
+              }
+            : photo
+        ),
+      }));
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleDocumentFile = (index, file) => {
+    if (!file) return;
+
+    const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png'];
+    const extension = file.name.split('.').pop()?.toLowerCase();
+
+    if (!allowedExtensions.includes(extension)) {
+      setToast({
+        type: 'error',
+        msg: 'Choose a PDF, Word, Excel, JPG, JPEG, or PNG file.',
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = String(reader.result);
+
+      setForm(prev => ({
+        ...prev,
+        vh_documents: (prev.vh_documents || []).map((doc, i) =>
+          i === index
+            ? {
+                ...doc,
+                document_name: file.name,
+                document_data: result,
+                document_path: '',
+              }
+            : doc
+        ),
+      }));
+    };
+
+    reader.onerror = () => {
+      setToast({
+        type: 'error',
+        msg: `Unable to read ${file.name}. Please try selecting it again.`,
+      });
+    };
+
+    reader.readAsDataURL(file);
   };
 
   const validate = () => {
@@ -509,16 +661,18 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
           remarks: form.remarks.trim() || null,
         },
         vh_documents: (form.vh_documents || [])
-          .filter(row => row.document_name.trim() || row.document_path.trim())
+          .filter(row => row.document_name || row.document_data || row.document_path)
           .map(row => ({
-            document_name: row.document_name.trim() || null,
-            document_path: row.document_path.trim() || null,
+            document_name: row.document_name?.trim() || null,
+            document_data: row.document_data || null,
+            document_path: row.document_path?.trim() || null,
           })),
         vh_photos: (form.vh_photos || [])
-          .filter(row => row.photo_name.trim() || row.photo_path.trim())
+          .filter(row => row.photo_name || row.photo_data || row.photo_path)
           .map(row => ({
-            photo_name: row.photo_name.trim() || null,
-            photo_path: row.photo_path.trim() || null,
+            photo_name: row.photo_name?.trim() || null,
+            photo_data: row.photo_data || null,
+            photo_path: row.photo_path?.trim() || null,
           })),
       };
 
@@ -934,98 +1088,354 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
               <div style={{ marginBottom: 28 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Documents</div>
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    onClick={() => addAttachmentRow('vh_documents')}
-                    style={{ fontSize: 12 }}
-                  >
-                    + Add Document
-                  </button>
+                  {!viewOnly && (
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      onClick={() => addAttachmentRow('vh_documents')}
+                      style={{ fontSize: 12 }}
+                    >
+                      + Add Document
+                    </button>
+                  )}
                 </div>
 
                 {(form.vh_documents || []).map((doc, index) => (
-                  <div key={`doc-${index}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr auto', gap: 10, alignItems: 'end', marginBottom: 10 }}>
+                  <div
+                    key={`doc-${index}`}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1.5fr 1fr auto',
+                      gap: 10,
+                      alignItems: 'end',
+                      marginBottom: 12,
+                      paddingBottom: 12,
+                      borderBottom: index < form.vh_documents.length - 1
+                        ? '1px solid #e5e7eb'
+                        : 'none',
+                    }}
+                  >
                     <Field label="Document Name">
                       <input
                         type="text"
-                        disabled={viewOnly}
-                        style={viewOnly ? readOnlyStyle : inputStyle}
-                        value={doc.document_name}
-                        placeholder="e.g. OR copy"
-                        onChange={(e) => updateAttachmentRow('vh_documents', index, 'document_name', e.target.value)}
+                        readOnly
+                        style={readOnlyStyle}
+                        value={doc.document_name || ''}
+                        placeholder="Automatically filled"
                       />
                     </Field>
-                    <Field label="Document Path / File Name">
+                    <Field label="Select Document">
+                      {!viewOnly ? (
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                        style={inputStyle}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          e.target.value = '';
+
+                          if (file) {
+                            handleDocumentFile(index, file);
+                          }
+                        }}
+                      />
+                      ) : (
+                        <input
+                          type="text"
+                          readOnly
+                          style={readOnlyStyle}
+                          value={doc.document_name || 'No document'}
+                        />
+                      )}
+                    </Field>
+                    <Field label="File Data">
                       <input
                         type="text"
-                        disabled={viewOnly}
-                        style={viewOnly ? readOnlyStyle : inputStyle}
-                        value={doc.document_path}
-                        placeholder="e.g. uploads/or-copy.pdf"
-                        onChange={(e) => updateAttachmentRow('vh_documents', index, 'document_path', e.target.value)}
+                        readOnly
+                        style={readOnlyStyle}
+                        value={
+                          doc.document_data
+                            ? `Loaded (${Math.round(
+                                (doc.document_data.length * 3) / 4 / 1024
+                              )} KB)`
+                            : doc.document_path
+                              ? 'Saved file'
+                              : ''
+                        }
+                        placeholder="Automatically filled"
                       />
                     </Field>
+                    {!viewOnly && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        disabled={(form.vh_documents || []).length === 1}
+                        onClick={() => removeAttachmentRow('vh_documents', index)}
+                        style={{ height: 34, alignSelf: 'flex-end' }}
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                ))}
+
+                {(form.vh_documents || []).some(document => getDocumentSource(document)) && (
+                  <div
+                    style={{
+                      marginTop: 20,
+                      paddingTop: 16,
+                      borderTop: '1px solid #e5e7eb',
+                    }}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 12 }}>
+                      Documents
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 8 }}>
+                      {(form.vh_documents || []).map((document, index) => {
+                        const documentSource = getDocumentSource(document);
+                        if (!documentSource) return null;
+
+                        return (
+                          <li key={`document-preview-${index}`}>
+                            <a
+                              href={documentSource}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: '#2563eb', textDecoration: 'underline' }}
+                            >
+                              {document.document_name || `Document ${index + 1}`}
+                            </a>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ padding: 18 }}>
+
+                <legend
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: '#2563eb',
+                    padding: '0 6px',
+                  }}
+                >
+                  Vehicle Photos
+                </legend>
+
+                {/* ============================= */}
+                {/* PHOTO INPUTS */}
+                {/* ============================= */}
+
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 12,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: '#374151',
+                    }}
+                  >
+                    Photos
+                  </div>
+
+                  {!viewOnly && (
                     <button
                       type="button"
                       className="btn btn-ghost"
-                      disabled={viewOnly || (form.vh_documents || []).length === 1}
-                      onClick={() => removeAttachmentRow('vh_documents', index)}
-                      style={{ height: 34, alignSelf: 'flex-end' }}
+                      onClick={() => addAttachmentRow('vh_photos')}
+                      style={{ fontSize: 12 }}
                     >
-                      Remove
+                      + Add Photo
                     </button>
-                  </div>
-                ))}
-              </div>
-
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Photos</div>
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    onClick={() => addAttachmentRow('vh_photos')}
-                    style={{ fontSize: 12 }}
-                  >
-                    + Add Photo
-                  </button>
+                  )}
                 </div>
 
                 {(form.vh_photos || []).map((photo, index) => (
-                  <div key={`photo-${index}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr auto', gap: 10, alignItems: 'end', marginBottom: 10 }}>
+                  <div
+                    key={`photo-input-${index}`}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1.5fr 1fr auto',
+                      gap: 10,
+                      alignItems: 'end',
+                      marginBottom: 12,
+                      paddingBottom: 12,
+                      borderBottom:
+                        index < form.vh_photos.length - 1
+                          ? '1px solid #e5e7eb'
+                          : 'none',
+                    }}
+                  >
+                    {/* PHOTO NAME - AUTOMATIC */}
                     <Field label="Photo Name">
                       <input
                         type="text"
-                        disabled={viewOnly}
-                        style={viewOnly ? readOnlyStyle : inputStyle}
-                        value={photo.photo_name}
-                        placeholder="e.g. Front view"
-                        onChange={(e) => updateAttachmentRow('vh_photos', index, 'photo_name', e.target.value)}
+                        readOnly
+                        style={readOnlyStyle}
+                        value={photo.photo_name || ''}
+                        placeholder="Automatically filled"
                       />
                     </Field>
-                    <Field label="Photo Path / File Name">
+
+                    {/* FILE SELECTOR */}
+                    <Field label="Select Photo">
+                      {!viewOnly ? (
+                        <input
+                          type="file"
+                          accept=".jpg,.jpeg,.png,.webp"
+                          style={inputStyle}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+
+                            if (file) {
+                              handlePhotoFile(index, file);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          readOnly
+                          style={readOnlyStyle}
+                          value={photo.photo_name || 'No photo'}
+                        />
+                      )}
+                    </Field>
+
+                    {/* PHOTO DATA - AUTOMATIC */}
+                    <Field label="Photo Data">
                       <input
                         type="text"
-                        disabled={viewOnly}
-                        style={viewOnly ? readOnlyStyle : inputStyle}
-                        value={photo.photo_path}
-                        placeholder="e.g. uploads/front-view.jpg"
-                        onChange={(e) => updateAttachmentRow('vh_photos', index, 'photo_path', e.target.value)}
+                        readOnly
+                        style={readOnlyStyle}
+                        value={
+                          photo.photo_data
+                            ? `Loaded (${Math.round(
+                                (photo.photo_data.length * 3) / 4 / 1024
+                              )} KB)`
+                            : ''
+                        }
+                        placeholder="Automatically filled"
                       />
                     </Field>
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      disabled={viewOnly || (form.vh_photos || []).length === 1}
-                      onClick={() => removeAttachmentRow('vh_photos', index)}
-                      style={{ height: 34, alignSelf: 'flex-end' }}
-                    >
-                      Remove
-                    </button>
+
+                    {/* REMOVE */}
+                    {!viewOnly && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        disabled={(form.vh_photos || []).length === 1}
+                        onClick={() =>
+                          removeAttachmentRow('vh_photos', index)
+                        }
+                        style={{
+                          height: 34,
+                          alignSelf: 'flex-end',
+                        }}
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
                 ))}
-              </div>
+
+                {/* ============================= */}
+                {/* ALL PHOTO PREVIEWS */}
+                {/* BELOW ALL INPUTS */}
+                {/* ============================= */}
+
+                {(form.vh_photos || []).some(
+                  photo => getPhotoSource(photo)
+                ) && (
+                  <div
+                    style={{
+                      marginTop: 20,
+                      paddingTop: 16,
+                      borderTop: '1px solid #e5e7eb',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: '#374151',
+                        marginBottom: 12,
+                      }}
+                    >
+                      Photo Preview
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(auto-fill, minmax(220px, 1fr))',
+                        gap: 14,
+                      }}
+                    >
+                      {(form.vh_photos || []).map((photo, index) => {
+                        const imageSource =
+                          getPhotoSource(photo);
+
+                        if (!imageSource) {
+                          return null;
+                        }
+
+                        return (
+                          <div
+                            key={`photo-preview-${index}`}
+                            style={{
+                              border: '1px solid #e5e7eb',
+                              borderRadius: 8,
+                              padding: 10,
+                              background: '#f9fafb',
+                            }}
+                          >
+                            <img
+                              src={imageSource}
+                              alt={
+                                photo.photo_name ||
+                                `Photo ${index + 1}`
+                              }
+                              style={{
+                                display: 'block',
+                                width: '100%',
+                                height: 180,
+                                objectFit: 'contain',
+                                borderRadius: 6,
+                                background: '#ffffff',
+                              }}
+                            />
+
+                            <div
+                              style={{
+                                marginTop: 8,
+                                fontSize: 12,
+                                color: '#374151',
+                                textAlign: 'center',
+                                wordBreak: 'break-word',
+                              }}
+                            >
+                              {photo.photo_name ||
+                                `Photo ${index + 1}`}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+            </div>
             </fieldset>
           </div>
         );

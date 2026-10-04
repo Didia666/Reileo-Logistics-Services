@@ -41,6 +41,33 @@ const nullableNumber = (value) =>
   value === '' || value === null || value === undefined
     ? null
     : Number(value);
+
+const getPhotoSource = (photo) => {
+  const source = photo?.photo_data || '';
+
+  if (!source) return '';
+
+  if (/^data:image\//i.test(source)) {
+    return source;
+  }
+
+  const extension = String(photo?.photo_name || '')
+    .split('.')
+    .pop()
+    ?.toLowerCase();
+
+  const mimeTypes = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+  };
+
+  const mimeType = mimeTypes[extension] || 'image/jpeg';
+
+  return `data:${mimeType};base64,${source}`;
+};
+
 export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking, viewOnly }) {
   const [activeTab, setActiveTab] = useState('bookinginfo');
   const [submitting, setSubmitting] = useState(false);
@@ -134,7 +161,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
     weight: '',
 
     // Vehicle Photos and Documents
-    bk_photos: [{ photo_name: '', photo_path: '' }],
+    bk_photos: [{ photo_name: '', photo_data: '', photo_path: '' }],
 
     // Pricing Details
     client_rate: '',
@@ -226,6 +253,8 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
   };
 
   useEffect(() => {
+    let isCurrent = true;
+
     if (isOpen) {
       loadLookups();
       if (editBooking) {
@@ -290,9 +319,10 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
             bk_photos: Array.isArray(editBooking.bk_photos) && editBooking.bk_photos.length
               ? editBooking.bk_photos.map(photo => ({
                     photo_name: photo.photo_name || '',
+                    photo_data: photo.photo_data || '',
                     photo_path: photo.photo_path || '',
                   }))
-                : [{ photo_name: '', photo_path: '' }],
+                : [{ photo_name: '', photo_data: '', photo_path: '' }],
 
             // Pricing Details
             client_rate: editBooking.client_rate ?? '',
@@ -321,6 +351,8 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
 
         } else {
           bookingCrud.get(editBooking.booking_id).then(full => {
+            if (!isCurrent) return;
+
             setForm({
               // Booking Info
               customer_id: full.customer_id ?? '',
@@ -384,9 +416,10 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
               bk_photos: Array.isArray(full.bk_photos) && full.bk_photos.length
                   ? full.bk_photos.map(photo => ({
                       photo_name: photo.photo_name || '',
+                      photo_data: photo.photo_data || '',
                       photo_path: photo.photo_path || '',
                     }))
-                  : [{ photo_name: '', photo_path: '' }],
+                  : [{ photo_name: '', photo_data: '', photo_path: '' }],
 
               // Pricing Details
               client_rate: full.client_rate ?? '',
@@ -411,6 +444,8 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
               nb_other_deductions: full.nb_other_deductions ?? ''
             });
           }).catch((error) => {
+            if (!isCurrent) return;
+
             setToast({
               type: 'error',
               msg: error?.message || 'Unable to load booking details.',
@@ -424,7 +459,17 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
       }
       setErrors({});
       setToast({ type: '', msg: '' });
+    } else {
+      setForm(blankForm);
+      setCompanyOwned(false);
+      setActiveTab('bookinginfo');
+      setErrors({});
+      setToast({ type: '', msg: '' });
     }
+
+    return () => {
+      isCurrent = false;
+    };
   }, [isOpen, editBooking]);
 
   const setField = (path, value) => {
@@ -447,7 +492,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
         ...(prev[type] || []),
         type === 'vh_documents'
           ? { document_name: '', document_path: '' }
-          : { photo_name: '', photo_path: '' },
+          : { photo_name: '', photo_data: '', photo_path: '' },
       ],
     }));
   };
@@ -466,6 +511,53 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
     }));
   };
 
+  const handlePhotoFile = (index, file) => {
+    if (!file) return;
+
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    const extension = file.name
+      .split('.')
+      .pop()
+      ?.toLowerCase();
+
+    if (!allowedExtensions.includes(extension)) {
+      setToast({
+        type: 'error',
+        msg: 'Only JPG, JPEG, PNG, and WEBP images are allowed.',
+      });
+
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = String(reader.result);
+
+      // Removes:
+      // data:image/jpeg;base64,
+      //
+      // leaving only the Base64 image data.
+      const base64Data = result.split(',')[1] || '';
+
+      setForm(prev => ({
+        ...prev,
+
+        bk_photos: (prev.bk_photos || []).map((photo, i) =>
+          i === index
+            ? {
+                ...photo,
+                photo_name: file.name,
+                photo_data: base64Data,
+                photo_path: '',
+              }
+            : photo
+        ),
+      }));
+    };
+
+  reader.readAsDataURL(file);
+};
   const updateItem = (index, field, value) => {
     setForm(prev => ({
       ...prev,
@@ -480,7 +572,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
       const items = prev.item_details || [];
       const currentItem = items[index];
 
-      if (!currentItem?.item_type_id || !String(currentItem.weight || '').trim()) {
+      if (!String(currentItem?.item_type_id ?? '').trim()) {
         return prev;
       }
 
@@ -491,6 +583,18 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
           createBlankItem(),
           ...items.slice(index + 1),
         ],
+      };
+    });
+  };
+
+  const removeItem = (index) => {
+    setForm(prev => {
+      const items = prev.item_details || [];
+      if (items.length <= 1) return prev;
+
+      return {
+        ...prev,
+        item_details: items.filter((_, itemIndex) => itemIndex !== index),
       };
     });
   };
@@ -579,10 +683,11 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
         })),
 
         bk_photos: (form.bk_photos || [])
-          .filter(row => row.photo_name.trim() || row.photo_path.trim())
+          .filter(row => row.photo_name && (row.photo_data || row.photo_path))
           .map(row => ({
-            photo_name: row.photo_name.trim() || null,
-            photo_path: row.photo_path.trim() || null,
+            photo_name: row.photo_name || null,
+            photo_data: row.photo_data || null,
+            photo_path: row.photo_path || null,
           })),
 
         pricing_details: {
@@ -629,14 +734,30 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
     }
   };
 
+  const closeForm = () => {
+    setForm(blankForm);
+    setCompanyOwned(false);
+    setActiveTab('bookinginfo');
+    setErrors({});
+    setToast({ type: '', msg: '' });
+    onClose();
+  };
+
   const fuelTripStatuses = ['Dispatched', 'Delivered', 'Completed'];
   const expenses = ['Delivered', 'Completed'];
   const pricingdetail = ['Delivered', 'Completed'];
-  const visibleTabs = TABS.filter(tab => (
-    tab.key !== 'fueltripallowance' || fuelTripStatuses.includes(editBooking?.status_name),
-    tab.key !== 'expenses' || expenses.includes(editBooking?.status_name),
-    tab.key !== 'pricingdetails' || pricingdetail.includes(editBooking?.status_name)
-  ));
+  const visibleTabs = TABS.filter(tab => {
+    if (tab.key === 'fueltripallowance') {
+      return Boolean(editBooking) && fuelTripStatuses.includes(editBooking.status_name);
+    }
+    if (tab.key === 'expenses') {
+      return Boolean(editBooking) && expenses.includes(editBooking.status_name);
+    }
+    if (tab.key === 'pricingdetails') {
+      return Boolean(editBooking) && pricingdetail.includes(editBooking.status_name);
+    }
+    return true;
+  });
 
   if (!isOpen) return null;
 
@@ -1108,27 +1229,45 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
                     </Field>
                   </div>
                   {!viewOnly && (
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      disabled={!item.item_type_id || !String(item.weight || '').trim()}
-                      onClick={() => addItem(index)}
-                      style={{
-                        color: '#fff',
-                        background: item.item_type_id && String(item.weight || '').trim()
-                          ? '#16a34a'
-                          : '#166534',
-                        borderColor: item.item_type_id && String(item.weight || '').trim()
-                          ? '#16a34a'
-                          : '#166534',
-                        cursor: item.item_type_id && String(item.weight || '').trim()
-                          ? 'pointer'
-                          : 'not-allowed',
-                        opacity: 1,
-                      }}
-                    >
-                      + New Item
-                    </button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        disabled={!String(item.item_type_id ?? '').trim()}
+                        onClick={() => addItem(index)}
+                        style={{
+                          color: '#fff',
+                          background: String(item.item_type_id ?? '').trim()
+                            ? '#16a34a'
+                            : '#166534',
+                          borderColor: String(item.item_type_id ?? '').trim()
+                            ? '#16a34a'
+                            : '#166534',
+                          cursor: String(item.item_type_id ?? '').trim()
+                            ? 'pointer'
+                            : 'not-allowed',
+                          opacity: 1,
+                        }}
+                      >
+                        + New Item
+                      </button>
+                      {form.item_details.length > 1 && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          onClick={() => removeItem(index)}
+                          style={{
+                          color: '#fff',
+                          background: item.item_type_id && String(item.item_type_id || '').trim()
+                            ? '#b91a1a'
+                            : '#b91a1a',
+                          opacity: 1,
+                        }}
+                        >
+                          Remove Item
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}
@@ -1137,65 +1276,239 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
         );
 
       case 'bookingphotos':
-        return (
-          <div style={{ padding: 18 }}>
-            <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
-                Booking Photos
-              </legend>
+  return (
+    <div style={{ padding: 18 }}>
+      <fieldset
+        style={{
+          border: '1px solid #e5e7eb',
+          borderRadius: 8,
+          padding: 14,
+          marginBottom: 18,
+        }}
+      >
+        <legend
+          style={{
+            fontSize: 14,
+            fontWeight: 600,
+            color: '#2563eb',
+            padding: '0 6px',
+          }}
+        >
+          Booking Photos
+        </legend>
 
-              
+        {/* ============================= */}
+        {/* PHOTO INPUTS */}
+        {/* ============================= */}
 
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Photos</div>
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    onClick={() => addAttachmentRow('bk_photos')}
-                    style={{ fontSize: 12 }}
-                  >
-                    + Add Photo
-                  </button>
-                </div>
-
-                {(form.bk_photos || []).map((photo, index) => (
-                  <div key={`photo-${index}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr auto', gap: 10, alignItems: 'end', marginBottom: 10 }}>
-                    <Field label="Photo Name">
-                      <input
-                        type="text"
-                        disabled={viewOnly}
-                        style={viewOnly ? readOnlyStyle : inputStyle}
-                        value={photo.photo_name}
-                        placeholder="e.g. Front view"
-                        onChange={(e) => updateAttachmentRow('bk_photos', index, 'photo_name', e.target.value)}
-                      />
-                    </Field>
-                    <Field label="Photo Path / File Name">
-                      <input
-                        type="text"
-                        disabled={viewOnly}
-                        style={viewOnly ? readOnlyStyle : inputStyle}
-                        value={photo.photo_path}
-                        placeholder="e.g. uploads/front-view.jpg"
-                        onChange={(e) => updateAttachmentRow('bk_photos', index, 'photo_path', e.target.value)}
-                      />
-                    </Field>
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      disabled={viewOnly || (form.bk_photos || []).length === 1}
-                      onClick={() => removeAttachmentRow('bk_photos', index)}
-                      style={{ height: 34, alignSelf: 'flex-end' }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </fieldset>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 12,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#374151',
+            }}
+          >
+            Photos
           </div>
-        );
+
+          {!viewOnly && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => addAttachmentRow('bk_photos')}
+              style={{ fontSize: 12 }}
+            >
+              + Add Photo
+            </button>
+          )}
+        </div>
+
+        {(form.bk_photos || []).map((photo, index) => (
+          <div
+            key={`photo-input-${index}`}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1.5fr 1fr auto',
+              gap: 10,
+              alignItems: 'end',
+              marginBottom: 12,
+              paddingBottom: 12,
+              borderBottom:
+                index < form.bk_photos.length - 1
+                  ? '1px solid #e5e7eb'
+                  : 'none',
+            }}
+          >
+            {/* PHOTO NAME - AUTOMATIC */}
+            <Field label="Photo Name">
+              <input
+                type="text"
+                readOnly
+                style={readOnlyStyle}
+                value={photo.photo_name || ''}
+                placeholder="Automatically filled"
+              />
+            </Field>
+
+            {/* FILE SELECTOR */}
+            <Field label="Select Photo">
+              {!viewOnly ? (
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.webp"
+                  style={inputStyle}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+
+                    if (file) {
+                      handlePhotoFile(index, file);
+                    }
+                  }}
+                />
+              ) : (
+                <input
+                  type="text"
+                  readOnly
+                  style={readOnlyStyle}
+                  value={photo.photo_name || 'No photo'}
+                />
+              )}
+            </Field>
+
+            {/* PHOTO DATA - AUTOMATIC */}
+            <Field label="Photo Data">
+              <input
+                type="text"
+                readOnly
+                style={readOnlyStyle}
+                value={
+                  photo.photo_data
+                    ? `Loaded (${Math.round(
+                        (photo.photo_data.length * 3) / 4 / 1024
+                      )} KB)`
+                    : ''
+                }
+                placeholder="Automatically filled"
+              />
+            </Field>
+
+            {/* REMOVE */}
+            {!viewOnly && (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                disabled={(form.bk_photos || []).length === 1}
+                onClick={() =>
+                  removeAttachmentRow('bk_photos', index)
+                }
+                style={{
+                  height: 34,
+                  alignSelf: 'flex-end',
+                }}
+              >
+                Remove
+              </button>
+            )}
+          </div>
+        ))}
+
+        {/* ============================= */}
+        {/* ALL PHOTO PREVIEWS */}
+        {/* BELOW ALL INPUTS */}
+        {/* ============================= */}
+
+        {(form.bk_photos || []).some(
+          photo => getPhotoSource(photo)
+        ) && (
+          <div
+            style={{
+              marginTop: 20,
+              paddingTop: 16,
+              borderTop: '1px solid #e5e7eb',
+            }}
+          >
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: '#374151',
+                marginBottom: 12,
+              }}
+            >
+              Photo Preview
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns:
+                  'repeat(auto-fill, minmax(220px, 1fr))',
+                gap: 14,
+              }}
+            >
+              {(form.bk_photos || []).map((photo, index) => {
+                const imageSource =
+                  getPhotoSource(photo);
+
+                if (!imageSource) {
+                  return null;
+                }
+
+                return (
+                  <div
+                    key={`photo-preview-${index}`}
+                    style={{
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 8,
+                      padding: 10,
+                      background: '#f9fafb',
+                    }}
+                  >
+                    <img
+                      src={imageSource}
+                      alt={
+                        photo.photo_name ||
+                        `Photo ${index + 1}`
+                      }
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        height: 180,
+                        objectFit: 'contain',
+                        borderRadius: 6,
+                        background: '#ffffff',
+                      }}
+                    />
+
+                    <div
+                      style={{
+                        marginTop: 8,
+                        fontSize: 12,
+                        color: '#374151',
+                        textAlign: 'center',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {photo.photo_name ||
+                        `Photo ${index + 1}`}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </fieldset>
+    </div>
+  );
 
         case 'pricingdetails':
           return (
@@ -1318,7 +1631,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{
+    <div className="modal-overlay" onClick={closeForm} style={{
       position: 'fixed', inset: 0, background: 'rgba(17, 24, 39, 0.5)',
       zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
       padding: '2vh 2vw', overflow: 'auto',
@@ -1334,7 +1647,11 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
         }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 600, color: '#111827' }}>
-              {viewOnly ? 'View Booking' : <>Edit <span style={{ color: '#2563eb' }}>Booking #:</span> <span style={{ fontWeight: 400 }}>{editBooking?.booking_no}</span></>}
+              {viewOnly
+                ? 'View Booking'
+                : editBooking
+                  ? <>Edit <span style={{ color: '#2563eb' }}>Booking #:</span> <span style={{ fontWeight: 400 }}>{editBooking.booking_no}</span></>
+                  : 'New Booking'}
             </div>
             {viewOnly && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Read-only mode</div>}
           </div>
@@ -1356,7 +1673,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
                 </button>
               </>
             )}
-            <button className="btn btn-ghost" onClick={onClose}>
+            <button className="btn btn-ghost" onClick={closeForm}>
               <X size={15} />
             </button>
           </div>
