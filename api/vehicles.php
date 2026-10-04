@@ -226,7 +226,24 @@ switch ($method) {
 
                 $stmtDocs = $db->prepare("SELECT * FROM `{$tblDocuments}` WHERE vehicle_id = ? ORDER BY vh_documents_id ASC");
                 $stmtDocs->execute([$id]);
-                $row['vh_documents'] = $stmtDocs->fetchAll() ?: [];
+                // $row['vh_documents'] = $stmtDocs->fetchAll() ?: [];
+                $documents = $stmtDocs->fetchAll() ?: [];
+
+                foreach ($documents as &$document) {
+
+                    if (
+                        isset($document['document_data']) &&
+                        $document['document_data'] !== null
+                    ) {
+                        $document['document_data'] = base64_encode(
+                            $document['document_data']
+                        );
+                    }
+                }
+
+                unset($document);
+
+                $row['vh_documents'] = $documents; 
 
                 echoJson($row);
             }
@@ -487,27 +504,57 @@ switch ($method) {
             $stmtVa = $db->prepare($sql);
             $stmtVa->execute($vaParams);
 
-            if (is_array($vh_documents)) {
+            // if (is_array($vh_documents)) {
+            //     $stmtDoc = $db->prepare("
+            //         INSERT INTO `{$tblDocuments}`
+            //         (vehicle_id, document_name, document_path)
+            //         VALUES (?, ?, ?)
+            //     ");
+
+            //     foreach ($vh_documents as $row) {
+            //         $documentName = trim($row['document_name'] ?? '');
+            //         $documentPath = trim($row['document_path'] ?? '');
+
+            //         // Ignore completely empty rows
+            //         if ($documentName === '' && $documentPath === '') {
+            //             continue;
+            //         }
+
+            //         $stmtDoc->execute([
+            //             $vehicle_id,
+            //             $documentName !== '' ? $documentName : null,
+            //             $documentPath !== '' ? $documentPath : null
+            //         ]);
+            //     }
+            // }
+
+            if (isset($input['vh_documents']) && is_array($input['vh_documents'])) {
                 $stmtDoc = $db->prepare("
                     INSERT INTO `{$tblDocuments}`
-                    (vehicle_id, document_name, document_path)
+                    (vehicle_id, document_name, document_data)
                     VALUES (?, ?, ?)
                 ");
 
                 foreach ($vh_documents as $row) {
-                    $documentName = trim($row['document_name'] ?? '');
-                    $documentPath = trim($row['document_path'] ?? '');
+                    $documentName = trim((string)($row['document_name'] ?? ''));
+                    $documentData = trim((string)($row['document_data'] ?? ''));
+                    
+                    if ($documentData !== '') {
+                        $decodedDocument = base64_decode($documentData, true);
 
+                        if ($decodedDocument !== false) {
+                            $storedDocument = $decodedDocument;
+                        }
+                    }
                     // Ignore completely empty rows
-                    if ($documentName === '' && $documentPath === '') {
+                    if ($documentName === '' && $documentData === '') {
                         continue;
                     }
 
-                    $stmtDoc->execute([
-                        $vehicle_id,
-                        $documentName !== '' ? $documentName : null,
-                        $documentPath !== '' ? $documentPath : null
-                    ]);
+                    $stmtDoc->bindValue(1, $vehicle_id, PDO::PARAM_INT);
+                    $stmtDoc->bindValue(2, $documentName !== '' ? $documentName : null, PDO::PARAM_STR);
+                    $stmtDoc->bindValue(3, $storedDocument !== '' ? $storedDocument : null, PDO::PARAM_LOB);
+                    $stmtDoc->execute();
                 }
             }
 
@@ -825,31 +872,86 @@ switch ($method) {
             ");
             $stmtDocDel->execute([$id]);
 
-            if (is_array($vh_documents)) {
-
+            if (
+                isset($input['vh_documents']) &&
+                is_array($input['vh_documents'])
+            ) {
                 $stmtDoc = $db->prepare("
                     INSERT INTO `{$tblDocuments}`
-                    (vehicle_id, document_name, document_path)
+                    (vehicle_id, document_name, document_data)
                     VALUES (?, ?, ?)
                 ");
 
                 foreach ($vh_documents as $row) {
+                    $documentName = trim(
+                        (string)($row['document_name'] ?? '')
+                    );
 
-                    $documentName = trim($row['document_name'] ?? '');
-                    $documentPath = trim($row['document_path'] ?? '');
+                    $documentData =
+                        $row['document_data'] ??
+                        $row['document_base64'] ??
+                        '';
 
-                    // Ignore completely empty rows
-                    if ($documentName === '' && $documentPath === '') {
+                    if ($documentName === '' || $documentData === '') {
                         continue;
                     }
 
-                    $stmtDoc->execute([
+                    $storedDocument = base64_decode(
+                        $documentData,
+                        true
+                    );
+
+                    if ($storedDocument === false) {
+                        continue;
+                    }
+
+                    $stmtDoc->bindValue(
+                        1,
                         $id,
-                        $documentName !== '' ? $documentName : null,
-                        $documentPath !== '' ? $documentPath : null
-                    ]);
+                        PDO::PARAM_INT
+                    );
+
+                    $stmtDoc->bindValue(
+                        2,
+                        $documentName,
+                        PDO::PARAM_STR
+                    );
+
+                    $stmtDoc->bindValue(
+                        3,
+                        $storedDocument,
+                        PDO::PARAM_LOB
+                    );
+
+                    $stmtDoc->execute();
                 }
             }
+
+            // if (is_array($vh_documents)) {
+
+            //     $stmtDoc = $db->prepare("
+            //         INSERT INTO `{$tblDocuments}`
+            //         (vehicle_id, document_name, document_path)
+            //         VALUES (?, ?, ?)
+            //     ");
+
+            //     foreach ($vh_documents as $row) {
+
+            //         $documentName = trim($row['document_name'] ?? '');
+            //         $documentPath = trim($row['document_path'] ?? '');
+
+            //         // Ignore completely empty rows
+            //         if ($documentName === '' && $documentPath === '') {
+            //             continue;
+            //         }
+
+            //         $stmtDoc->execute([
+            //             $id,
+            //             $documentName !== '' ? $documentName : null,
+            //             $documentPath !== '' ? $documentPath : null
+            //         ]);
+            //     }
+            // }
 
             // Replace vehicle photos
             $stmtPhotoDel = $db->prepare("

@@ -638,7 +638,7 @@ export const passwordReset = {
     }),
 };
 
-// export const dashboard = {
-//   stats: () => request('/dashboard.php?action=stats'),
-//   summary: () => request('/dashboard.php?action=summary'),
-// };
+export const dashboard = {
+  stats: () => request('/dashboard.php?action=stats'),
+  summary: () => request('/dashboard.php?action=summary'),
+};

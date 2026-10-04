@@ -1,7 +1,77 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, MoreHorizontal, Pencil, Trash2, Search, Loader2, Filter, Download, Eye } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Trash2, Search, Loader2, Filter, Download, Eye, FileText, X } from 'lucide-react';
 import { personnelCrud } from '../services/api.js';
 import PersonnelFormModal from './PersonnelForm.jsx';
+
+const EMPTY_PERSONNEL_FILTERS = {
+  name: '',
+  contactNumber: '',
+  email: '',
+  personnelType: '',
+  depotId: '',
+  employmentType: '',
+  vendorId: '',
+  status: '',
+};
+
+const PERSONNEL_EXPORT_COLUMNS = [
+  ['display_name', 'Name'],
+  ['personnel_type', 'Personnel Type'],
+  ['depot_name', 'Depot'],
+  ['employment_type', 'Employment Type'],
+  ['vendor_name', 'Vendor'],
+  ['contact_number', 'Contact Number'],
+  ['email', 'Email'],
+  ['dl_codes', 'DL Codes'],
+  ['daily_rate', 'Daily Rate'],
+  ['status', 'Status'],
+];
+
+function matchesPersonnelFilters(person, filters) {
+  const name = person.display_name || person.full_name || '';
+  return (!filters.name || String(name).toLowerCase().includes(filters.name.toLowerCase()))
+    && (!filters.contactNumber || String(person.contact_number || '').toLowerCase().includes(filters.contactNumber.toLowerCase()))
+    && (!filters.email || String(person.email || '').toLowerCase().includes(filters.email.toLowerCase()))
+    && (!filters.personnelType || String(person.personnel_type || '') === filters.personnelType)
+    && (!filters.depotId || String(person.depot_id || '') === filters.depotId)
+    && (!filters.employmentType || String(person.employment_type || '') === filters.employmentType)
+    && (!filters.vendorId || String(person.vendor_id || '') === filters.vendorId)
+    && (!filters.status || String(person.status || '') === filters.status);
+}
+
+function escapeExcel(value) {
+  if (value === null || value === undefined || value === '') return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function downloadPersonnelReport(rows, filters) {
+  const header = PERSONNEL_EXPORT_COLUMNS
+    .map(([, label]) => `<th>${escapeExcel(label)}</th>`)
+    .join('');
+  const body = rows.map((row) => (
+    `<tr>${PERSONNEL_EXPORT_COLUMNS.map(([key]) => `<td>${escapeExcel(row[key])}</td>`).join('')}</tr>`
+  )).join('');
+  const html = `<html><head><meta charset="UTF-8"><style>
+    table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 10pt; }
+    th, td { border: 1px solid #7f7f7f; padding: 5px 7px; white-space: nowrap; }
+    th { background: #f4b183; color: #000; font-weight: bold; text-align: center; }
+    td { background: #fff; vertical-align: top; }
+  </style></head><body><table><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table></body></html>`;
+  const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  const generatedDate = new Date().toISOString().slice(0, 10);
+  const statusPart = filters.status ? `-${filters.status.toLowerCase()}` : '';
+  link.href = url;
+  link.download = `Personnel${statusPart}-${generatedDate}.xls`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 function ActionMenu({ row, onOpen, onClose, isOpen, onView, onEdit, onDelete }) {
   const ref = React.useRef(null);
@@ -36,7 +106,6 @@ export default function Personnel() {
   const [loading, setLoading] = useState(true);
   const [all, setAll] = useState([]);
   const [search, setSearch] = useState('');
-  const [statusTab, setStatusTab] = useState('all');
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -44,11 +113,17 @@ export default function Personnel() {
   const [formOpen, setFormOpen] = useState(false);
   const [editPersonnel, setEditPersonnel] = useState(null);
   const [viewOnly, setViewOnly] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
+  const [showDownload, setShowDownload] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
+  const [personnelFilters, setPersonnelFilters] = useState(EMPTY_PERSONNEL_FILTERS);
+  const [draftFilters, setDraftFilters] = useState(EMPTY_PERSONNEL_FILTERS);
 
   const loadPersonnel = async () => {
     setLoading(true);
     try {
-      const data = await personnelCrud.list(statusTab === 'all' ? {} : { status: statusTab });
+      const data = await personnelCrud.list({});
       setAll(Array.isArray(data) ? data : (data.data || []));
     } catch (e) {
       setToast({ type: 'error', msg: e.message || 'Failed to load personnel.' });
@@ -60,12 +135,14 @@ export default function Personnel() {
 
   useEffect(() => {
     loadPersonnel();
-  }, [statusTab]);
+  }, []);
 
-  useEffect(() => { setPage(1); }, [search, perPage, statusTab]);
+  useEffect(() => { setPage(1); }, [search, perPage, activeTab, personnelFilters]);
 
   const filtered = useMemo(() => {
     let rows = all;
+    if (activeTab !== 'all') rows = rows.filter(r => r.status === activeTab);
+    rows = rows.filter((row) => matchesPersonnelFilters(row, personnelFilters));
     if (search.trim()) {
       const q = search.toLowerCase();
       rows = rows.filter(r =>
@@ -77,7 +154,7 @@ export default function Personnel() {
       );
     }
     return rows;
-  }, [all, search]);
+  }, [all, activeTab, search, personnelFilters]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const current = filtered.slice((page - 1) * perPage, page * perPage);
@@ -137,18 +214,154 @@ export default function Personnel() {
     setViewOnly(false);
   };
 
+  const updateDraftFilter = (key, value) => {
+    setDraftFilters((previous) => ({ ...previous, [key]: value }));
+    setDownloadError('');
+  };
+
+  const applyPersonnelFilters = () => {
+    setPersonnelFilters(draftFilters);
+    setShowFilters(false);
+  };
+
+  const clearPersonnelFilters = () => {
+    setDraftFilters(EMPTY_PERSONNEL_FILTERS);
+    setPersonnelFilters(EMPTY_PERSONNEL_FILTERS);
+    setDownloadError('');
+  };
+
+  const getOptions = (valueKey, labelKey) => [...new Map(
+    all
+      .filter((person) => person[valueKey] !== null && person[valueKey] !== undefined && person[valueKey] !== '')
+      .map((person) => [
+        String(person[valueKey]),
+        { value: String(person[valueKey]), label: String(person[labelKey] || person[valueKey]) },
+      ])
+  ).values()];
+
+  const renderPersonnelFilterFields = () => (
+    <div className="report-filter-grid">
+      <label>
+        Name
+        <input value={draftFilters.name} onChange={(e) => updateDraftFilter('name', e.target.value)} />
+      </label>
+      <label>
+        Contact Number
+        <input value={draftFilters.contactNumber} onChange={(e) => updateDraftFilter('contactNumber', e.target.value)} />
+      </label>
+      <label>
+        Email
+        <input type="email" value={draftFilters.email} onChange={(e) => updateDraftFilter('email', e.target.value)} />
+      </label>
+      <label>
+        Personnel Type
+        <select value={draftFilters.personnelType} onChange={(e) => updateDraftFilter('personnelType', e.target.value)}>
+          <option value="">All types</option>
+          {getOptions('personnel_type', 'personnel_type').map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Depot
+        <select value={draftFilters.depotId} onChange={(e) => updateDraftFilter('depotId', e.target.value)}>
+          <option value="">All depots</option>
+          {getOptions('depot_id', 'depot_name').map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Employment Type
+        <select value={draftFilters.employmentType} onChange={(e) => updateDraftFilter('employmentType', e.target.value)}>
+          <option value="">All employment types</option>
+          {getOptions('employment_type', 'employment_type').map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Vendor
+        <select value={draftFilters.vendorId} onChange={(e) => updateDraftFilter('vendorId', e.target.value)}>
+          <option value="">All vendors</option>
+          {getOptions('vendor_id', 'vendor_name').map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Status
+        <select value={draftFilters.status} onChange={(e) => updateDraftFilter('status', e.target.value)}>
+          <option value="">All statuses</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
+      </label>
+    </div>
+  );
+
+  const renderPersonnelFilterActions = (downloadMode = false) => (
+    <div className="report-filter-actions">
+      <button
+        className="btn btn-secondary"
+        type="button"
+        onClick={() => {
+          if (downloadMode) {
+            setDraftFilters(EMPTY_PERSONNEL_FILTERS);
+            setDownloadError('');
+          } else {
+            clearPersonnelFilters();
+          }
+        }}
+      >
+        Clear
+      </button>
+      {downloadMode
+        ? (
+          <button
+            className="btn btn-primary"
+            type="button"
+            onClick={() => {
+              const query = search.trim().toLowerCase();
+              const exportRows = all
+                .filter((row) => matchesPersonnelFilters(row, draftFilters))
+                .filter((row) => activeTab === 'all' || row.status === activeTab)
+                .filter((row) => !query || [
+                  row.display_name,
+                  row.full_name,
+                  row.email,
+                  row.contact_number,
+                  row.depot_name,
+                  row.personnel_type,
+                ].some((value) => String(value || '').toLowerCase().includes(query)));
+              if (exportRows.length === 0) {
+                setDownloadError('No personnel match the selected filters. Adjust your filters and try again.');
+                return;
+              }
+              setDownloadError('');
+              setShowDownload(false);
+              downloadPersonnelReport(exportRows, draftFilters);
+            }}
+          >
+            <FileText size={14} /> Generate Report
+          </button>
+        )
+        : <button className="btn btn-primary" type="button" onClick={applyPersonnelFilters}>Apply Filters</button>}
+    </div>
+  );
+
   if (loading) return <div className="loading"><Loader2 className="animate-spin" size={20} /> Loading personnel…</div>;
 
   const tabs = [
     { key: 'all',      label: 'All' },
     { key: 'Active',   label: 'Active' },
     { key: 'Inactive', label: 'Inactive' },
-  ];
-  const tabCounts = {
-    all:      all.length,
-    Active:   all.filter(r => r.status === 'Active').length,
-    Inactive: all.filter(r => r.status === 'Inactive').length,
-  };
+  ].map((tab) => ({
+    ...tab,
+    count: tab.key === 'all'
+      ? all.length
+      : all.filter((row) => row.status === tab.key).length,
+  }));
 
   return (
     <>
@@ -161,34 +374,44 @@ export default function Personnel() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-ghost" title="Download CSV">
+          <button
+            className="btn btn-ghost"
+            title="Download personnel report"
+            onClick={() => {
+              setDraftFilters(personnelFilters);
+              setDownloadError('');
+              setShowDownload(true);
+            }}
+          >
             <Download size={14} /> Download
           </button>
           <button className="btn btn-primary" onClick={handleAdd}>
             <Plus size={15} /> Personnel
           </button>
-          <button className="btn btn-ghost" title="Filter">
+          <button
+            className="btn btn-ghost"
+            title="Filter personnel"
+            onClick={() => {
+              setDraftFilters(personnelFilters);
+              setShowFilters((visible) => !visible);
+            }}
+          >
             <Filter size={14} /> Filter
           </button>
         </div>
       </div>
 
-      <div className="status-tabs" style={{ display: 'flex', gap: 0, marginBottom: 14, borderBottom: '1px solid #e5e7eb' }}>
+      {showFilters && (
+        <div className="report-filter-panel">
+          {renderPersonnelFilterFields()}
+          {renderPersonnelFilterActions()}
+        </div>
+      )}
+
+      <div className="tabs">
         {tabs.map(t => (
-          <button
-            key={t.key}
-            onClick={() => setStatusTab(t.key)}
-            style={{
-              padding: '8px 16px',
-              fontSize: 13,
-              fontWeight: statusTab === t.key ? 600 : 400,
-              color: statusTab === t.key ? '#1d4ed8' : '#374151',
-              borderBottom: statusTab === t.key ? '2px solid #1d4ed8' : '2px solid transparent',
-              background: 'transparent',
-              cursor: 'pointer',
-            }}
-          >
-            {t.label} <span style={{ color: '#6b7280' }}>({tabCounts[t.key] ?? 0})</span>
+          <button key={t.key} className={activeTab === t.key ? 'active' : ''} onClick={() => setActiveTab(t.key)}>
+            {t.label} <span style={{ opacity: 0.75, marginLeft: 4 }}>({t.count})</span>
           </button>
         ))}
       </div>
@@ -290,6 +513,27 @@ export default function Personnel() {
         editPersonnel={editPersonnel}
         viewOnly={viewOnly}
       />
+
+      {showDownload && (
+        <div className="report-modal-backdrop" onClick={() => setShowDownload(false)}>
+          <div className="report-download-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="report-modal-header">
+              <span>Download Personnel Report</span>
+              <button type="button" onClick={() => setShowDownload(false)} aria-label="Close download dialog">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="report-modal-intro">Choose personnel filters for the downloaded report.</div>
+            {downloadError && (
+              <div className="alert alert-error" role="alert" style={{ margin: '0 16px 12px' }}>
+                {downloadError}
+              </div>
+            )}
+            {renderPersonnelFilterFields()}
+            {renderPersonnelFilterActions(true)}
+          </div>
+        </div>
+      )}
     </>
   );
 }

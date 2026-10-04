@@ -5,6 +5,10 @@ require_once __DIR__ . '/auth.php';
 requireAuth();
 $db = getDB();
 $report = $_GET['report'] ?? '';
+$fuelTripTable = tableName('bk_fuel_trip');
+$fuelAreaSelect = $db->query("SHOW COLUMNS FROM `{$fuelTripTable}` LIKE 'area'")->fetch()
+    ? 'f.area'
+    : 'NULL AS area';
 
 function reportJson($data, $code = 200) {
     http_response_code($code);
@@ -22,7 +26,7 @@ try {
                 COALESCE(NULLIF(bv.plate_no, ''), v.plate_no) AS plate_no,
                 bv.vehicle_id, COALESCE(bv.vendor_id, v.vendor_id) AS vendor_id,
                 vd.vendor_name, r.client_ref_no, r.other_ref_no,
-                r.remarks, b.route_code, b.trips_number, b.drops_number, f.area, f.trip_allowance,
+                r.remarks, b.route_code, b.trips_number, b.drops_number, {$fuelAreaSelect}, f.trip_allowance,
                 f.fuel, f.fuel_po, f.fuel_amount, b.created_at,
                 u.username AS created_by,
                 (SELECT GROUP_CONCAT(CONCAT_WS(' ', dp.first_name, dp.middle_name, dp.last_name) SEPARATOR ', ')
@@ -143,7 +147,7 @@ try {
 
         case 'fuel':
             $stmt = $db->query("SELECT f.bk_fuel_trip_id, f.booking_id, b.booking_no,
-                f.area, f.trip_allowance, f.fuel, f.fuel_po, f.fuel_amount
+                {$fuelAreaSelect}, f.trip_allowance, f.fuel, f.fuel_po, f.fuel_amount
                 FROM bk_fuel_trip f
                 LEFT JOIN bookings b ON b.booking_id = f.booking_id
                 ORDER BY f.bk_fuel_trip_id DESC");
@@ -156,5 +160,6 @@ try {
             reportJson(['error' => 'Unknown report'], 400);
     }
 } catch (PDOException $e) {
+    error_log('Report query failed: ' . $e->getMessage());
     reportJson(['error' => 'Unable to load report'], 500);
 }

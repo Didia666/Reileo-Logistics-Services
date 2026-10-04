@@ -267,6 +267,7 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
   };
 
   if (!isOpen) return null;
+  
 
   const renderInput = (path, placeholder = '', type = 'text', disabled = false) => {
     const v = path.split('.').reduce((o, k) => (o || {})[k], form) ?? '';
@@ -331,7 +332,7 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 Personnel Information
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 14 }}>
@@ -401,7 +402,7 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 Employment Details
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
@@ -476,7 +477,7 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 Benefits
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -501,7 +502,7 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 Emergency Contact
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -520,7 +521,7 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 License
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -542,7 +543,7 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 Driver's License Restriction Codes
               </legend>
               {lookupsData.dlCodes.length === 0 && (
@@ -631,21 +632,13 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
           </div>
         </div>
 
-        <div style={{
-          display: 'flex', borderBottom: '1px solid #e5e7eb',
-          background: '#fafafa', padding: '0 10px', overflowX: 'auto',
-        }}>
+        <div className="tabs" style={{ margin: '0 10px 16px', flexWrap: 'nowrap', overflowX: 'auto' }}>
           {TABS.map(t => (
             <button
               key={t.key}
+              type="button"
+              className={activeTab === t.key ? 'active' : ''}
               onClick={() => setActiveTab(t.key)}
-              style={{
-                padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap',
-                fontWeight: activeTab === t.key ? 600 : 400,
-                color: activeTab === t.key ? '#1d4ed8' : '#4b5563',
-                background: 'transparent', border: 'none', borderBottom: activeTab === t.key ? '2px solid #1d4ed8' : '2px solid transparent',
-                marginBottom: -1, cursor: 'pointer',
-              }}
             >
               {t.label}
             </button>

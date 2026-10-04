@@ -1405,7 +1405,6 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
               <button
                 type="button"
                 className="btn btn-ghost"
-                disabled={(form.bk_photos || []).length === 1}
                 onClick={() =>
                   removeAttachmentRow('bk_photos', index)
                 }
@@ -1413,8 +1412,8 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
                   height: 34,
                   alignSelf: 'flex-end',
                 }}
-              >
-                Remove
+              > 
+                Remove Photo
               </button>
             )}
           </div>
@@ -1653,7 +1652,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
                   ? <>Edit <span style={{ color: '#2563eb' }}>Booking #:</span> <span style={{ fontWeight: 400 }}>{editBooking.booking_no}</span></>
                   : 'New Booking'}
             </div>
-            {viewOnly && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Read-only mode</div>}
+            {viewOnly && <div style={{ fontSize: 12, color: '#806b73', marginTop: 2 }}>Read-only mode</div>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {!viewOnly && (

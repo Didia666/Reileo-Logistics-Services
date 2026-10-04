@@ -23,6 +23,7 @@ export default function CustomerFormModal({ isOpen, onClose, onSaved, editCustom
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [toast, setToast] = useState({ type: '', msg: '' });
+  const [activeTab, setActiveTab] = useState('customer');
 
   useEffect(() => {
     (async () => {
@@ -34,6 +35,7 @@ export default function CustomerFormModal({ isOpen, onClose, onSaved, editCustom
   }, []);
 
   useEffect(() => {
+    setActiveTab('customer');
     if (editCustomer) {
       setForm({
         customer_name: editCustomer.customer_name || '',
@@ -68,6 +70,7 @@ export default function CustomerFormModal({ isOpen, onClose, onSaved, editCustom
     if (!form.address_one.trim()) e.address_one = 'Address 1 is required';
     if (!form.contact_person.trim()) e.contact_person = 'Contact Person is required';
     setErrors(e);
+    setActiveTab(e.contact_person ? 'other' : 'customer');
     return Object.keys(e).length === 0;
   };
 
@@ -120,28 +123,108 @@ export default function CustomerFormModal({ isOpen, onClose, onSaved, editCustom
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>{isEdit ? 'Update Customer' : 'Add Customer'}</h3>
-          <button className="modal-close" onClick={onClose}>
-            <X size={18} />
+    <div
+      className="modal-overlay"
+      onClick={onClose}
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+        padding: '2vh 2vw',
+        overflow: 'auto',
+      }}
+    >
+      <div
+        className="modal"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: 900,
+          maxHeight: '96vh',
+          margin: 0,
+        }}
+      >
+        <div className="modal-header" style={{ padding: '14px 18px' }}>
+          <h3 style={{ fontSize: 18 }}>{isEdit ? 'Update Customer' : 'Add Customer'}</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {toast.msg && (
+              <div
+                className={`alert alert-${toast.type || 'success'}`}
+                role="status"
+                style={{ margin: 0, fontSize: 12 }}
+              >
+                {toast.msg}
+              </div>
+            )}
+            <button
+              type="submit"
+              form="customer-form"
+              className="btn btn-primary"
+              disabled={submitting}
+            >
+              {submitting
+                ? <Loader2 size={14} className="animate-spin" />
+                : <Save size={14} />}
+              {submitting ? 'Saving…' : (isEdit ? 'Update' : 'Save')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={onClose}
+              disabled={submitting}
+              aria-label="Close customer form"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+
+        <div
+          className="tabs"
+          style={{ margin: '0 10px 12px', flexWrap: 'nowrap', overflowX: 'auto' }}
+          role="tablist"
+          aria-label="Customer form sections"
+        >
+          <button
+            type="button"
+            role="tab"
+            id="customer-tab"
+            aria-selected={activeTab === 'customer'}
+            aria-controls="customer-tab-panel"
+            className={activeTab === 'customer' ? 'active' : ''}
+            onClick={() => setActiveTab('customer')}
+          >
+            Customer Information
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="other-tab"
+            aria-selected={activeTab === 'other'}
+            aria-controls="other-tab-panel"
+            className={activeTab === 'other' ? 'active' : ''}
+            onClick={() => setActiveTab('other')}
+          >
+            Other Information
           </button>
         </div>
 
-        {toast.msg && (
-          <div className={`alert alert-${toast.type || 'success'}`} style={{ margin: '0 20px 16px' }}>
-            {toast.msg}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} style={{ maxHeight: '70vh', overflowY: 'auto', padding: '0 20px 20px' }}>
-          <div className="bf-section" style={{ border: '1px solid #e5e7eb', borderRadius: 6, marginBottom: 16 }}>
-            <div className="bf-section-title" style={{ background: '#d1d5db', color: '#374151', padding: '4px 10px', fontSize: 13, fontWeight: 600, borderTopLeftRadius: 6, borderTopRightRadius: 6 }}>
+        <form
+          id="customer-form"
+          onSubmit={handleSubmit}
+          style={{ flex: 1, overflowY: 'auto', padding: 18 }}
+        >
+          {activeTab === 'customer' && (
+          <fieldset
+            id="customer-tab-panel"
+            role="tabpanel"
+            aria-labelledby="customer-tab"
+            style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}
+          >
+            <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px' }}>
               Customer Information
-            </div>
-            <div className="bf-grid" style={{ padding: 16 }}>
-              <div className="bf-col-2">
+            </legend>
+            <div className="customer-form-grid">
+              <div style={{ gridColumn: '1 / -1' }}>
                 <div className="bf-field">
                   <label>
                     Customer Name <span className="req">*</span>
@@ -156,7 +239,7 @@ export default function CustomerFormModal({ isOpen, onClose, onSaved, editCustom
                 </div>
               </div>
 
-              <div className="bf-col-1">
+              <div>
                 <div className="bf-field">
                   <label>
                     Contact Number <span className="req">*</span>
@@ -171,7 +254,7 @@ export default function CustomerFormModal({ isOpen, onClose, onSaved, editCustom
                 </div>
               </div>
 
-              <div className="bf-col-1">
+              <div>
                 <div className="bf-field">
                   <label>
                     Email Address <span className="req">*</span>
@@ -186,7 +269,7 @@ export default function CustomerFormModal({ isOpen, onClose, onSaved, editCustom
                 </div>
               </div>
 
-              <div className="bf-col-2">
+              <div style={{ gridColumn: '1 / -1' }}>
                 <div className="bf-field">
                   <label>
                     Address 1 <span className="req">*</span>
@@ -201,7 +284,7 @@ export default function CustomerFormModal({ isOpen, onClose, onSaved, editCustom
                 </div>
               </div>
 
-              <div className="bf-col-2">
+              <div style={{ gridColumn: '1 / -1' }}>
                 <div className="bf-field">
                   <label>Address 2</label>
                   <input
@@ -212,14 +295,21 @@ export default function CustomerFormModal({ isOpen, onClose, onSaved, editCustom
                 </div>
               </div>
             </div>
-          </div>
+          </fieldset>
+          )}
 
-          <div className="bf-section" style={{ border: '1px solid #e5e7eb', borderRadius: 6 }}>
-            <div className="bf-section-title" style={{ background: '#d1d5db', color: '#374151', padding: '4px 10px', fontSize: 13, fontWeight: 600, borderTopLeftRadius: 6, borderTopRightRadius: 6 }}>
+          {activeTab === 'other' && (
+          <fieldset
+            id="other-tab-panel"
+            role="tabpanel"
+            aria-labelledby="other-tab"
+            style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14 }}
+          >
+            <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px' }}>
               Other Information
-            </div>
-            <div className="bf-grid" style={{ padding: 16 }}>
-              <div className="bf-col-1">
+            </legend>
+            <div className="customer-form-grid">
+              <div>
                 <div className="bf-field">
                   <label>
                     Contact Person <span className="req">*</span>
@@ -234,7 +324,7 @@ export default function CustomerFormModal({ isOpen, onClose, onSaved, editCustom
                 </div>
               </div>
 
-              <div className="bf-col-1">
+              <div>
                 <div className="bf-field">
                   <label>Depot</label>
                   <select
@@ -251,7 +341,7 @@ export default function CustomerFormModal({ isOpen, onClose, onSaved, editCustom
                 </div>
               </div>
 
-              <div className="bf-col-1">
+              <div>
                 <div className="bf-field">
                   <label>TIN</label>
                   <input
@@ -262,7 +352,7 @@ export default function CustomerFormModal({ isOpen, onClose, onSaved, editCustom
                 </div>
               </div>
 
-              <div className="bf-col-1">
+              <div>
                 <div className="bf-field">
                   <label>Account Code</label>
                   <input
@@ -273,7 +363,7 @@ export default function CustomerFormModal({ isOpen, onClose, onSaved, editCustom
                 </div>
               </div>
 
-              <div className="bf-col-2">
+              <div>
                 <div className="bf-field">
                   <label>Rate Type</label>
                   <select
@@ -287,7 +377,7 @@ export default function CustomerFormModal({ isOpen, onClose, onSaved, editCustom
                 </div>
               </div>
 
-              <div className="bf-col-2">
+              <div>
                 <div className="bf-field">
                   <label>
                     Status <span className="req">*</span>
@@ -317,26 +407,8 @@ export default function CustomerFormModal({ isOpen, onClose, onSaved, editCustom
                 </div>
               </div>
             </div>
-          </div>
-
-          <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={onClose}
-              disabled={submitting}
-            >
-              <X size={14} /> Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={submitting}
-            >
-              {submitting && <Loader2 size={14} className="animate-spin" />}
-              <Save size={14} /> {submitting ? 'Saving…' : (isEdit ? 'Update' : 'Save')}
-            </button>
-          </div>
+          </fieldset>
+          )}
         </form>
       </div>
     </div>

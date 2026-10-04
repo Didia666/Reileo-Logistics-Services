@@ -540,8 +540,21 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
   const handleDocumentFile = (index, file) => {
     if (!file) return;
 
-    const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png'];
-    const extension = file.name.split('.').pop()?.toLowerCase();
+    const allowedExtensions = [
+      'pdf',
+      'doc',
+      'docx',
+      'xls',
+      'xlsx',
+      'jpg',
+      'jpeg',
+      'png'
+    ];
+
+    const extension = file.name
+      .split('.')
+      .pop()
+      ?.toLowerCase();
 
     if (!allowedExtensions.includes(extension)) {
       setToast({
@@ -551,19 +564,34 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
       return;
     }
 
+    // Optional: MEDIUMBLOB max is about 16 MB,
+    // so keep uploads below that.
+    const maxSize = 15 * 1024 * 1024;
+
+    if (file.size > maxSize) {
+      setToast({
+        type: 'error',
+        msg: 'Document must be 15 MB or smaller.',
+      });
+      return;
+    }
+
     const reader = new FileReader();
 
     reader.onload = () => {
       const result = String(reader.result);
 
+      const base64Data = result.split(',')[1] || '';
+
       setForm(prev => ({
         ...prev,
+
         vh_documents: (prev.vh_documents || []).map((doc, i) =>
           i === index
             ? {
                 ...doc,
                 document_name: file.name,
-                document_data: result,
+                document_data: base64Data,
                 document_path: '',
               }
             : doc
@@ -574,7 +602,7 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
     reader.onerror = () => {
       setToast({
         type: 'error',
-        msg: `Unable to read ${file.name}. Please try selecting it again.`,
+        msg: `Unable to read ${file.name}. Please try again.`,
       });
     };
 
@@ -661,11 +689,10 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
           remarks: form.remarks.trim() || null,
         },
         vh_documents: (form.vh_documents || [])
-          .filter(row => row.document_name || row.document_data || row.document_path)
+          .filter(row => row.document_name || row.document_data)
           .map(row => ({
             document_name: row.document_name?.trim() || null,
             document_data: row.document_data || null,
-            document_path: row.document_path?.trim() || null,
           })),
         vh_photos: (form.vh_photos || [])
           .filter(row => row.photo_name || row.photo_data || row.photo_path)
@@ -840,7 +867,7 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 Vehicle Information
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
@@ -884,7 +911,7 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 Vehicle Location
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
@@ -936,7 +963,7 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 Vehicle Specifications
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
@@ -973,8 +1000,8 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
-                Vehicle Specifications
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
+                Vehicle Registration and Compliance
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
                 <Field label="OR Date">
@@ -1025,8 +1052,8 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
-                Vehicle Specifications
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
+                Vehicle Insurance
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
                 <Field label="Insurance Provider">
@@ -1053,8 +1080,8 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
-                Vehicle Specifications
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
+                Vehicle Acquisition and Condition
               </legend>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
                 <Field label="Acquisition Date">
@@ -1081,7 +1108,7 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
         return (
           <div style={{ padding: 18 }}>
             <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 12, fontWeight: 600, color: '#374151', padding: '0 6px', background: '#f3f4f6', borderRadius: 4 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
                 Photos and Documents
               </legend>
 
@@ -1169,11 +1196,10 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
                       <button
                         type="button"
                         className="btn btn-ghost"
-                        disabled={(form.vh_documents || []).length === 1}
                         onClick={() => removeAttachmentRow('vh_documents', index)}
                         style={{ height: 34, alignSelf: 'flex-end' }}
                       >
-                        Remove
+                        Remove Document
                       </button>
                     )}
                   </div>
@@ -1334,7 +1360,6 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
                       <button
                         type="button"
                         className="btn btn-ghost"
-                        disabled={(form.vh_photos || []).length === 1}
                         onClick={() =>
                           removeAttachmentRow('vh_photos', index)
                         }
@@ -1343,7 +1368,7 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
                           alignSelf: 'flex-end',
                         }}
                       >
-                        Remove
+                        Remove Photo
                       </button>
                     )}
                   </div>
@@ -1674,21 +1699,13 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
           </div>
         </div>
 
-        <div style={{
-          display: 'flex', borderBottom: '1px solid #e5e7eb',
-          background: '#fafafa', padding: '0 10px', overflowX: 'auto',
-        }}>
+        <div className="tabs" style={{ margin: '0 10px 16px', flexWrap: 'nowrap', overflowX: 'auto' }}>
           {TABS.map(t => (
             <button
               key={t.key}
+              type="button"
+              className={activeTab === t.key ? 'active' : ''}
               onClick={() => setActiveTab(t.key)}
-              style={{
-                padding: '12px 14px', fontSize: 13, whiteSpace: 'nowrap',
-                fontWeight: activeTab === t.key ? 600 : 400,
-                color: activeTab === t.key ? '#1d4ed8' : '#4b5563',
-                background: 'transparent', border: 'none', borderBottom: activeTab === t.key ? '2px solid #1d4ed8' : '2px solid transparent',
-                marginBottom: -1, cursor: 'pointer',
-              }}
             >
               {t.label}
             </button>
