@@ -38,9 +38,9 @@ export default function Vendor() {
 
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [pendingSearch, setPendingSearch] = useState('');
-  const [pendingStatus, setPendingStatus] = useState('all');
+
+  const [activeTab, setActiveTab] = useState('all');
 
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(8);
@@ -64,7 +64,6 @@ export default function Vendor() {
     try {
       const params = {};
       if (search.trim()) params.search = search.trim();
-      if (statusFilter !== 'all') params.status = statusFilter;
       const res = await vendorCrud.list(params);
       const arr = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
       setRows(arr);
@@ -76,28 +75,31 @@ export default function Vendor() {
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, vendorCrud, showToast]);
+  }, [search, vendorCrud, showToast]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  useEffect(() => { setPage(1); }, [search, statusFilter]);
+  useEffect(() => { setPage(1); }, [search, activeTab]);
 
-  const totalPages = Math.max(1, Math.ceil(rows.length / perPage));
-  const current = rows.slice((page - 1) * perPage, page * perPage);
+  const filtered = useMemo(() => {
+    let list = rows;
+    if (activeTab !== 'all') list = list.filter(r => (r.status || 'Active') === activeTab);
+    return list;
+  }, [rows, activeTab]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const current = filtered.slice((page - 1) * perPage, page * perPage);
 
   const applyFilters = () => {
     setSearch(pendingSearch);
-    setStatusFilter(pendingStatus);
     setShowFilterPanel(false);
   };
 
   const clearFilters = () => {
     setPendingSearch('');
-    setPendingStatus('all');
     setSearch('');
-    setStatusFilter('all');
   };
 
   const handleEdit = (v) => {
@@ -150,9 +152,12 @@ export default function Vendor() {
         <div>
           <div className="breadcrumb">Master Data / Vendors</div>
           <h2>
-            Vendors <span style={{ color: '#6b7280', fontSize: 18 }}>({total})</span>
+            Vendors ({filtered.length})
           </h2>
-          
+          <div style={{ color: '#6b7280', fontSize: 13 }}>
+            {filtered.length} of {total} total
+          </div>
+         
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
@@ -188,14 +193,6 @@ export default function Vendor() {
                 placeholder="Search vendors…"
               />
             </label>
-            <label>
-              Status
-              <select value={pendingStatus} onChange={(e) => setPendingStatus(e.target.value)}>
-                <option value="all">All Statuses</option>
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
-            </label>
           </div>
           <div className="report-filter-actions">
             <button className="btn btn-secondary" onClick={clearFilters}>Clear</button>
@@ -205,6 +202,33 @@ export default function Vendor() {
           </div>
         </div>
       )}
+
+      {(() => {
+        const tabs = [
+          { key: 'all',      label: 'All' },
+          { key: 'Active',   label: 'Active' },
+          { key: 'Inactive', label: 'Inactive' },
+        ].map((tab) => ({
+          ...tab,
+          count: tab.key === 'all'
+            ? total
+            : rows.filter((row) => (row.status || 'Active') === tab.key).length,
+        }));
+
+        return (
+          <div className="tabs">
+            {tabs.map(tab => (
+              <button
+                key={tab.key}
+                className={activeTab === tab.key ? 'active' : ''}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                {tab.label} <span style={{ opacity: 0.75, marginLeft: 4 }}>({tab.count})</span>
+              </button>
+            ))}
+          </div>
+        );
+      })()}
 
       <div className="card">
         <div className="table-toolbar">
@@ -217,7 +241,7 @@ export default function Vendor() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            {(search || statusFilter !== 'all') && (
+            {search && (
               <span className="badge badge-info" style={{ marginLeft: 8 }}>Filtered</span>
             )}
           </div>
@@ -251,7 +275,7 @@ export default function Vendor() {
                 {current.length === 0 && (
                   <tr>
                     <td colSpan={3} className="empty-row">
-                      No records. Click <strong>Add Vendors</strong> to create the first one.
+                      No vendors match the current filters.
                     </td>
                   </tr>
                 )}
@@ -286,7 +310,7 @@ export default function Vendor() {
 
         <div className="pagination">
           <div>
-            Showing {current.length === 0 ? 0 : ((page - 1) * perPage + 1)} – {Math.min(page * perPage, rows.length)} of {rows.length}
+            Showing {current.length === 0 ? 0 : ((page - 1) * perPage + 1)} – {Math.min(page * perPage, filtered.length)} of {filtered.length}
           </div>
           <div className="page-buttons">
             <button disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>«</button>
