@@ -2,11 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { X, Save, Loader2 } from 'lucide-react';
 import { settingsCrud } from '../services/api.js';
 
-const TABS = [
-  { key: 'vendor-info', label: 'Vendor Information' },
-  { key: 'other-info', label: 'Other Information' },
-];
-
 const DEFAULT_FORM = {
   vendor_name: '',
   contact_number: '',
@@ -27,13 +22,13 @@ const DEFAULT_FORM = {
 
 export default function VendorFormModal({ isOpen, onClose, onSaved, editVendor }) {
   const isEdit = Boolean(editVendor);
-  const [activeTab, setActiveTab] = useState('vendor-info');
   const [form, setForm] = useState({ ...DEFAULT_FORM });
+  const [vendorTypes, setVendorTypes] = useState([]);
+  const [taxTypes, setTaxTypes] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [toast, setToast] = useState({ type: '', msg: '' });
-  const [vendorTypes, setVendorTypes] = useState([]);
-  const [taxTypes, setTaxTypes] = useState([]);
+  const [activeTab, setActiveTab] = useState('vendor-info');
 
   const vendorCrud = useMemo(() => settingsCrud('vendors'), []);
 
@@ -91,16 +86,20 @@ export default function VendorFormModal({ isOpen, onClose, onSaved, editVendor }
   };
 
   const validate = () => {
-    const nextErrors = {};
-    if (!form.vendor_name.trim()) nextErrors.vendor_name = 'Vendor Name is required';
-    if (!form.contact_number.trim()) nextErrors.contact_number = 'Contact Number is required';
-    if (!form.address_1.trim()) nextErrors.address_1 = 'Address 1 is required';
-    if (!form.coordinator_name.trim()) nextErrors.coordinator_name = "Coordinator's Name is required";
-    if (!form.coordinator_contact_no.trim()) nextErrors.coordinator_contact_no = "Coordinator's Contact No. is required";
-    if (!form.vendor_type_id) nextErrors.vendor_type_id = 'Vendor Type is required';
-    if (!form.tax_type_id) nextErrors.tax_type_id = 'Tax Type is required';
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
+    const e = {};
+    if (!form.vendor_name.trim()) e.vendor_name = 'Vendor Name is required';
+    if (!form.contact_number.trim()) e.contact_number = 'Contact Number is required';
+    if (!form.address_1.trim()) e.address_1 = 'Address 1 is required';
+    if (!form.coordinator_name.trim()) e.coordinator_name = "Coordinator's Name is required";
+    if (!form.coordinator_contact_no.trim()) e.coordinator_contact_no = "Coordinator's Contact No. is required";
+    if (!form.vendor_type_id) e.vendor_type_id = 'Vendor Type is required';
+    if (!form.tax_type_id) e.tax_type_id = 'Tax Type is required';
+    setErrors(e);
+    const hasOtherTabErrors =
+      !!e.coordinator_name || !!e.coordinator_contact_no ||
+      !!e.vendor_type_id || !!e.tax_type_id;
+    if (hasOtherTabErrors) setActiveTab('other-info');
+    return Object.keys(e).length === 0;
   };
 
   const handleSubmit = async (event) => {
@@ -155,42 +154,108 @@ export default function VendorFormModal({ isOpen, onClose, onSaved, editVendor }
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>{isEdit ? 'Edit Vendor' : 'New Vendor'}</h3>
-          <button className="modal-close" onClick={onClose}>
-            <X size={18} />
+    <div
+      className="modal-overlay"
+      onClick={onClose}
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+        padding: '2vh 2vw',
+        overflow: 'auto',
+      }}
+    >
+      <div
+        className="modal"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: 900,
+          maxHeight: '96vh',
+          margin: 0,
+        }}
+      >
+        <div className="modal-header" style={{ padding: '14px 18px' }}>
+          <h3 style={{ fontSize: 18 }}>{isEdit ? 'Update Vendor' : 'Add Vendor'}</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {toast.msg && (
+              <div
+                className={`alert alert-${toast.type || 'success'}`}
+                role="status"
+                style={{ margin: 0, fontSize: 12 }}
+              >
+                {toast.msg}
+              </div>
+            )}
+            <button
+              type="submit"
+              form="vendor-form"
+              className="btn btn-primary"
+              disabled={submitting}
+            >
+              {submitting
+                ? <Loader2 size={14} className="animate-spin" />
+                : <Save size={14} />}
+              {submitting ? 'Saving…' : (isEdit ? 'Update' : 'Save')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={onClose}
+              disabled={submitting}
+              aria-label="Close vendor form"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+
+        <div
+          className="tabs"
+          style={{ margin: '0 10px 12px', flexWrap: 'nowrap', overflowX: 'auto' }}
+          role="tablist"
+          aria-label="Vendor form sections"
+        >
+          <button
+            type="button"
+            role="tab"
+            id="vendor-info-tab"
+            aria-selected={activeTab === 'vendor-info'}
+            aria-controls="vendor-info-tab-panel"
+            className={activeTab === 'vendor-info' ? 'active' : ''}
+            onClick={() => setActiveTab('vendor-info')}
+          >
+            Vendor Information
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="other-info-tab"
+            aria-selected={activeTab === 'other-info'}
+            aria-controls="other-info-tab-panel"
+            className={activeTab === 'other-info' ? 'active' : ''}
+            onClick={() => setActiveTab('other-info')}
+          >
+            Other Information
           </button>
         </div>
 
-        {toast.msg && (
-          <div className={`alert alert-${toast.type || 'success'}`} style={{ margin: '0 20px 16px' }}>
-            {toast.msg}
-          </div>
-        )}
-
-        <div className="tabs" style={{ margin: '0 20px 16px', padding: '6px 8px' }}>
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              className={activeTab === tab.key ? 'active' : ''}
-              onClick={() => setActiveTab(tab.key)}
+        <form
+          id="vendor-form"
+          onSubmit={handleSubmit}
+          style={{ flex: 1, overflowY: 'auto', padding: 18 }}
+        >
+          {activeTab === 'vendor-info' && (
+            <fieldset
+              id="vendor-info-tab-panel"
+              role="tabpanel"
+              aria-labelledby="vendor-info-tab"
+              style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}
             >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <form onSubmit={handleSubmit} style={{ maxHeight: '72vh', overflowY: 'auto', padding: '0 20px 20px' }}>
-          {activeTab === 'vendor-info' ? (
-            <div className="bf-section" style={{ padding: 0, border: '1px solid #e5e7eb' }}>
-              <div className="bf-section-title" style={{ background: '#d1d5db', color: '#374151', padding: '8px 10px', fontSize: 13, margin: 0 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px' }}>
                 Vendor Information
-              </div>
-              <div className="bf-grid" style={{ padding: 16 }}>
-                <div className="bf-col-full">
+              </legend>
+              <div className="customer-form-grid">
+                <div style={{ gridColumn: '1 / -1' }}>
                   <div className="bf-field">
                     <label>
                       Vendor Name <span className="req">*</span>
@@ -205,7 +270,7 @@ export default function VendorFormModal({ isOpen, onClose, onSaved, editVendor }
                   </div>
                 </div>
 
-                <div className="bf-col-1">
+                <div>
                   <div className="bf-field">
                     <label>
                       Contact Number <span className="req">*</span>
@@ -220,7 +285,7 @@ export default function VendorFormModal({ isOpen, onClose, onSaved, editVendor }
                   </div>
                 </div>
 
-                <div className="bf-col-1">
+                <div>
                   <div className="bf-field">
                     <label>Email Address</label>
                     <input
@@ -231,7 +296,7 @@ export default function VendorFormModal({ isOpen, onClose, onSaved, editVendor }
                   </div>
                 </div>
 
-                <div className="bf-col-full">
+                <div style={{ gridColumn: '1 / -1' }}>
                   <div className="bf-field">
                     <label>
                       Address 1 <span className="req">*</span>
@@ -246,7 +311,7 @@ export default function VendorFormModal({ isOpen, onClose, onSaved, editVendor }
                   </div>
                 </div>
 
-                <div className="bf-col-full">
+                <div style={{ gridColumn: '1 / -1' }}>
                   <div className="bf-field">
                     <label>Address 2</label>
                     <input
@@ -257,30 +322,47 @@ export default function VendorFormModal({ isOpen, onClose, onSaved, editVendor }
                   </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="bf-section" style={{ padding: 0, border: '1px solid #e5e7eb' }}>
-              <div className="bf-section-title" style={{ background: '#d1d5db', color: '#374151', padding: '8px 10px', fontSize: 13, margin: 0 }}>
+            </fieldset>
+          )}
+
+          {activeTab === 'other-info' && (
+            <fieldset
+              id="other-info-tab-panel"
+              role="tabpanel"
+              aria-labelledby="other-info-tab"
+              style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14 }}
+            >
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px' }}>
                 Other Information
-              </div>
-              <div className="bf-grid" style={{ padding: 16 }}>
-                <div className="bf-col-1">
+              </legend>
+              <div className="customer-form-grid">
+                <div>
                   <div className="bf-field">
                     <label>Owner's Name</label>
-                    <input type="text" value={form.owner_name} onChange={(e) => update('owner_name', e.target.value)} />
+                    <input
+                      type="text"
+                      value={form.owner_name}
+                      onChange={(e) => update('owner_name', e.target.value)}
+                    />
                   </div>
                 </div>
 
-                <div className="bf-col-1">
+                <div>
                   <div className="bf-field">
                     <label>Owner's Contact No.</label>
-                    <input type="text" value={form.owner_contact_no} onChange={(e) => update('owner_contact_no', e.target.value)} />
+                    <input
+                      type="text"
+                      value={form.owner_contact_no}
+                      onChange={(e) => update('owner_contact_no', e.target.value)}
+                    />
                   </div>
                 </div>
 
-                <div className="bf-col-1">
+                <div>
                   <div className="bf-field">
-                    <label>Coordinator's Name <span className="req">*</span></label>
+                    <label>
+                      Coordinator's Name <span className="req">*</span>
+                    </label>
                     <input
                       type="text"
                       value={form.coordinator_name}
@@ -291,9 +373,11 @@ export default function VendorFormModal({ isOpen, onClose, onSaved, editVendor }
                   </div>
                 </div>
 
-                <div className="bf-col-1">
+                <div>
                   <div className="bf-field">
-                    <label>Coordinator's Contact No. <span className="req">*</span></label>
+                    <label>
+                      Coordinator's Contact No. <span className="req">*</span>
+                    </label>
                     <input
                       type="text"
                       value={form.coordinator_contact_no}
@@ -304,28 +388,40 @@ export default function VendorFormModal({ isOpen, onClose, onSaved, editVendor }
                   </div>
                 </div>
 
-                <div className="bf-col-1">
+                <div>
                   <div className="bf-field">
                     <label>Term</label>
-                    <input type="text" value={form.term} onChange={(e) => update('term', e.target.value)} />
+                    <input
+                      type="text"
+                      value={form.term}
+                      onChange={(e) => update('term', e.target.value)}
+                    />
                   </div>
                 </div>
 
-                <div className="bf-col-1">
+                <div>
                   <div className="bf-field">
                     <label>Date Started</label>
-                    <input type="date" value={form.date_started} onChange={(e) => update('date_started', e.target.value)} />
+                    <input
+                      type="date"
+                      value={form.date_started}
+                      onChange={(e) => update('date_started', e.target.value)}
+                    />
                   </div>
                 </div>
 
-                <div className="bf-col-1">
+                <div>
                   <div className="bf-field">
                     <label>Date Separated</label>
-                    <input type="date" value={form.date_separated} onChange={(e) => update('date_separated', e.target.value)} />
+                    <input
+                      type="date"
+                      value={form.date_separated}
+                      onChange={(e) => update('date_separated', e.target.value)}
+                    />
                   </div>
                 </div>
 
-                <div className="bf-col-1">
+                <div>
                   <div className="bf-field">
                     <label>
                       Vendor Type <span className="req">*</span>
@@ -337,16 +433,20 @@ export default function VendorFormModal({ isOpen, onClose, onSaved, editVendor }
                     >
                       <option value="">-Select-</option>
                       {vendorTypes.map((item) => (
-                        <option key={item.vendor_type_id} value={item.vendor_type_id}>{item.vendor_type}</option>
+                        <option key={item.vendor_type_id} value={item.vendor_type_id}>
+                          {item.vendor_type}
+                        </option>
                       ))}
                     </select>
                     {errors.vendor_type_id && <div className="field-error">{errors.vendor_type_id}</div>}
                   </div>
                 </div>
 
-                <div className="bf-col-1">
+                <div>
                   <div className="bf-field">
-                    <label>Tax Type <span className="req">*</span></label>
+                    <label>
+                      Tax Type <span className="req">*</span>
+                    </label>
                     <select
                       value={form.tax_type_id}
                       onChange={(e) => update('tax_type_id', e.target.value)}
@@ -354,18 +454,22 @@ export default function VendorFormModal({ isOpen, onClose, onSaved, editVendor }
                     >
                       <option value="">-Select-</option>
                       {taxTypes.map((item) => (
-                        <option key={item.tax_type_id} value={item.tax_type_id}>{item.tax_type}</option>
+                        <option key={item.tax_type_id} value={item.tax_type_id}>
+                          {item.tax_type}
+                        </option>
                       ))}
                     </select>
                     {errors.tax_type_id && <div className="field-error">{errors.tax_type_id}</div>}
                   </div>
                 </div>
 
-                <div className="bf-col-full">
+                <div>
                   <div className="bf-field">
-                    <label>Status</label>
-                    <div className="bf-radio-row">
-                      <label className="bf-radio">
+                    <label>
+                      Status <span className="req">*</span>
+                    </label>
+                    <div style={{ display: 'flex', gap: 20, alignItems: 'center', marginTop: 6 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                         <input
                           type="radio"
                           name="vendor_status"
@@ -375,7 +479,7 @@ export default function VendorFormModal({ isOpen, onClose, onSaved, editVendor }
                         />
                         Active
                       </label>
-                      <label className="bf-radio">
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                         <input
                           type="radio"
                           name="vendor_status"
@@ -389,18 +493,8 @@ export default function VendorFormModal({ isOpen, onClose, onSaved, editVendor }
                   </div>
                 </div>
               </div>
-            </div>
+            </fieldset>
           )}
-
-          <div className="modal-footer">
-            <button type="button" className="btn btn-ghost" onClick={onClose} disabled={submitting}>
-              <X size={14} /> Cancel
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
-              {submitting && <Loader2 size={14} className="animate-spin" />}
-              <Save size={14} /> {submitting ? 'Saving…' : (isEdit ? 'Update' : 'Save')}
-            </button>
-          </div>
         </form>
       </div>
     </div>

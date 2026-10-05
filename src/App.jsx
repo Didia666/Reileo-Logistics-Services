@@ -10,6 +10,7 @@ import BookingForm from './components/BookingForm.jsx';
 import Vehicles from './components/Vehicles.jsx';
 import VehiclesForm from './components/VehiclesForm.jsx';
 import Settings from './components/Settings.jsx';
+import Vendor from './components/Vendor.jsx';
 import Home from './components/Home.jsx';
 import Customers from './components/Customers.jsx';
 import Personnel from './components/Personnel.jsx';
@@ -127,7 +128,7 @@ function Layout() {
           <Route path="/fuel" element={<DashboardPlaceholder title="Fuel Record" />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/logs" element={<Logs />} />
-          <Route path="/vendors" element={<Settings vendorOnly />} />
+          <Route path="/vendors" element={<Vendor />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/settings/:category" element={<Settings />} />
           <Route path="*" element={<Navigate to="/home" replace />} />
