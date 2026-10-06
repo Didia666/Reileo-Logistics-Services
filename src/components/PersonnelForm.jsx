@@ -70,6 +70,18 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
   const [form, setForm] = useState(blankForm);
   const [errors, setErrors] = useState({});
 
+  const selectedPersonnelType = lookupsData.personnelTypes.find(
+    (type) =>
+      String(type.personnel_type_id) === String(form.employment.personnel_type_id)
+  );
+  const isDriver = selectedPersonnelType?.personnel_type?.trim().toLowerCase() === 'driver';
+
+  useEffect(() => {
+    if (!isDriver && (activeTab === 'license' || activeTab === 'dlcodes')) {
+      setActiveTab('employ');
+    }
+  }, [activeTab, isDriver]);
+
   const loadLookups = async () => {
     try {
       const [types, depots, vendors, dlCodes] = await Promise.all([
@@ -77,8 +89,7 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
           .then(r => r.ok ? r.json() : []).catch(() => []),
         lookups.depots ? lookups.depots().catch(() => []) : Promise.resolve([]),
         lookups.vendors ? lookups.vendors().catch(() => []) : Promise.resolve([]),
-        fetch('/api/settings_crud_handler.php?type=dl_codes', { credentials: 'include' })
-          .then(r => r.ok ? r.json() : []).catch(() => []),
+        lookups.dl_codes ? lookups.dl_codes().catch(() => []) : Promise.resolve([]),
       ]);
       setLookupsData({
         personnelTypes: Array.isArray(types) ? types : (types?.data || []),
@@ -184,6 +195,29 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
     });
   };
 
+  const handlePersonnelTypeChange = (event) => {
+    const personnelTypeId = event.target.value;
+    const personnelType = lookupsData.personnelTypes.find(
+      (type) => String(type.personnel_type_id) === String(personnelTypeId)
+    );
+    const isSelectedTypeDriver =
+      personnelType?.personnel_type?.trim().toLowerCase() === 'driver';
+
+    setForm((prev) => ({
+      ...prev,
+      employment: {
+        ...prev.employment,
+        personnel_type_id: personnelTypeId,
+      },
+      ...(!isSelectedTypeDriver
+        ? {
+            license: { driver_license_no: '', license_expiry: '' },
+            dl_code_ids: [],
+          }
+        : {}),
+    }));
+  };
+
   const validate = () => {
     const errs = {};
     if (!form.last_name.trim())  errs.last_name  = 'Required';
@@ -238,8 +272,8 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
           pagibig_no:    pagIbigNo || null,
         },
         emergency: {
-          contact_person: form.emergency.contact_person.trim() || null,
-          contact_number: form.emergency.contact_number.trim() || null,
+          contact_person: (form.emergency?.contact_person ?? '').trim() || null,
+          contact_number: (form.emergency?.contact_number ?? '').trim() || null,
         },
         license: {
           driver_license_no: form.license.driver_license_no.trim() || null,
@@ -283,14 +317,17 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
     );
   };
 
-  const renderSelect = (path, options, valueKey, labelKey, placeholder, disabled = false) => {
+  const renderSelect = (path, options, valueKey, labelKey, placeholder, disabled = false, onChange = null) => {
     const v = path.split('.').reduce((o, k) => (o || {})[k], form) ?? '';
     return (
       <select
         disabled={viewOnly || disabled}
         style={viewOnly ? readOnlyStyle : inputStyle}
         value={v}
-        onChange={(e) => setField(path, e.target.value)}
+        onChange={(e) => {
+          if (onChange) onChange(e);
+          else setField(path, e.target.value);
+        }}
       >
         <option value="">{placeholder || '- Select -'}</option>
         {options.map(o => (
@@ -408,7 +445,7 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
                 <Field label="Personnel Type" required error={errors['employment.personnel_type_id']}>
                   {renderSelect('employment.personnel_type_id', lookupsData.personnelTypes,
-                    'personnel_type_id', 'personnel_type', '- Select Personnel Type -')}
+                    'personnel_type_id', 'personnel_type', '- Select Personnel Type -', false, handlePersonnelTypeChange)}
                 </Field>
                 <Field label="Employment Type" required error={errors['employment.employment_type']}>
                   <div style={{ display: 'flex', gap: 18, alignItems: 'center', padding: '6px 0' }}>
@@ -571,7 +608,7 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
                         onChange={() => toggleDLCode(dc.dl_code_id)}
                       />
                       <div>
-                        <div style={{ fontWeight: 600 }}>{dc.dl_code}</div>
+                        <div style={{ fontWeight: 600 }}>{dc.dl_code || dc.code || dc.name}</div>
                         {dc.description && <div style={{ fontSize: 11, color: '#6b7280' }}>{dc.description}</div>}
                       </div>
                     </label>
@@ -633,7 +670,7 @@ export default function PersonnelFormModal({ isOpen, onClose, onSaved, editPerso
         </div>
 
         <div className="tabs" style={{ margin: '0 10px 16px', flexWrap: 'nowrap', overflowX: 'auto' }}>
-          {TABS.map(t => (
+          {TABS.filter((tab) => isDriver || (tab.key !== 'license' && tab.key !== 'dlcodes')).map(t => (
             <button
               key={t.key}
               type="button"

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Loader2, Save } from 'lucide-react';
 import { bookingCrud, lookups } from '../services/api.js';
 
@@ -42,6 +43,21 @@ const nullableNumber = (value) =>
     ? null
     : Number(value);
 
+const isActiveOption = (option) => {
+  const status = option?.status ?? option?.status_name;
+  return status == null || String(status).trim().toLowerCase() === 'active';
+};
+
+const activeOptionsWithCurrent = (options, valueKey, currentValue) =>
+  (Array.isArray(options) ? options : []).filter(
+    (option) =>
+      isActiveOption(option) ||
+      (currentValue !== '' &&
+        currentValue !== null &&
+        currentValue !== undefined &&
+        String(option[valueKey]) === String(currentValue))
+  );
+
 const getPhotoSource = (photo) => {
   const source = photo?.photo_data || '';
 
@@ -72,6 +88,10 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
   const [activeTab, setActiveTab] = useState('bookinginfo');
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ type: '', msg: '' });
+  const [destinationSearch, setDestinationSearch] = useState('');
+  const [destinationMenuOpen, setDestinationMenuOpen] = useState(false);
+  const [destinationMenuPosition, setDestinationMenuPosition] = useState(null);
+  const [destinationInputElement, setDestinationInputElement] = useState(null);
   const [lookupsData, setLookupsData] = useState({
     customers: [],
     booking_types: [],
@@ -105,6 +125,17 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
       : null;
     return assignment?.personnel_id ?? '';
   };
+
+  const destinationIdsForBooking = (booking) => {
+    const destinations = Array.isArray(booking.destination_ids)
+      ? booking.destination_ids
+      : Array.isArray(booking.destinations)
+        ? booking.destinations.map((destination) => destination.destination_id)
+        : booking.destination_id
+          ? [booking.destination_id]
+          : [];
+    return destinations.map(String);
+  };
   
 
   const blankForm = {
@@ -119,7 +150,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
     trips_number: '',
     drops_number: '',
     origin_id: '',
-    destination_id: '',
+    destination_ids: [],
 
     // Vehicle Assignment
     vehicle_id: '',
@@ -190,6 +221,53 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
   const [form, setForm] = useState(blankForm);
   const [companyOwned, setCompanyOwned] = useState(false);
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (!destinationMenuOpen || !destinationInputElement) {
+      setDestinationMenuPosition(null);
+      return undefined;
+    }
+
+    const updatePosition = () => {
+      const rect = destinationInputElement.getBoundingClientRect();
+      const viewportPadding = 8;
+      const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
+      const spaceAbove = rect.top - viewportPadding;
+      const openAbove = spaceBelow < 180 && spaceAbove > spaceBelow;
+      const availableHeight = Math.max(
+        0,
+        Math.min(240, openAbove ? spaceAbove : spaceBelow)
+      );
+      const width = Math.min(rect.width, window.innerWidth - viewportPadding * 2);
+      const left = Math.min(
+        Math.max(viewportPadding, rect.left),
+        window.innerWidth - viewportPadding - width
+      );
+
+      setDestinationMenuPosition({
+        left,
+        top: openAbove ? rect.top - availableHeight - 4 : rect.bottom + 4,
+        width,
+        maxHeight: availableHeight,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [destinationMenuOpen, destinationInputElement, form.destination_ids]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setDestinationMenuOpen(false);
+      setDestinationSearch('');
+    }
+  }, [isOpen]);
 
   const loadLookups = async () => {
     try {
@@ -272,7 +350,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
             trips_number: editBooking.trips_number ?? '',
             drops_number: editBooking.drops_number ?? '',
             origin_id: editBooking.origin_id ?? '',
-            destination_id: editBooking.destination_id ?? '',
+            destination_ids: destinationIdsForBooking(editBooking),
 
             // Vehicle Assignment
             vehicle_id: editBooking.vehicle_id ?? '',
@@ -364,7 +442,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
               trips_number: full.trips_number ?? '',
               drops_number: full.drops_number ?? '',
               origin_id: full.origin_id ?? '',
-              destination_id: full.destination_id ?? '',
+              destination_ids: destinationIdsForBooking(full),
 
               // Vehicle Assignment
               vehicle_id: full.vehicle_id ?? '',
@@ -599,6 +677,20 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
     });
   };
 
+  const toggleDestination = (destinationId) => {
+    const selectedId = String(destinationId);
+    setForm((prev) => {
+      const destinations = prev.destination_ids || [];
+      const isSelected = destinations.includes(selectedId);
+      return {
+        ...prev,
+        destination_ids: isSelected
+          ? destinations.filter((id) => id !== selectedId)
+          : [...destinations, selectedId],
+      };
+    });
+  };
+
   const validate = () => {
     const errs = {};
     // if (!form.last_name.trim())  errs.last_name  = 'Required';
@@ -633,7 +725,9 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
           trips_number: form.trips_number ? Number(form.trips_number) : null, 
           drops_number: form.drops_number ? Number(form.drops_number) : null, 
           origin_id: form.origin_id ? Number(form.origin_id) : null,
-          destination_id: form.destination_id ? Number(form.destination_id) : null,
+          destination_ids: (form.destination_ids || [])
+            .filter((destinationId) => destinationId !== '' && destinationId !== null)
+            .map(Number),
         },
         // Vehicle Assignment
         vehicle_assignment: {
@@ -735,6 +829,8 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
   };
 
   const closeForm = () => {
+    setDestinationMenuOpen(false);
+    setDestinationSearch('');
     setForm(blankForm);
     setCompanyOwned(false);
     setActiveTab('bookinginfo');
@@ -777,7 +873,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
 
   const renderSelect = (path, options, valueKey, labelKey, placeholder, disabled = false, onChange = null) => {
     const v = path.split('.').reduce((o, k) => (o || {})[k], form) ?? '';
-    const safeOptions = Array.isArray(options) ? options : [];
+    const safeOptions = activeOptionsWithCurrent(options, valueKey, v);
 
     return (
       <select
@@ -798,7 +894,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
 
           return (
             <option key={optionKey} value={optionValue ?? ''}>
-              {o[labelKey]}
+              {o[labelKey]}{!isActiveOption(o) ? ' (Inactive — already assigned)' : ''}
             </option>
           );
         })}
@@ -837,6 +933,10 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
     const personnelOptions = lookupsData.personnel.filter((person) => {
       const personnelType = String(person.personnel_type || '').toLowerCase();
       const hasVendor = person.vendor_id !== null && person.vendor_id !== undefined && person.vendor_id !== '' && String(person.vendor_id) !== '0';
+      const isCurrentAssignment =
+        String(person.personnel_id) === String(form[`${role}_id`] || '');
+      if (!isActiveOption(person) && !isCurrentAssignment) return false;
+      if (isCurrentAssignment) return true;
 
       if (role === 'driver') {
         if (source === 'direct') {
@@ -920,6 +1020,10 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
     const totalAmount = (clientRate * tripsNumber).toFixed(2);
 
     const vehicleOptions = lookupsData.vehicles.filter((vehicle) => {
+      const isCurrentVehicle = String(vehicle.plate_no) === String(form.plate_no || '');
+      if (!isActiveOption(vehicle) && !isCurrentVehicle) return false;
+      if (isCurrentVehicle) return true;
+
       const matchesCommodity = !selectedCommodity || String(vehicle.commodity_type_id ?? '') === String(selectedCommodity);
       const vendorId = vehicle.vendor_id;
       const hasVendor = vendorId !== null && vendorId !== undefined && vendorId !== '' && String(vendorId) !== '0';
@@ -1000,8 +1104,160 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
                 <Field label="Origin"  required error={errors.origin_id}>
                   {renderSelect('origin_id', lookupsData.origins, 'origin_id', 'origin_name', '- Select Origin -')}
                 </Field>
-                <Field label="Destination">
-                  {renderSelect('destination_id', lookupsData.destination, 'destination_id', 'destination_name', '- Select Destination -')}
+                <Field label="Destination" hint="Select destinations in route order; the selection order sets each stop number.">
+                  <div>
+                    <div
+                      ref={setDestinationInputElement}
+                      style={{
+                        ...inputStyle,
+                        minHeight: 38,
+                        height: 'auto',
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        gap: 6,
+                        cursor: viewOnly ? 'default' : 'text',
+                      }}
+                      onClick={() => {
+                        if (!viewOnly) setDestinationMenuOpen(true);
+                      }}
+                    >
+                      {(form.destination_ids || []).map((destinationId, index) => {
+                        const destination = lookupsData.destination.find(
+                          (item) => String(item.destination_id) === String(destinationId)
+                        );
+                        const label = `${destination?.destination_name || `Destination ${destinationId}`}${destination && !isActiveOption(destination) ? ' (Inactive)' : ''}`;
+                        return (
+                          <span
+                            key={destinationId}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              background: '#eff6ff',
+                              color: '#1d4ed8',
+                              borderRadius: 14,
+                              padding: '3px 8px',
+                              fontSize: 12,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {index + 1}. {label}
+                            {!viewOnly && (
+                              <button
+                                type="button"
+                                aria-label={`Remove ${label}`}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  toggleDestination(destinationId);
+                                }}
+                                style={{
+                                  border: 0,
+                                  background: 'transparent',
+                                  color: 'inherit',
+                                  padding: 0,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                }}
+                              >
+                                <X size={13} />
+                              </button>
+                            )}
+                          </span>
+                        );
+                      })}
+                      {!viewOnly && (
+                        <input
+                          type="text"
+                          value={destinationSearch}
+                          placeholder={form.destination_ids?.length ? 'Add destination...' : '- Select destination -'}
+                          onFocus={() => setDestinationMenuOpen(true)}
+                          onBlur={() => setDestinationMenuOpen(false)}
+                          onChange={(event) => {
+                            setDestinationSearch(event.target.value);
+                            setDestinationMenuOpen(true);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Escape') setDestinationMenuOpen(false);
+                          }}
+                          style={{
+                            border: 0,
+                            outline: 0,
+                            flex: '1 1 130px',
+                            minWidth: 120,
+                            padding: '2px 0',
+                            fontSize: 13,
+                          }}
+                        />
+                      )}
+                      {viewOnly && !form.destination_ids?.length && (
+                        <span style={{ color: '#6b7280', fontSize: 13 }}>No destinations selected</span>
+                      )}
+                    </div>
+                    {!viewOnly && destinationMenuOpen && destinationMenuPosition && typeof document !== 'undefined' && createPortal(
+                      <div
+                        style={{
+                          position: 'fixed',
+                          zIndex: 2000,
+                          ...destinationMenuPosition,
+                          overflowY: 'auto',
+                          background: '#fff',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 6,
+                          boxShadow: '0 8px 16px rgba(0,0,0,0.12)',
+                        }}
+                      >
+                        {lookupsData.destination
+                          .filter((destination) =>
+                            (isActiveOption(destination) ||
+                              (form.destination_ids || []).includes(String(destination.destination_id))) &&
+                            String(destination.destination_name || '')
+                              .toLowerCase()
+                              .includes(destinationSearch.trim().toLowerCase())
+                          )
+                          .map((destination) => {
+                            const selected = (form.destination_ids || []).includes(
+                              String(destination.destination_id)
+                            );
+                            return (
+                              <button
+                                key={destination.destination_id}
+                                type="button"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => toggleDestination(destination.destination_id)}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 8,
+                                  width: '100%',
+                                  padding: '9px 10px',
+                                  border: 0,
+                                  background: selected ? '#eff6ff' : '#fff',
+                                  textAlign: 'left',
+                                  cursor: 'pointer',
+                                  fontSize: 13,
+                                }}
+                              >
+                                <input type="checkbox" checked={selected} readOnly />
+                                  {destination.destination_name}{!isActiveOption(destination) ? ' (Inactive — already assigned)' : ''}
+                              </button>
+                            );
+                          })}
+                        {!lookupsData.destination.some((destination) =>
+                          (isActiveOption(destination) ||
+                            (form.destination_ids || []).includes(String(destination.destination_id))) &&
+                          String(destination.destination_name || '')
+                            .toLowerCase()
+                            .includes(destinationSearch.trim().toLowerCase())
+                        ) && (
+                          <div style={{ padding: 10, color: '#6b7280', fontSize: 13 }}>
+                            No destinations found.
+                          </div>
+                        )}
+                      </div>,
+                      document.body
+                    )}
+                  </div>
                 </Field>
                 
           
@@ -1170,9 +1426,9 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
                         onChange={(e) => updateItem(index, 'item_type_id', e.target.value)}
                       >
                         <option value="">- Select Item -</option>
-                        {(Array.isArray(lookupsData.item_types) ? lookupsData.item_types : []).map((option, optionIndex) => (
+                        {activeOptionsWithCurrent(lookupsData.item_types, 'item_type_id', item.item_type_id).map((option, optionIndex) => (
                           <option key={`${option.item_type_id}-${optionIndex}`} value={option.item_type_id ?? ''}>
-                            {option.item_type || option.item_type_id}
+                            {option.item_type || option.item_type_id}{!isActiveOption(option) ? ' (Inactive — already assigned)' : ''}
                           </option>
                         ))}
                       </select>

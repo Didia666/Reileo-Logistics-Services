@@ -356,6 +356,8 @@ export const lookups = {
   vendors: lookup('vendors'),
 
   category_types: lookup('category_types'),
+
+  dl_codes: lookup('dl_codes'),
 };
 
 

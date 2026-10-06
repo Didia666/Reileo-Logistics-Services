@@ -36,6 +36,7 @@
     $tblVendors = tableName('vendor');
     $tblCustomers = tableName('customers');
     $tblDestination = tableName('destination');
+    $tblBDestination = tableName('bk_destination');
     $tblBVehicles = tableName('bk_vehicles');
     $tblBCCost = tableName('bk_client_cost');
     $tblBExpenses = tableName('bk_expenses');
@@ -78,6 +79,30 @@
         return substr($data, 0, 3) === "\xFF\xD8\xFF"
             || substr($data, 0, 8) === "\x89PNG\r\n\x1A\n"
             || (substr($data, 0, 4) === 'RIFF' && substr($data, 8, 4) === 'WEBP');
+    }
+
+    function normalizeDestinationIds($bookingInfo) {
+        $value = $bookingInfo['destination_ids'] ?? ($bookingInfo['destination_id'] ?? []);
+        $values = is_array($value) ? $value : (($value === null || $value === '') ? [] : [$value]);
+        $destinationIds = [];
+
+        foreach ($values as $destinationId) {
+            if ($destinationId === null || $destinationId === '') {
+                continue;
+            }
+
+            $destinationId = filter_var($destinationId, FILTER_VALIDATE_INT);
+            if ($destinationId === false || $destinationId <= 0) {
+                echoJson(['error' => 'Destination IDs must be positive integers'], 400);
+            }
+            if (in_array($destinationId, $destinationIds, true)) {
+                echoJson(['error' => 'A destination cannot be selected more than once'], 400);
+            }
+
+            $destinationIds[] = $destinationId;
+        }
+
+        return $destinationIds;
     }
 
 
@@ -234,6 +259,29 @@
                     $stmt->execute([$id]);
                     $row = $stmt->fetch();
                     if (!$row) echoJson(['error' => 'Booking not found'], 404);
+
+                    $stmtDestinations = $db->prepare("
+                        SELECT bd.destination_id, bd.stop_order, dest.destination_name
+                        FROM `{$tblBDestination}` bd
+                        LEFT JOIN `{$tblDestination}` dest ON bd.destination_id = dest.destination_id
+                        WHERE bd.booking_id = ?
+                        ORDER BY bd.stop_order ASC
+                    ");
+                    $stmtDestinations->execute([$id]);
+                    $destinations = $stmtDestinations->fetchAll() ?: [];
+                    if (!$destinations && !empty($row['destination_id'])) {
+                        $destinations[] = [
+                            'destination_id' => $row['destination_id'],
+                            'stop_order' => 1,
+                            'destination_name' => $row['destination_name'] ?? null,
+                        ];
+                    }
+                    $row['destinations'] = $destinations;
+                    $row['destination_ids'] = array_column($destinations, 'destination_id');
+                    if ($destinations) {
+                        $row['destination_id'] = $destinations[0]['destination_id'];
+                        $row['destination_name'] = $destinations[0]['destination_name'];
+                    }
 
                     $stmtPhotos = $db->prepare("
                         SELECT
@@ -595,10 +643,8 @@
             $trips_number = (int)($booking_info['trips_number'] ?? NULL);
             $drops_number = (int)($booking_info['drops_number'] ?? NULL);
             $origin_id = (int)($booking_info['origin_id'] ?? NULL);
-            $destinationValue = $booking_info['destination_id'] ?? null;
-            $destination_id = ($destinationValue === null || $destinationValue === '' || (int)$destinationValue === 0)
-                ? null
-                : (int)$destinationValue;
+            $destinationIds = normalizeDestinationIds($booking_info);
+            $destination_id = $destinationIds[0] ?? null;
             
             //vehicle_assignment
             $vehicle_id = (int)($vehicle_assignment['vehicle_id'] ?? NULL);
@@ -640,12 +686,15 @@
             // booking photos
             $bk_photos = $input['bk_photos'] ?? [];
 
-            // if ($plate_no  === '') echoJson(['error' => 'Plate Number is required'], 400);
-            // if ($body_no === '') echoJson(['error' => 'Body Number is required'], 400);
-            // if ($status_id     === '') echoJson(['error' => 'Status is required'], 400);
-            // if ($vehicle_type_id  === '') echoJson(['error' => 'Vehicle Type is required'], 400);
-            // if ($vehicle_manufacturer_id === '') echoJson(['error' => 'Vehicle Manufacturer is required'], 400);
-            // if ($vehicle_model_id     === '') echoJson(['error' => 'Vehicle Model is required'], 400);
+            if ($customer_id <= 0) echoJson(['error' => 'Customer is required'], 400);
+            if ($booking_type_id <= 0) echoJson(['error' => 'Booking Type is required'], 400);
+            if ($delivery_date === '') echoJson(['error' => 'Delivery Date is required'], 400);
+            if ($depot_id <= 0) echoJson(['error' => 'Depot is required'], 400);
+            if ($commodity_type_id <= 0) echoJson(['error' => 'Commodity Type is required'], 400);
+            if ($origin_id <= 0) echoJson(['error' => 'Origin is required'], 400);
+            if ($plate_no  === '') echoJson(['error' => 'Plate Number is required'], 400);
+            if ($vehicle_type_id <= 0) echoJson(['error' => 'Vehicle Type is required'], 400);
+            if ($driver_id <= 0) echoJson(['error' => 'Driver is required'], 400);
         
 
 
@@ -678,6 +727,13 @@
                 if ($stmtV->rowCount() === 0) { $db->rollBack(); echoJson(['error' => 'Insert failed'], 500); }
                 $booking_id = (int)$db->lastInsertId();
                 if ($booking_id <= 0) { $db->rollBack(); echoJson(['error' => 'Insert failed: no ID'], 500); }
+
+                $stmtDestination = $db->prepare(
+                    "INSERT INTO `{$tblBDestination}` (booking_id, destination_id, stop_order) VALUES (?, ?, ?)"
+                );
+                foreach ($destinationIds as $index => $destinationId) {
+                    $stmtDestination->execute([$booking_id, $destinationId, $index + 1]);
+                }
 
                 $blCols = []; $blPh = []; $blParams = [];
                 foreach ([
@@ -861,10 +917,8 @@
                 $trips_number = (int)($booking_info['trips_number'] ?? NULL);
                 $drops_number = (int)($booking_info['drops_number'] ?? NULL);
                 $origin_id = (int)($booking_info['origin_id'] ?? NULL);
-                $destinationValue = $booking_info['destination_id'] ?? null;
-                $destination_id = ($destinationValue === null || $destinationValue === '' || (int)$destinationValue === 0)
-                    ? null
-                    : (int)$destinationValue;
+                $destinationIds = normalizeDestinationIds($booking_info);
+                $destination_id = $destinationIds[0] ?? null;
                 
                 //vehicle_assignment
                 $vehicle_id = (int)($vehicle_assignment['vehicle_id'] ?? NULL);
@@ -943,6 +997,17 @@
                     $commodity_type_id, $route_code ?: null, $trips_number, $drops_number,
                     $origin_id, $destination_id, (int)$currentUser['user_id'], $id,
                 ]);
+
+                $stmtDeleteDestinations = $db->prepare(
+                    "DELETE FROM `{$tblBDestination}` WHERE booking_id = ?"
+                );
+                $stmtDeleteDestinations->execute([$id]);
+                $stmtDestination = $db->prepare(
+                    "INSERT INTO `{$tblBDestination}` (booking_id, destination_id, stop_order) VALUES (?, ?, ?)"
+                );
+                foreach ($destinationIds as $index => $destinationId) {
+                    $stmtDestination->execute([$id, $destinationId, $index + 1]);
+                }
                 
 
                 $stmtChkBk = $db->prepare("SELECT booking_id FROM `{$tblBVehicles}` WHERE booking_id = ? LIMIT 1");

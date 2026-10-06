@@ -40,7 +40,7 @@ const REPORTS = [
     ],
   },
   { key: 'personnel-settlement', title: 'Personnel Settlement Report', description: 'List of personnel settlement', Icon: Users, columns: [['full_name', 'Personnel'], ['personnel_type', 'Type'], ['daily_rate', 'Daily Rate'], ['vendor_name', 'Vendor'], ['status', 'Status']] },
-  { key: 'operational-expenses', title: 'Operational Expenses Report', description: 'List of operational expenses', Icon: CircleDollarSign, columns: [['expense_date', 'Date'], ['description', 'Description'], ['amount', 'Amount'], ['status', 'Status']] },
+  // { key: 'operational-expenses', title: 'Operational Expenses Report', description: 'List of operational expenses', Icon: CircleDollarSign, columns: [['expense_date', 'Date'], ['description', 'Description'], ['amount', 'Amount'], ['status', 'Status']] },
   { key: 'fuel', title: 'Fuel Report', description: 'List of fuel records', Icon: Fuel, columns: [['booking_no', 'Booking No.'], ['area', 'Area'], ['fuel', 'Fuel (L)'], ['fuel_po', 'Fuel PO'], ['fuel_amount', 'Fuel Amount']] },
 ];
 

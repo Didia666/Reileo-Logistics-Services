@@ -437,9 +437,7 @@ export default function CompleteBookingModal({
         '',
 
       farthest_destination_id:
-        detail.farthest_destination_id ||
-        detail.destination_id ||
-        '',
+        detail.farthest_destination_id ?? '',
 
       client_rate:
         detail.client_rate ?? '',
@@ -1463,7 +1461,9 @@ export default function CompleteBookingModal({
                 >
                   {renderSelect(
                     'farthest_destination_id',
-                    lookupsData.destination,
+                    Array.isArray(bookingDetail?.booking_destinations)
+                      ? bookingDetail.booking_destinations
+                      : [],
                     'destination_id',
                     'destination_name',
                     '- Select -'

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Plus, Search, Filter, Pencil, Trash2, Loader2, ChevronDown, ChevronUp,
+  Plus, Search, Filter, Pencil, Loader2, ChevronDown, ChevronUp,
   ShoppingBasket, FileText, MapPin, Map, Users, Cog, Wrench, Bell,
   CheckSquare, Clock, UserCog, Package, Car, X, MoreHorizontal, ChevronLeft,
   ShoppingCart, Layers,
@@ -14,18 +14,19 @@ const SETTINGS_CATEGORIES = [
   { key: 'commodity-types',    label: 'Commodity Types',     Icon: FileText,       endpoint: 'commodities'    },
   { key: 'category-types',     label: 'Category Types',      Icon: Layers,         endpoint: 'category_types' },
   { key: 'depots',             label: 'Depots',              Icon: MapPin,         endpoint: 'depots'         },
-  { key: 'destinations',       label: 'Destinations',        Icon: Map,            endpoint: 'destinations'   },
+  { key: 'destinations',       label: 'Destinations',        Icon: Map,            endpoint: 'destination'    },
   { key: 'origins',            label: 'Origins',             Icon: MapPin,         endpoint: 'origins'        },
   { key: 'personnel-types',    label: 'Personnel Types',     Icon: Users,          endpoint: 'p_types'        },
-  { key: 'part-categories',    label: 'Part Categories',     Icon: Cog,            endpoint: null             },
-  { key: 'part-locations',     label: 'Part Locations',      Icon: MapPin,         endpoint: null             },
-  { key: 'personnel-renewal',  label: 'Personnel Renewal',   Icon: UserCog,        endpoint: null             },
-  { key: 'vehicle-renewal',    label: 'Vehicle Renewal',     Icon: Bell,           endpoint: null             },
-  { key: 'service-tasks',      label: 'Service Tasks',       Icon: Wrench,         endpoint: null             },
+  // { key: 'part-categories',    label: 'Part Categories',     Icon: Cog,            endpoint: null             },
+  // { key: 'part-locations',     label: 'Part Locations',      Icon: MapPin,         endpoint: null             },
+  // { key: 'personnel-renewal',  label: 'Personnel Renewal',   Icon: UserCog,        endpoint: null             },
+  // { key: 'vehicle-renewal',    label: 'Vehicle Renewal',     Icon: Bell,           endpoint: null             },
+  // { key: 'service-tasks',      label: 'Service Tasks',       Icon: Wrench,         endpoint: null             },
   { key: 'vehicle-types',      label: 'Vehicle Types',       Icon: CheckSquare,    endpoint: 'vh_types'             },
   { key: 'vehicle-makers',     label: 'Vehicle Makers',      Icon: Car,            endpoint: 'vh_manufacturers'             },
   { key: 'vehicle-models',     label: 'Vehicle Models',      Icon: Car,            endpoint: 'vh_models'             },
   { key: 'vendor-types',       label: 'Vendor Types',        Icon: Package,        endpoint: 'v_types'        },
+  { key: 'dl-code',            label: 'DL Code',             Icon: Package,        endpoint: 'dl_codes'       },
 ];
 
 function stripTypeSuffix(label) {
@@ -47,7 +48,7 @@ function fallbackNameField(row) {
   return keys[0] || '';
 }
 
-function ActionMenu({ row, idKey, onEdit, onDelete, isOpen, onOpen, onClose }) {
+function ActionMenu({ row, onEdit, onSetInactive, isActive, isOpen, onOpen, onClose }) {
   const ref = React.useRef(null);
   useEffect(() => {
     if (!isOpen) return;
@@ -55,8 +56,6 @@ function ActionMenu({ row, idKey, onEdit, onDelete, isOpen, onOpen, onClose }) {
     document.addEventListener('mousedown', click);
     return () => document.removeEventListener('mousedown', click);
   }, [isOpen, onClose]);
-
-  const rid = idKey ? row?.[idKey] : null;
 
   return (
     <div className="action-menu" ref={ref}>
@@ -66,9 +65,11 @@ function ActionMenu({ row, idKey, onEdit, onDelete, isOpen, onOpen, onClose }) {
           <button onClick={() => { onClose(); onEdit(row); }}>
             <Pencil size={12} style={{ marginRight: 6 }} /> Edit / Update
           </button>
-          <button className="danger" onClick={() => { onClose(); onDelete(row, rid); }}>
-            <Trash2 size={12} style={{ marginRight: 6 }} /> Delete
-          </button>
+          {isActive && (
+            <button className="danger" onClick={() => { onClose(); onSetInactive(row); }}>
+              Set Inactive
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -346,31 +347,41 @@ export default function Settings() {
     }
   };
 
-  const handleDelete = async (row, ridIn) => {
+  const handleSetInactive = async (row) => {
     if (!crud || !row) return;
     const rK = resolveIdFieldForRow(row);
-    const id = ridIn != null ? ridIn : (rK ? row[rK] : null);
+    const id = rK ? row[rK] : null;
     const displayName = getRowName(row) || '(unnamed)';
     if (id == null || id === '') {
-      showToast('Cannot delete: missing ID', 'error');
+      showToast('Cannot update: missing ID', 'error');
       return;
     }
-    if (!window.confirm(`Delete "${displayName}"? This cannot be undone.`)) return;
+    if (!statusField) {
+      showToast('Cannot set this record inactive: no status field is available.', 'error');
+      return;
+    }
+    if (!window.confirm(`Set "${displayName}" to inactive?`)) return;
+
+    const nameKey = resolveNameFieldForRow(row);
+    const payload = {
+      [statusField]: 'Inactive',
+      ...(nameKey ? { [nameKey]: row[nameKey] ?? displayName } : {}),
+    };
+
     try {
-      const res = await crud.remove(id);
+      const res = await crud.update(id, payload);
       if (res && res.success === false) {
-        throw new Error((res && res.error) || 'Delete rejected by server');
+        throw new Error((res && res.error) || 'Status update rejected by server');
       }
-      setRows((prev) =>
-        prev.filter((r) => {
-          const k = resolveIdFieldForRow(r);
-          return String(r[k]) !== String(id);
-        })
-      );
-      setTotal((t) => Math.max(0, t - 1));
-      showToast(`"${displayName}" deleted`);
+      setRows((prev) => prev.map((item) => {
+        const itemIdKey = resolveIdFieldForRow(item);
+        return String(item[itemIdKey]) === String(id)
+          ? { ...item, ...(res?.data || payload) }
+          : item;
+      }));
+      showToast(`"${displayName}" set to inactive`);
     } catch (e) {
-      showToast((e?.message || 'Delete failed'), 'error');
+      showToast((e?.message || 'Status update failed'), 'error');
     }
   };
 
@@ -558,12 +569,12 @@ export default function Settings() {
                             <td style={{ textAlign: 'right' }}>
                               <ActionMenu
                                 row={row}
-                                idKey={rK}
                                 isOpen={openMenuId === String(rid)}
                                 onOpen={() => setOpenMenuId(String(rid))}
                                 onClose={() => setOpenMenuId(null)}
                                 onEdit={(r) => { setEditingItem(r); setIsModalOpen(true); }}
-                                onDelete={handleDelete}
+                                onSetInactive={handleSetInactive}
+                                isActive={getRowStatus(row) === 'Active'}
                               />
                             </td>
                           </tr>

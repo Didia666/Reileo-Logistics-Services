@@ -162,7 +162,6 @@ export default function Vendor() {
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             className="btn btn-primary"
-            style={{ background: '#16a34a' }}
             onClick={handleAdd}
           >
             <Plus size={15} /> Add Vendors

@@ -17,20 +17,21 @@ import {
 const SHORTCUTS = [
   [
     { label: 'BOOKINGS', route: '/bookings', Icon: BarChart3, color: '#4FC3F7' },
-    { label: 'CLIENT BILLING', route: '/billing', Icon: Receipt, color: '#29B6F6' },
-    { label: 'INCIDENTS', route: '/incidents', Icon: AlertTriangle, color: '#039BE5' },
+    // { label: 'CLIENT BILLING', route: '/billing', Icon: Receipt, color: '#29B6F6' },
+    // { label: 'INCIDENTS', route: '/incidents', Icon: AlertTriangle, color: '#039BE5' },
     { label: 'VEHICLES', route: '/vehicles', Icon: Car, color: '#0288D1' },
     { label: 'CUSTOMERS', route: '/customers', Icon: Users, color: '#0277BD' },
-  ],
-  [
     { label: 'USERS', route: '/settings/users', Icon: UserCog, color: '#0277BD' },
-    { label: 'VENDORS', route: '/vendors', Icon: Building2, color: '#0288D1' },
-    { label: 'PERSONNEL', route: '/settings/personnel', Icon: UserCheck, color: '#039BE5' },
-    { label: 'CLIENT TRUCKER RATES', route: '/billing', Icon: Truck, color: '#29B6F6' },
-    { label: 'WORK ORDER', route: '/work-orders', Icon: ClipboardList, color: '#4FC3F7' },
+    { label: 'VENDORS', route: '/vendors', Icon: Building2, color: '#0288D1' }, 
   ],
   [
+    { label: 'PERSONNEL', route: '/settings/personnel', Icon: UserCheck, color: '#039BE5' },
+    // { label: 'CLIENT TRUCKER RATES', route: '/billing', Icon: Truck, color: '#29B6F6' },
+    // { label: 'WORK ORDER', route: '/work-orders', Icon: ClipboardList, color: '#4FC3F7' },
     { label: 'REPORTS', route: '/reports', Icon: FileBarChart, color: '#0288D1' },
+
+  ],
+  [
   ],
 ];
 

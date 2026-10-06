@@ -21,6 +21,7 @@ $tblDepots          = tableName('depots');
 $tblCommodityTypes  = tableName('commodity_type');
 $tblOrigins         = tableName('origin');
 $tblDestination     = tableName('destination');
+$tblBDestination    = tableName('bk_destination');
 
 // Completed-booking tables.
 // IMPORTANT: these names match the current database dump.
@@ -182,8 +183,23 @@ if ($method === 'GET') {
             echoJson(['error' => 'Booking not found.'], 404);
         }
 
+        $stmtDestinations = $db->prepare(
+            "SELECT bd.destination_id, bd.stop_order, dest.destination_name
+             FROM `{$tblBDestination}` bd
+             INNER JOIN `{$tblDestination}` dest
+                ON bd.destination_id = dest.destination_id
+             WHERE bd.booking_id = ?
+             ORDER BY bd.stop_order ASC"
+        );
+        $stmtDestinations->execute([$id]);
+        $row['booking_destinations'] = $stmtDestinations->fetchAll() ?: [];
+
         // Aliases used by BookingCompleteModal.
-        $row['farthest_destination_id'] = $row['destination_id'] ?? null;
+        $latestDestination = $row['booking_destinations']
+            ? $row['booking_destinations'][count($row['booking_destinations']) - 1]
+            : null;
+        $row['farthest_destination_id'] = $latestDestination['destination_id'] ?? null;
+        $row['farthest_destination_name'] = $latestDestination['destination_name'] ?? null;
         $row['no_of_trips'] = $row['trips_number'] ?? null;
 
         $row['toll_fees'] = $row['b_toll_fees'] ?? 0;
@@ -304,8 +320,32 @@ if ($method === 'POST') {
         if ($noOfTrips === null || $noOfTrips <= 0) {
             echoJson(['error' => 'No. of Trips must be greater than 0.'], 422);
         }
+        $stmtLatestDestination = $db->prepare(
+            "SELECT destination_id
+             FROM `{$tblBDestination}`
+             WHERE booking_id = ?
+             ORDER BY stop_order DESC
+             LIMIT 1"
+        );
+        $stmtLatestDestination->execute([$id]);
+        $latestDestination = $stmtLatestDestination->fetch();
+        if (!$latestDestination) {
+            echoJson(['error' => 'This booking has no destinations in bk_destination.'], 422);
+        }
+
         if ($farthestDestinationId === null) {
-            echoJson(['error' => 'Farthest destination is required.'], 422);
+            $farthestDestinationId = (int)$latestDestination['destination_id'];
+        } else {
+            $stmtBookingDestination = $db->prepare(
+                "SELECT destination_id
+                 FROM `{$tblBDestination}`
+                 WHERE booking_id = ? AND destination_id = ?
+                 LIMIT 1"
+            );
+            $stmtBookingDestination->execute([$id, $farthestDestinationId]);
+            if (!$stmtBookingDestination->fetch()) {
+                echoJson(['error' => 'The selected farthest destination must belong to this booking.'], 422);
+            }
         }
         if (
             $customerId === null ||
