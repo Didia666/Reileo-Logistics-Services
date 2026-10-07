@@ -3,7 +3,18 @@ require_once __DIR__ . '/config.php';
 
 function startSession() {
     if (session_status() === PHP_SESSION_NONE) {
-        session_set_cookie_params(['httponly' => true, 'samesite' => 'Lax']);
+        $isProd = (getenv('APP_ENV') ?: 'dev') === 'prod';
+        $isLocalHost = (DB_HOST === 'localhost');
+
+        session_set_cookie_params([
+            'lifetime' => 0,
+            'path'     => '/',
+            'domain'   => getenv('SESSION_COOKIE_DOMAIN') ?: '',
+            'secure'   => $isProd || !$isLocalHost,
+            'httponly' => true,
+            'samesite' => $isLocalHost ? 'Lax' : 'None',
+        ]);
+
         session_start();
     }
 }

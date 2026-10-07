@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/mailer.php';
+require_once __DIR__ . '/../../api/mailer.php';
 
 function sendEmail($to, $subject, $body) {
     try {

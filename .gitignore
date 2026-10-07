@@ -1,12 +1,5 @@
-# Frontend
-frontend/node_modules
-frontend/dist
-
-# Backend
-backend/api/mail_config.local.php
-
-# General
 node_modules
 dist
 .DS_Store
 *.local
+api/mail_config.local.php

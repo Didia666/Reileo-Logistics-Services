@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/mailer.php';
+require_once __DIR__ . '/../../api/mailer.php';
 
 function sendOTP($email, $otp) {
     $safeOtp = htmlspecialchars((string)$otp, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
