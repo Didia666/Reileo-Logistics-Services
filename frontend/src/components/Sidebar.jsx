@@ -41,7 +41,7 @@ export default function Sidebar() {
     <>
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <img src="/images/logo.png" alt="Reileo Logistics Services" />
+        <img src="/logo.png" alt="Reileo Logistics Services" />
       </div>
       <nav className="sidebar-nav">
         {NAV.map(({ to, label, Icon }) => (

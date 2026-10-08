@@ -16,6 +16,16 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '/Reileo_Logistics_Services/backend/api'),
       },
+      '/images': {
+        target: 'http://localhost:80',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/images/, '/Reileo_Logistics_Services/backend/images'),
+      },
+      '/backend/images': {
+        target: 'http://localhost:80',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/backend\/images/, '/Reileo_Logistics_Services/backend/images'),
+      },
     },
   },
 })
