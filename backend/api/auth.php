@@ -3,16 +3,18 @@ require_once __DIR__ . '/config.php';
 
 function startSession() {
     if (session_status() === PHP_SESSION_NONE) {
-        $isProd = (getenv('APP_ENV') ?: 'dev') === 'prod';
-        $isLocalHost = (DB_HOST === 'localhost');
+
+        $isHttps =
+            (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+            (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
 
         session_set_cookie_params([
             'lifetime' => 0,
             'path'     => '/',
-            'domain'   => getenv('SESSION_COOKIE_DOMAIN') ?: '',
-            'secure'   => $isProd || !$isLocalHost,
+            'domain'   => '',
+            'secure'   => $isHttps,
             'httponly' => true,
-            'samesite' => $isLocalHost ? 'Lax' : 'None',
+            'samesite' => $isHttps ? 'None' : 'Lax',
         ]);
 
         session_start();
