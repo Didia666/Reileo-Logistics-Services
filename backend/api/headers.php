@@ -1,15 +1,25 @@
 <?php
+
 $allowedOrigins = array_filter([
     getenv('CORS_ALLOW_ORIGIN_1'),
     getenv('CORS_ALLOW_ORIGIN_2'),
     getenv('CORS_ALLOW_ORIGIN_3'),
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'http://localhost:5174',
+    'http://127.0.0.1:5174',
 ]);
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
-if (in_array($origin, $allowedOrigins, true)) {
+$isAllowedOrigin = in_array($origin, $allowedOrigins, true);
+
+$isVercelPreview = preg_match(
+    '#^https://reileo-logistics-services-[a-zA-Z0-9-]+-didia1\.vercel\.app$#',
+    $origin
+);
+
+if ($isAllowedOrigin || $isVercelPreview) {
     header("Access-Control-Allow-Origin: $origin");
     header('Vary: Origin');
 }

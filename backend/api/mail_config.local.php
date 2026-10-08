@@ -6,5 +6,5 @@ return [
     'smtp_password' => 'wzjyangrgexesqew',
     'from_email' => 'reileologisticsservices01@gmail.com',
     'from_name' => 'Reileo Logistics Services',
-    'app_url' => 'http://localhost:5173',
+    'app_url' => getenv('APP_URL') ?: 'http://localhost:5173',
 ];
