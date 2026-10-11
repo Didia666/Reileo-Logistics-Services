@@ -172,6 +172,18 @@ html, body, #root { margin: 0; padding: 0; height: 100%; font-family: -apple-sys
   font-size: 13px; width: 260px; max-width: 100%;
 }
 .table-wrap { overflow: auto; flex: 1 1 auto; min-height: 0; }
+.settings-table-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-style: bold;
+  gap: 8px;
+  width: 100%;
+  min-height: 240px;
+  height: 100%;
+  color: #000000;
+  font-size: 20px;
+}
 table.data-table {
   width: 100%; border-collapse: collapse; font-size: 15px; line-height: 1.45;
 }
