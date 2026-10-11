@@ -25,24 +25,63 @@ try {
                 b.origin_id, o.origin_name, dest.destination_id, dest.destination_name,
                 COALESCE(NULLIF(bv.plate_no, ''), v.plate_no) AS plate_no,
                 bv.vehicle_id, COALESCE(bv.vendor_id, v.vendor_id) AS vendor_id,
-                vd.vendor_name, r.client_ref_no, r.other_ref_no,
-                r.remarks, b.route_code, b.trips_number, b.drops_number, {$fuelAreaSelect}, f.trip_allowance,
-                f.fuel, f.fuel_po, f.fuel_amount, b.created_at,
+                vd.vendor_name, r.client_ref_no, r.other_ref_no, cc.client_rate, cc.subcon_rate,
+                r.remarks, b.route_code, b.trips_number, b.drops_number,
+                {$fuelAreaSelect}, f.charges, f.trip_allowance, f.fuel, f.fuel_po, f.fuel_amount,
+                e.b_toll_fees, e.b_other_fees, e.b_extra_drop, e.b_extra_helper,
+                e.nb_parking_fees, e.nb_backload_fees, e.nb_demurrage_fees, e.nb_toll_fees,
+                bv.odometer AS odometer_delivered,
+                b.delivered_datetime, b.received_datetime, b.completed_at, b.created_at,
+                CASE WHEN COALESCE(bv.vendor_id, v.vendor_id) IS NULL THEN 'No' ELSE 'Yes' END AS subcon,
+                NULL AS agency, NULL AS fuel_price, NULL AS billing_invoice, NULL AS billed,
+                NULL AS dispatch_date, NULL AS odometer_dispatched, NULL AS remarks_2,
+                NULL AS billing_date, NULL AS aging,
                 u.username AS created_by,
                 (SELECT GROUP_CONCAT(CONCAT_WS(' ', dp.first_name, dp.middle_name, dp.last_name) SEPARATOR ', ')
                  FROM booking_personnel dbp
                  JOIN personnel dp ON dp.personnel_id = dbp.personnel_id
                  WHERE dbp.booking_id = b.booking_id AND dbp.assignment_role = 'driver') AS driver,
+                (SELECT GROUP_CONCAT(dp.contact_number SEPARATOR ', ')
+                 FROM booking_personnel dbp
+                 JOIN personnel dp ON dp.personnel_id = dbp.personnel_id
+                 WHERE dbp.booking_id = b.booking_id AND dbp.assignment_role = 'driver') AS driver_contact,
+                (SELECT GROUP_CONCAT(dbp.allowance SEPARATOR ', ')
+                 FROM booking_personnel dbp
+                 WHERE dbp.booking_id = b.booking_id AND dbp.assignment_role = 'driver') AS driver_allowance,
                 (SELECT GROUP_CONCAT(CONCAT_WS(' ', hp.first_name, hp.middle_name, hp.last_name) SEPARATOR ', ')
                  FROM booking_personnel hbp
                  JOIN personnel hp ON hp.personnel_id = hbp.personnel_id
                  WHERE hbp.booking_id = b.booking_id AND hbp.assignment_role = 'helper1') AS helper1,
+                (SELECT GROUP_CONCAT(hp.contact_number SEPARATOR ', ')
+                 FROM booking_personnel hbp
+                 JOIN personnel hp ON hp.personnel_id = hbp.personnel_id
+                 WHERE hbp.booking_id = b.booking_id AND hbp.assignment_role = 'helper1') AS helper1_contact,
+                (SELECT GROUP_CONCAT(hbp.allowance SEPARATOR ', ')
+                 FROM booking_personnel hbp
+                 WHERE hbp.booking_id = b.booking_id AND hbp.assignment_role = 'helper1') AS helper1_allowance,
+                (SELECT GROUP_CONCAT(hv.vendor_name SEPARATOR ', ')
+                 FROM booking_personnel hbp
+                 JOIN p_employment he ON he.personnel_id = hbp.personnel_id
+                 JOIN vendor hv ON hv.vendor_id = he.vendor_id
+                 WHERE hbp.booking_id = b.booking_id AND hbp.assignment_role = 'helper1') AS helper1_agency,
                 (SELECT GROUP_CONCAT(CONCAT_WS(' ', h2p.first_name, h2p.middle_name, h2p.last_name) SEPARATOR ', ')
                  FROM booking_personnel h2bp
                  JOIN personnel h2p ON h2p.personnel_id = h2bp.personnel_id
                  WHERE h2bp.booking_id = b.booking_id AND h2bp.assignment_role = 'helper2') AS helper2,
+                (SELECT GROUP_CONCAT(h2p.contact_number SEPARATOR ', ')
+                 FROM booking_personnel h2bp
+                 JOIN personnel h2p ON h2p.personnel_id = h2bp.personnel_id
+                 WHERE h2bp.booking_id = b.booking_id AND h2bp.assignment_role = 'helper2') AS helper2_contact,
+                (SELECT GROUP_CONCAT(h2bp.allowance SEPARATOR ', ')
+                 FROM booking_personnel h2bp
+                 WHERE h2bp.booking_id = b.booking_id AND h2bp.assignment_role = 'helper2') AS helper2_allowance,
+                (SELECT GROUP_CONCAT(hv.vendor_name SEPARATOR ', ')
+                 FROM booking_personnel h2bp
+                 JOIN p_employment he ON he.personnel_id = h2bp.personnel_id
+                 JOIN vendor hv ON hv.vendor_id = he.vendor_id
+                 WHERE h2bp.booking_id = b.booking_id AND h2bp.assignment_role = 'helper2') AS helper2_agency,
                 vt.vehicle_type,
-                NULL AS subcon
+                cty.category_type AS truck_category
                 FROM bookings b
                 LEFT JOIN customers c ON c.customer_id = b.customer_id
                 LEFT JOIN booking_types bt ON bt.booking_type_id = b.booking_type_id
@@ -54,9 +93,12 @@ try {
                 LEFT JOIN bk_vehicles bv ON bv.booking_id = b.booking_id
                 LEFT JOIN vehicles v ON v.vehicle_id = bv.vehicle_id
                 LEFT JOIN vh_types vt ON vt.vehicle_type_id = v.vehicle_type_id
+                LEFT JOIN category_types cty ON cty.category_type_id = v.category_type_id
                 LEFT JOIN vendor vd ON vd.vendor_id = COALESCE(bv.vendor_id, v.vendor_id)
                 LEFT JOIN bk_references r ON r.booking_id = b.booking_id
+                LEFT JOIN bk_client_cost cc ON cc.booking_id = b.booking_id
                 LEFT JOIN bk_fuel_trip f ON f.booking_id = b.booking_id
+                LEFT JOIN bk_expenses e ON e.booking_id = b.booking_id
                 LEFT JOIN reileo_logistics_services_users u ON u.user_id = b.created_by
                 ORDER BY b.booking_id DESC");
             reportJson($stmt->fetchAll());
