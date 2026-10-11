@@ -4,10 +4,20 @@ A UI clone of the Bookings screen (list view + Add/Update Booking form),
 built to match the reference screenshot, and wired to the field rules
 documented in the Reileo Logistics Services Bookings module manual.
 
-## Setup
+## Run locally on Windows
 
-This project was authored in a sandbox with no internet access, so the
-dependencies have **not** been installed or run yet. On your own machine:
+With this project in `XAMPP\htdocs\New folder\Reileo_Logistics_Services`, double-click
+`start-local.bat`. It starts XAMPP Apache and MySQL when they are not already
+running, then launches the frontend and opens it in your browser. Keep the
+launcher window open while using the app.
+
+This uses Vite's local development server, so it does not run a production
+build. Node.js/npm and the project dependencies in `node_modules` must already
+be installed. The local MariaDB database must also be set up.
+
+## Development setup
+
+For manual development or first-time dependency installation:
 
 ```bash
 npm install
