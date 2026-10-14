@@ -1094,14 +1094,14 @@ table.data-table tr:hover td { background: #fafbff; }
   }
 
   /* ---------- Data table → card layout on mobile ---------- */
-  .table-wrap { overflow: visible; }
-  table.data-table thead { display: none; }
+  .table-wrap { overflow: visible !important; }
+  table.data-table thead { display: none !important; }
   table.data-table,
   table.data-table tbody,
   table.data-table tr,
   table.data-table td {
-    display: block;
-    width: 100%;
+    display: block !important;
+    width: 100% !important;
   }
   table.data-table tr {
     background: white;
@@ -1114,7 +1114,7 @@ table.data-table tr:hover td { background: #fafbff; }
   table.data-table tr:hover td { background: transparent; }
   /* Labeled cells: label on left, value on right */
   table.data-table td[data-label] {
-    display: flex;
+    display: flex !important;
     justify-content: space-between;
     align-items: center;
     gap: 10px;
@@ -1143,7 +1143,7 @@ table.data-table tr:hover td { background: #fafbff; }
   table.data-table td:last-child { border-bottom: none; }
   /* Empty row stays centered */
   table.data-table td.empty-row {
-    display: block;
+    display: block !important;
     text-align: center;
     border: none;
     padding: 20px 10px;
