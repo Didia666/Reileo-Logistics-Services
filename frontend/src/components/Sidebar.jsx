@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import {
   LayoutDashboard, Home, ClipboardList, Receipt, Car, Bell,
-  AlertTriangle, Wrench, Package, Fuel, BarChart3, FileText, LogOut, Settings2, Users, UserCheck, UserCog,
+  AlertTriangle, Wrench, Package, Fuel, BarChart3, FileText, LogOut, Settings2, Users, UserCheck, UserCog, X,
 } from 'lucide-react';
 import AccountManagementModal from './AccountManagementModal.jsx';
 
@@ -27,7 +27,7 @@ const NAV = [
   { to: '/settings',     label: 'Settings',         Icon: Settings2 },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen = false, onClose = () => {} }) {
   const { user, logout, refresh } = useAuth();
   const navigate = useNavigate();
   const [accountOpen, setAccountOpen] = useState(false);
@@ -39,13 +39,21 @@ export default function Sidebar() {
 
   return (
     <>
-    <aside className="sidebar">
+    <aside className={`sidebar${isOpen ? ' sidebar-open' : ''}`}>
       <div className="sidebar-brand">
         <img src="/logo.png" alt="Reileo Logistics Services" />
+        <button
+          type="button"
+          className="sidebar-close-btn"
+          onClick={onClose}
+          aria-label="Close menu"
+        >
+          <X size={18} />
+        </button>
       </div>
       <nav className="sidebar-nav">
         {NAV.map(({ to, label, Icon }) => (
-          <NavLink key={to} to={to}>
+          <NavLink key={to} to={to} onClick={onClose}>
             <Icon size={16} /> <span>{label}</span>
           </NavLink>
         ))}
@@ -54,7 +62,7 @@ export default function Sidebar() {
         <button
           type="button"
           className="sidebar-account-trigger"
-          onClick={() => setAccountOpen(true)}
+          onClick={() => { setAccountOpen(true); onClose(); }}
         >
           <UserCog size={15} />
           <span>

@@ -17,7 +17,7 @@ import Personnel from './components/Personnel.jsx';
 import Logs from './components/Logs.jsx';
 import Reports from './components/Reports.jsx';
 import Dashboard from './components/Dashboard.jsx';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Menu } from 'lucide-react';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -99,10 +99,30 @@ function BookingEditRoute({ viewOnly = false }) {
 }
 
 function Layout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
   return (
     <div className="app-layout">
-      <Sidebar />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div
+        className={`sidebar-overlay${sidebarOpen ? ' sidebar-overlay-visible' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+        aria-hidden="true"
+      />
       <main className="main-content">
+        <button
+          type="button"
+          className="mobile-menu-btn"
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open menu"
+        >
+          <Menu size={20} />
+        </button>
         <Routes>
           <Route path="/" element={<Navigate to="/home" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
