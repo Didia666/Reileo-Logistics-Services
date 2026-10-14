@@ -756,36 +756,27 @@ export default function BookingsList() {
               )}
               {current.map(b => (
                 <tr key={b.booking_id}>
-                  <td style={{ fontWeight: 600, color: '#2563eb' }}>{b.booking_no}</td>
-                  <td style={{ whiteSpace: 'nowrap', color: '#6b7280' }}>
+                  <td data-label="Booking No" style={{ fontWeight: 600, color: '#2563eb' }}>{b.booking_no}</td>
+                  <td data-label="Delivery Date" style={{ whiteSpace: 'nowrap', color: '#6b7280' }}>
                     {b.created_at ? new Date(b.created_at).toLocaleDateString() : '—'}
                   </td>
-                  <td>{b.customer_name || '—'}</td>
-                  <td>{b.booking_type || '—'}</td>
-                  <td>{b.fuel || '—'}</td>
-                  <td>{b.depot_name || '—'}</td>
-                  <td>
+                  <td data-label="Customer">{b.customer_name || '—'}</td>
+                  <td data-label="Type">{b.booking_type || '—'}</td>
+                  <td data-label="Fuel (L)">{b.fuel || '—'}</td>
+                  <td data-label="Depot">{b.depot_name || '—'}</td>
+                  <td data-label="Route">
                     <div>{b.origin_name || '—'}</div>
                     <div style={{ color: '#6b7280', fontSize: 12 }}>→ {b.destination || '—'}</div>
                   </td>
-                  <td>
+                  <td data-label="Vendor">
                     {b.vendor_name || '—'}
-                    {/* {b.personnel && b.personnel.length > 0 ? (
-                      <div className="personnel-tags">
-                        {b.personnel.map((p, i) => (
-                          <span key={i} className="personnel-tag">
-                            {p.assignment_role === 'driver' ? '🚚' : '👷'} {p.full_name}
-                          </span>
-                        ))}
-                      </div>
-                    ) : <span style={{ color: '#94a3b8' }}>—</span>} */}
                   </td>
-                  <td>{b.plate_no || '—'}</td>
-                  <td>{b.client_ref_no || '—'}</td>
-                  <td>
+                  <td data-label="Plate No.">{b.plate_no || '—'}</td>
+                  <td data-label="Client Ref">{b.client_ref_no || '—'}</td>
+                  <td data-label="Status">
                     <span className={`badge badge-${statusVariant(b.status_name)}`}>{b.status_name || 'Unknown'}</span>
                   </td>
-                  <td style={{ textAlign: 'right' }}>
+                  <td data-label="Actions" style={{ textAlign: 'right' }}>
                     <ActionMenu
                       booking={b}
                       isOpen={openMenuId === b.booking_id}
