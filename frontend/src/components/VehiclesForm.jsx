@@ -94,6 +94,7 @@ const getDocumentSource = (document) => {
 export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicle, viewOnly }) {
   const [activeTab, setActiveTab] = useState('vehicleinfo');
   const [submitting, setSubmitting] = useState(false);
+  const [readingFiles, setReadingFiles] = useState(0);
   const [toast, setToast] = useState({ type: '', msg: '' });
   const [lookupsData, setLookupsData] = useState({
     depots: [],
@@ -508,6 +509,13 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
     }
 
     const reader = new FileReader();
+    setReadingFiles(count => count + 1);
+    let readFinished = false;
+    const finishReading = () => {
+      if (readFinished) return;
+      readFinished = true;
+      setReadingFiles(count => Math.max(0, count - 1));
+    };
 
     reader.onload = () => {
       const result = String(reader.result);
@@ -517,6 +525,11 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
       //
       // leaving only the Base64 image data.
       const base64Data = result.split(',')[1] || '';
+      if (!base64Data) {
+        setToast({ type: 'error', msg: `Unable to read ${file.name}. Please try again.` });
+        finishReading();
+        return;
+      }
 
       setForm(prev => ({
         ...prev,
@@ -532,6 +545,17 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
             : photo
         ),
       }));
+      finishReading();
+    };
+
+    reader.onerror = () => {
+      setToast({ type: 'error', msg: `Unable to read ${file.name}. Please try again.` });
+      finishReading();
+    };
+
+    reader.onabort = () => {
+      setToast({ type: 'error', msg: `Reading ${file.name} was interrupted. Please try again.` });
+      finishReading();
     };
 
     reader.readAsDataURL(file);
@@ -577,11 +601,23 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
     }
 
     const reader = new FileReader();
+    setReadingFiles(count => count + 1);
+    let readFinished = false;
+    const finishReading = () => {
+      if (readFinished) return;
+      readFinished = true;
+      setReadingFiles(count => Math.max(0, count - 1));
+    };
 
     reader.onload = () => {
       const result = String(reader.result);
 
       const base64Data = result.split(',')[1] || '';
+      if (!base64Data) {
+        setToast({ type: 'error', msg: `Unable to read ${file.name}. Please try again.` });
+        finishReading();
+        return;
+      }
 
       setForm(prev => ({
         ...prev,
@@ -597,6 +633,7 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
             : doc
         ),
       }));
+      finishReading();
     };
 
     reader.onerror = () => {
@@ -604,6 +641,15 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
         type: 'error',
         msg: `Unable to read ${file.name}. Please try again.`,
       });
+      finishReading();
+    };
+
+    reader.onabort = () => {
+      setToast({
+        type: 'error',
+        msg: `Reading ${file.name} was interrupted. Please try again.`,
+      });
+      finishReading();
     };
 
     reader.readAsDataURL(file);
@@ -628,6 +674,10 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
 
   const handleSave = async () => {
     if (viewOnly) return;
+    if (readingFiles > 0) {
+      setToast({ type: 'error', msg: 'Wait for selected files to finish loading before saving.' });
+      return;
+    }
     if (!validate()) return;
     setSubmitting(true);
     try {
@@ -1686,10 +1736,10 @@ export default function VehiclesFormModal({ isOpen, onClose, onSaved, editVehicl
                 <button
                   className="btn btn-primary"
                   onClick={handleSave}
-                  disabled={submitting}
+                  disabled={submitting || readingFiles > 0}
                 >
-                  {submitting ? <Loader2 className="animate-spin" size={14} style={{ marginRight: 6 }} /> : <Save size={14} style={{ marginRight: 6 }} />}
-                  Save
+                  {submitting || readingFiles > 0 ? <Loader2 className="animate-spin" size={14} style={{ marginRight: 6 }} /> : <Save size={14} style={{ marginRight: 6 }} />}
+                  {readingFiles > 0 ? 'Reading files…' : 'Save'}
                 </button>
               </>
             )}

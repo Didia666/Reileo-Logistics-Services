@@ -1316,7 +1316,7 @@
                 }
 
                 $db->commit();
-                $stmtg = $db->prepare("SELECT * FROM `{$tblVehicles}` WHERE vehicle_id = ? LIMIT 1");
+                $stmtg = $db->prepare("SELECT * FROM `{$tblBookings}` WHERE booking_id = ? LIMIT 1");
                 $stmtg->execute([$id]);
                 $saved = $stmtg->fetch();
                 echoJson($saved, 200);

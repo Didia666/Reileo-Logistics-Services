@@ -1,4 +1,33 @@
 <?php
+
+function cs_echoJson($data, $code = 200) {
+    http_response_code($code);
+    echo json_encode($data);
+    exit;
+}
+
+function cs_resolveFieldValue($input, $realField, $allowFallbackText = true) {
+    if ($realField && isset($input[$realField]) && (is_int($input[$realField]) || is_float($input[$realField]) || trim((string)$input[$realField]) !== '')) {
+        return $input[$realField];
+    }
+    // Accept the canonical API field first, then generic aliases.
+    $candidates = ['booking_type','book_type','name','type','label','title','description'];
+    foreach ($candidates as $candidate) {
+        if (isset($input[$candidate]) && is_scalar($input[$candidate]) && trim((string)$input[$candidate]) !== '') {
+            return $input[$candidate];
+        }
+    }
+    if ($allowFallbackText) {
+        $skip = ['status','sort_order','active','inactive','id'];
+        foreach ($input as $key => $value) {
+            if (in_array(strtolower((string)$key), $skip, true)) continue;
+            if (strpos($key, '_id') !== false || strpos($key, '_at') !== false || strpos($key, '_date') !== false) continue;
+            if (is_scalar($value) && trim((string)$value) !== '') return $value;
+        }
+    }
+    return null;
+}
+
 function describeSettingsTable($db, $tbl) {
     $sql = "DESCRIBE `{$tbl}`";
     $stmt = $db->query($sql);
@@ -91,34 +120,6 @@ function handleSettingsCrud($baseName) {
             'statusField' => $statusField,
             'allowedFields' => $allowedFields,
         ]);
-    }
-
-    function cs_echoJson($data, $code = 200) {
-        http_response_code($code);
-        echo json_encode($data);
-        exit;
-    }
-
-    function cs_resolveFieldValue($input, $realField, $allowFallbackText = true) {
-        if ($realField && isset($input[$realField]) && (is_int($input[$realField]) || is_float($input[$realField]) || trim((string)$input[$realField]) !== '')) {
-            return $input[$realField];
-        }
-        // Accept the canonical API field first, then generic aliases.
-        $candidates = ['booking_type','book_type','name','type','label','title','description'];
-        foreach ($candidates as $c) {
-            if (isset($input[$c]) && is_scalar($input[$c]) && trim((string)$input[$c]) !== '') {
-                return $input[$c];
-            }
-        }
-        if ($allowFallbackText) {
-            $skip = ['status','sort_order','active','inactive','id'];
-            foreach ($input as $k => $v) {
-                if (in_array(strtolower((string)$k), $skip, true)) continue;
-                if (strpos($k, '_id') !== false || strpos($k, '_at') !== false || strpos($k, '_date') !== false) continue;
-                if (is_scalar($v) && trim((string)$v) !== '') return $v;
-            }
-        }
-        return null;
     }
 
     function cs_resolveStatusValue($input, $realField) {

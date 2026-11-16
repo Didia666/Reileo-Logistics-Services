@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Plus, Search, Filter, Pencil, Loader2, ChevronDown, ChevronUp,
@@ -11,7 +11,7 @@ import { settingsCrud } from '../services/api.js';
 const SETTINGS_CATEGORIES = [
   { key: 'booking-types',      label: 'Booking Types',       Icon: ShoppingBasket, endpoint: 'booking_types'  },
   { key: 'booking-item-types', label: 'Booking Item Types',  Icon: ShoppingCart,   endpoint: 'item_types'     },
-  { key: 'commodity-types',    label: 'Commodity Types',     Icon: FileText,       endpoint: 'commodities'    },
+  { key: 'commodity-types',    label: 'Commodity Types',     Icon: FileText,       endpoint: 'commodity_type' },
   { key: 'category-types',     label: 'Category Types',      Icon: Layers,         endpoint: 'category_types' },
   { key: 'depots',             label: 'Depots',              Icon: MapPin,         endpoint: 'depots'         },
   { key: 'destinations',       label: 'Destinations',        Icon: Map,            endpoint: 'destination'    },
@@ -150,6 +150,9 @@ export default function Settings() {
     if (!category) return SETTINGS_CATEGORIES[0];
     return SETTINGS_CATEGORIES.find((c) => c.key === category) || SETTINGS_CATEGORIES[0];
   }, [category]);
+  const activeCategoryRef = useRef(activeCat.key);
+  activeCategoryRef.current = activeCat.key;
+  const dataRequestRef = useRef(0);
 
   const hasApi = !!activeCat.endpoint;
 
@@ -158,6 +161,7 @@ export default function Settings() {
 
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState([]);
+  const [rowsCategory, setRowsCategory] = useState(null);
   const [total, setTotal] = useState(0);
 
   const [showFilterPanel, setShowFilterPanel] = useState(false);
@@ -221,6 +225,8 @@ export default function Settings() {
 
   const fetchData = useCallback(async () => {
     if (!crud) return;
+    const requestedCategory = activeCat.key;
+    const requestId = ++dataRequestRef.current;
     setLoading(true);
     try {
       const params = {};
@@ -228,20 +234,28 @@ export default function Settings() {
       if (statusFilter !== 'all') params.status = statusFilter;
       const res = await crud.list(params);
       const arr = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      if (requestId !== dataRequestRef.current || requestedCategory !== activeCategoryRef.current) return;
       setRows(arr);
+      setRowsCategory(requestedCategory);
       setTotal(arr.length);
     } catch (e) {
+      if (requestId !== dataRequestRef.current || requestedCategory !== activeCategoryRef.current) return;
       setRows([]);
+      setRowsCategory(requestedCategory);
       setTotal(0);
       showToast('Failed to load: ' + (e?.message || 'Unknown error'), 'error');
     } finally {
-      setLoading(false);
+      if (requestId === dataRequestRef.current && requestedCategory === activeCategoryRef.current) {
+        setLoading(false);
+      }
     }
-  }, [crud, search, statusFilter, showToast]);
+  }, [activeCat.key, crud, search, statusFilter, showToast]);
 
   useEffect(() => {
+    dataRequestRef.current += 1;
     setSchema(null);
     setRows([]);
+    setRowsCategory(null);
     setTotal(0);
     setPage(1);
     setEditingItem(null);
@@ -257,6 +271,7 @@ export default function Settings() {
   useEffect(() => { setPage(1); }, [search, statusFilter]);
   useEffect(() => { if (schema) fetchData(); }, [fetchData, schema]);
 
+  const isCurrentCategoryLoaded = rowsCategory === activeCat.key;
   const totalPages = Math.max(1, Math.ceil(rows.length / perPage));
   const current = rows.slice((page - 1) * perPage, page * perPage);
 
@@ -421,21 +436,8 @@ export default function Settings() {
               <div>
                 <div className="breadcrumb">Settings / {activeCat.label}</div>
                 <h2>
-                  {activeCat.label} <span style={{ color: '#6b7280', fontSize: 18 }}>({total})</span>
+                  {activeCat.label} <span style={{ color: '#6b7280', fontSize: 18 }}>({isCurrentCategoryLoaded ? total : 0})</span>
                 </h2>
-                {schemaLoading && (
-                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
-                    <Loader2 size={12} className="animate-spin" style={{ display: 'inline-block', marginRight: 6 }} />
-                    Detecting table columns…
-                  </div>
-                )}
-                {schema && schema.table && (
-                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
-                    Table: <code style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: 4 }}>{schema.table}</code>
-                    {' · '}Name field: <code style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: 4 }}>{schema.nameField || '(auto)'}</code>
-                    {' · '}ID: <code style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: 4 }}>{schema.idField || '(auto)'}</code>
-                  </div>
-                )}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
@@ -533,9 +535,10 @@ export default function Settings() {
               </div>
 
               <div className="table-wrap">
-                {(loading || schemaLoading) ? (
-                  <div className="loading" style={{ padding: 40 }}>
-                    <Loader2 className="animate-spin" size={20} /> Loading…
+                {(loading || schemaLoading || !isCurrentCategoryLoaded) ? (
+                  <div className="settings-table-loading" role="status" aria-live="polite">
+                    <Loader2 className="animate-spin" size={20} />
+                    <span>Loading Table</span>
                   </div>
                 ) : (
                   <table className="data-table">

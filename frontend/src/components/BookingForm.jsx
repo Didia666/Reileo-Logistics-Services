@@ -811,14 +811,34 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
       };
 
       let saved;
+      let photoAdded = false;
       if (editBooking && editBooking.booking_id) {
-        saved = await bookingCrud.update(editBooking.booking_id, payload);
+        const originalPhotos = (editBooking.bk_photos || [])
+          .filter(photo => photo.photo_name && (photo.photo_data || photo.photo_path));
+        const photoKey = photo => [
+          photo.photo_name || '',
+          photo.photo_data || photo.photo_base64 || '',
+          photo.photo_path || '',
+        ].join('\0');
+        const originalPhotoKeys = originalPhotos.map(photoKey);
+        const savedPhotoKeys = payload.bk_photos.map(photoKey);
+        photoAdded = savedPhotoKeys.some(key => !originalPhotoKeys.includes(key));
+        const photosChanged = photoAdded || originalPhotoKeys.some(key => !savedPhotoKeys.includes(key));
+
+        saved = await bookingCrud.update(editBooking.booking_id, payload, {
+          audit: !photosChanged,
+        });
       } else {
         saved = await bookingCrud.create(payload);
       }
-      setToast({ type: 'success', msg: 'Booking saved successfully.' });
+      setToast({
+        type: 'success',
+        msg: photoAdded
+          ? `Photo added to Booking No.: ${editBooking.booking_no}.`
+          : 'Booking saved successfully.',
+      });
       setTimeout(() => {
-        onSaved(saved);
+        onSaved(saved, { photoAdded });
         onClose();
       }, 800);
     } catch (e) {

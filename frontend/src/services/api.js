@@ -1,13 +1,14 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 async function request(path, options = {}) {
+  const { audit = true, ...fetchOptions } = options;
   const res = await fetch(`${API_BASE}${path}`, {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(options.headers || {})
+      ...(fetchOptions.headers || {})
     },
-    ...options,
+    ...fetchOptions,
   });
 
   let data = null;
@@ -33,6 +34,7 @@ async function request(path, options = {}) {
     ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
 
   if (
+    audit &&
     isMutation &&
     !isAuditRequest &&
     !path.includes('/login.php') &&
@@ -174,10 +176,11 @@ export const bookings = {
       body: JSON.stringify(payload),
     }),
 
-  update: (id, payload) =>
+  update: (id, payload, options = {}) =>
     request(`/bookings.php?id=${id}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
+      audit: options.audit,
     }),
 
   approve: (id) =>

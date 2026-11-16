@@ -815,16 +815,21 @@ export default function BookingsList() {
       <BookingFormModal
         isOpen={formOpen}
         onClose={closeForm}
-        onSaved={async (saved) => {
+        onSaved={async (saved, { photoAdded = false } = {}) => {
           const isNewBooking = !editBooking;
-          setAll(prev => {
-            const exists = prev.some(r => String(r.booking_id) === String(saved.booking_id));
-            if (exists) {
-              return prev.map(r => String(r.booking_id) === String(saved.booking_id) ? saved : r);
-            } else {
-              return [...prev, saved];
-            }
-          });
+          const bookingAddedMessage = saved?.booking_no
+            ? `Booking No.: ${saved.booking_no} added.`
+            : 'Booking added.';
+          if (saved?.booking_id) {
+            setAll(prev => {
+              const exists = prev.some(r => String(r.booking_id) === String(saved.booking_id));
+              if (exists) {
+                return prev.map(r => String(r.booking_id) === String(saved.booking_id) ? saved : r);
+              } else {
+                return [...prev, saved];
+              }
+            });
+          }
           closeForm();
           try {
             const refreshed = await bookings.list({ limit: 1000 });
@@ -834,13 +839,18 @@ export default function BookingsList() {
             setAll(rows);
             setTotal(refreshed?.total || rows.length);
             if (isNewBooking) {
-              setToast(`Booking No.: ${saved.booking_no} added.`);
+              setToast(bookingAddedMessage);
+              setTimeout(() => setToast(''), 4000);
+            } else if (photoAdded) {
+              setToast(`Photo added to Booking No.: ${editBooking.booking_no}.`);
               setTimeout(() => setToast(''), 4000);
             }
           } catch (e) {
             setToast(isNewBooking
-              ? `Booking No.: ${saved.booking_no} added. The table could not be refreshed.`
-              : e.message || 'Booking saved, but the table could not be refreshed.');
+              ? `${bookingAddedMessage} The table could not be refreshed.`
+              : photoAdded
+                ? `Photo added to Booking No.: ${editBooking.booking_no}. The table could not be refreshed.`
+                : e.message || 'Booking saved, but the table could not be refreshed.');
             setTimeout(() => setToast(''), 4000);
           }
         }}
