@@ -22,7 +22,8 @@ $tables = [
     'bk_references' => tableName('bk_references'),
     'bk_client_cost' => tableName('bk_client_cost'),
     'bk_fuel_trip' => tableName('bk_fuel_trip'),
-    'bk_expenses' => tableName('bk_expenses'),
+    'bk_b_expenses' => tableName('bk_b_expenses'),
+    'bk_nb_expenses' => tableName('bk_nb_expenses'),
     'users' => tableName('reileo_logistics_services_users'),
     'booking_personnel' => tableName('booking_personnel'),
     'personnel' => tableName('personnel'),
@@ -50,6 +51,80 @@ function reportJson($data, $code = 200) {
 
 try {
     switch ($report) {
+        case 'payroll-summary':
+            $year = (string)($_GET['year'] ?? date('Y'));
+            if (!preg_match('/^\d{4}$/', $year) || (int)$year < 2000 || (int)$year > (int)date('Y')) {
+                reportJson(['error' => 'Invalid payroll year'], 400);
+            }
+
+            $stmt = $db->prepare("SELECT
+                p.personnel_id,
+                UPPER(TRIM(CONCAT_WS(' ', p.last_name, p.first_name, NULLIF(p.middle_name, '')))) AS employee_name,
+                COUNT(DISTINCT b.booking_id) AS completed_bookings,
+                COALESCE(SUM(bp.rate), 0) AS base_earnings,
+                COALESCE(SUM(bp.allowance), 0) AS allowances,
+                COALESCE(SUM(COALESCE(bp.rate, 0) + COALESCE(bp.allowance, 0)), 0) AS total_earnings,
+                0.00 AS total_deductions,
+                COALESCE(SUM(COALESCE(bp.rate, 0) + COALESCE(bp.allowance, 0)), 0) AS net_pay
+                FROM `{$tables['booking_personnel']}` bp
+                JOIN `{$tables['bookings']}` b ON b.booking_id = bp.booking_id
+                JOIN `{$tables['booking_statuses']}` bs ON bs.status_id = b.status_id
+                JOIN `{$tables['personnel']}` p ON p.personnel_id = bp.personnel_id
+                WHERE LOWER(bs.status_name) = 'completed'
+                  AND b.completed_at >= ?
+                  AND b.completed_at < ?
+                GROUP BY p.personnel_id, p.last_name, p.first_name, p.middle_name
+                ORDER BY employee_name ASC");
+            $stmt->execute([
+                "{$year}-01-01 00:00:00",
+                ((int)$year + 1) . "-01-01 00:00:00",
+            ]);
+            reportJson($stmt->fetchAll());
+
+        case 'payroll-periods':
+            $year = (string)($_GET['year'] ?? date('Y'));
+            $personnelId = filter_var($_GET['personnel_id'] ?? null, FILTER_VALIDATE_INT);
+            if (!preg_match('/^\d{4}$/', $year) || (int)$year < 2000 || (int)$year > (int)date('Y')) {
+                reportJson(['error' => 'Invalid payroll year'], 400);
+            }
+            if ($personnelId === false || $personnelId === null || $personnelId < 1) {
+                reportJson(['error' => 'Invalid personnel ID'], 400);
+            }
+
+            $periodStart = "DATE_SUB(DATE(b.completed_at), INTERVAL WEEKDAY(b.completed_at) DAY)";
+            $stmt = $db->prepare("SELECT
+                p.personnel_id,
+                UPPER(TRIM(CONCAT_WS(' ', p.last_name, p.first_name, NULLIF(p.middle_name, '')))) AS employee_name,
+                MAX(pt.personnel_type) AS personnel_type,
+                MAX(d.depot_name) AS depot_name,
+                {$periodStart} AS period_start,
+                DATE_ADD({$periodStart}, INTERVAL 6 DAY) AS period_end,
+                COUNT(DISTINCT b.booking_id) AS completed_bookings,
+                COALESCE(SUM(bp.rate), 0) AS base_earnings,
+                COALESCE(SUM(bp.allowance), 0) AS allowances,
+                COALESCE(SUM(COALESCE(bp.rate, 0) + COALESCE(bp.allowance, 0)), 0) AS total_earnings,
+                0.00 AS total_deductions,
+                COALESCE(SUM(COALESCE(bp.rate, 0) + COALESCE(bp.allowance, 0)), 0) AS net_pay
+                FROM `{$tables['booking_personnel']}` bp
+                JOIN `{$tables['bookings']}` b ON b.booking_id = bp.booking_id
+                JOIN `{$tables['booking_statuses']}` bs ON bs.status_id = b.status_id
+                JOIN `{$tables['personnel']}` p ON p.personnel_id = bp.personnel_id
+                LEFT JOIN `{$tables['p_employment']}` em ON em.personnel_id = p.personnel_id
+                LEFT JOIN `{$tables['p_types']}` pt ON pt.personnel_type_id = em.personnel_type_id
+                LEFT JOIN `{$tables['depots']}` d ON d.depot_id = em.depot_id
+                WHERE LOWER(bs.status_name) = 'completed'
+                  AND b.completed_at >= ?
+                  AND b.completed_at < ?
+                  AND p.personnel_id = ?
+                GROUP BY p.personnel_id, p.last_name, p.first_name, p.middle_name, period_start
+                ORDER BY period_start DESC");
+            $stmt->execute([
+                "{$year}-01-01 00:00:00",
+                ((int)$year + 1) . "-01-01 00:00:00",
+                $personnelId,
+            ]);
+            reportJson($stmt->fetchAll());
+
         case 'bookings':
             $stmt = $db->query("SELECT b.booking_id, b.booking_no, b.delivery_date,
                 b.customer_id, c.customer_name, b.booking_type_id, bt.book_type AS booking_type,
@@ -60,8 +135,12 @@ try {
                 vd.vendor_name, r.client_ref_no, r.other_ref_no, cc.client_rate, cc.subcon_rate,
                 r.remarks, b.route_code, b.trips_number, b.drops_number,
                 {$fuelAreaSelect}, f.charges, f.trip_allowance, f.fuel, f.fuel_po, f.fuel_amount,
-                e.b_toll_fees, e.b_other_fees, e.b_extra_drop, e.b_extra_helper,
-                e.nb_parking_fees, e.nb_backload_fees, e.nb_demurrage_fees, e.nb_toll_fees,
+                be.gas AS b_gas, be.parking_fee AS b_parking_fee, be.toll_free AS b_toll_free,
+                be.entrance_fee AS b_entrance_fee, be.mano AS b_mano, be.sop AS b_sop,
+                be.demorage AS b_demorage, be.extra_drop AS b_extra_drop, be.backload_fee AS b_backload_fee,
+                ne.gas AS nb_gas, ne.parking_fee AS nb_parking_fee, ne.toll_free AS nb_toll_free,
+                ne.entrance_fee AS nb_entrance_fee, ne.mano AS nb_mano, ne.sop AS nb_sop,
+                ne.demorage AS nb_demorage, ne.extra_drop AS nb_extra_drop, ne.backload_fee AS nb_backload_fee,
                 bv.odometer AS odometer_delivered,
                 b.delivered_datetime, b.received_datetime, b.completed_at, b.created_at,
                 CASE WHEN COALESCE(bv.vendor_id, v.vendor_id) IS NULL THEN 'No' ELSE 'Yes' END AS subcon,
@@ -135,7 +214,8 @@ try {
                 LEFT JOIN `{$tables['bk_references']}` r ON r.booking_id = b.booking_id
                 LEFT JOIN `{$tables['bk_client_cost']}` cc ON cc.booking_id = b.booking_id
                 LEFT JOIN `{$tables['bk_fuel_trip']}` f ON f.booking_id = b.booking_id
-                LEFT JOIN `{$tables['bk_expenses']}` e ON e.booking_id = b.booking_id
+                LEFT JOIN `{$tables['bk_b_expenses']}` be ON be.booking_id = b.booking_id
+                LEFT JOIN `{$tables['bk_nb_expenses']}` ne ON ne.booking_id = b.booking_id
                 LEFT JOIN `{$tables['users']}` u ON u.user_id = b.created_by
                 ORDER BY b.booking_id DESC");
             reportJson($stmt->fetchAll());

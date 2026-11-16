@@ -10,6 +10,20 @@ const TABS = [
   { key: 'personnelfee', label: 'Personnel Fee' },
 ];
 
+const EXPENSE_FIELDS = [
+  ['gas', 'Gas'],
+  ['parking_fee', 'Parking fee'],
+  ['toll_free', 'Toll free'],
+  ['entrance_fee', 'Entrance fee'],
+  ['mano', 'Mano'],
+  ['sop', 'SOP'],
+  ['demorage', 'Demorage'],
+  ['extra_drop', 'Extra drop'],
+  ['backload_fee', 'Backload fee'],
+];
+
+const EMPTY_EXPENSES = Object.fromEntries(EXPENSE_FIELDS.map(([key]) => [key, '0.00']));
+
 
 function Field({ label, required, error, children, hint, style }) {
   return (
@@ -92,6 +106,7 @@ export default function CompleteBookingModal({
   viewOnly = false,
 }) {
   const [activeTab, setActiveTab] = useState('bookinginfo');
+  const [expenseCategory, setExpenseCategory] = useState('billable');
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -150,20 +165,8 @@ export default function CompleteBookingModal({
     // =========================================================
     // EXPENSES - BILLABLE
     // =========================================================
-    toll_fees: '0.00',
-    extra_drop: '0.00',
-    extra_helper: '0.00',
-    other_expenses: '0.00',
-
-
-    // =========================================================
-    // EXPENSES - NON-BILLABLE
-    // =========================================================
-    parking_fees: '0.00',
-    toll_fees_non_billable: '0.00',
-    demurrage_fees: '0.00',
-    backload_fees: '0.00',
-    other_deductions: '0.00',
+    billable_expenses: { ...EMPTY_EXPENSES },
+    non_billable_expenses: { ...EMPTY_EXPENSES },
 
 
     // =========================================================
@@ -332,6 +335,7 @@ export default function CompleteBookingModal({
     loadLookups();
 
     setActiveTab('bookinginfo');
+    setExpenseCategory('billable');
 
     setErrors({});
 
@@ -455,55 +459,15 @@ export default function CompleteBookingModal({
       // EXPENSES - BILLABLE
       // =====================================================
 
-      toll_fees:
-        detail.toll_fees ??
-        detail.b_toll_fees ??
-        '0.00',
+      billable_expenses: Object.fromEntries(EXPENSE_FIELDS.map(([key]) => [
+        key,
+        detail.billable_expenses?.[key] ?? '0.00',
+      ])),
 
-      extra_drop:
-        detail.extra_drop ??
-        detail.b_extra_drop ??
-        '0.00',
-
-      extra_helper:
-        detail.extra_helper ??
-        detail.b_extra_helper ??
-        '0.00',
-
-      other_expenses:
-        detail.other_expenses ??
-        detail.b_other_fees ??
-        '0.00',
-
-
-      // =====================================================
-      // EXPENSES - NON-BILLABLE
-      // =====================================================
-
-      parking_fees:
-        detail.parking_fees ??
-        detail.nb_parking_fees ??
-        '0.00',
-
-      toll_fees_non_billable:
-        detail.toll_fees_non_billable ??
-        detail.nb_toll_fees ??
-        '0.00',
-
-      demurrage_fees:
-        detail.demurrage_fees ??
-        detail.nb_demurrage_fees ??
-        '0.00',
-
-      backload_fees:
-        detail.backload_fees ??
-        detail.nb_backload_fees ??
-        '0.00',
-
-      other_deductions:
-        detail.other_deductions ??
-        detail.nb_other_deduction ??
-        '0.00',
+      non_billable_expenses: Object.fromEntries(EXPENSE_FIELDS.map(([key]) => [
+        key,
+        detail.non_billable_expenses?.[key] ?? '0.00',
+      ])),
 
 
       // =====================================================
@@ -801,6 +765,15 @@ export default function CompleteBookingModal({
        * The values are normalized here before being sent
        * back to the parent.
        */
+    const billableExpenses = Object.fromEntries(EXPENSE_FIELDS.map(([key]) => [
+      key,
+      Number(form.billable_expenses?.[key] || 0),
+    ]));
+    const nonBillableExpenses = Object.fromEntries(EXPENSE_FIELDS.map(([key]) => [
+      key,
+      Number(form.non_billable_expenses?.[key] || 0),
+    ]));
+
     const payload = {
       completed_at: form.completed_at.trim() || null,
 
@@ -841,41 +814,8 @@ export default function CompleteBookingModal({
       },
 
       expenses: {
-        toll_fees: form.toll_fees !== ''
-          ? Number(form.toll_fees)
-          : 0,
-
-        extra_drop: form.extra_drop !== ''
-          ? Number(form.extra_drop)
-          : 0,
-
-        extra_helper: form.extra_helper !== ''
-          ? Number(form.extra_helper)
-          : 0,
-
-        other_expenses: form.other_expenses !== ''
-          ? Number(form.other_expenses)
-          : 0,
-
-        parking_fees: form.parking_fees !== ''
-          ? Number(form.parking_fees)
-          : 0,
-
-        toll_fees_non_billable: form.toll_fees_non_billable !== ''
-          ? Number(form.toll_fees_non_billable)
-          : 0,
-
-        demurrage_fees: form.demurrage_fees !== ''
-          ? Number(form.demurrage_fees)
-          : 0,
-
-        backload_fees: form.backload_fees !== ''
-          ? Number(form.backload_fees)
-          : 0,
-
-        other_deductions: form.other_deductions !== ''
-          ? Number(form.other_deductions)
-          : 0,
+        billable_expenses: billableExpenses,
+        non_billable_expenses: nonBillableExpenses,
       },
 
       personnel: [
@@ -1552,178 +1492,47 @@ export default function CompleteBookingModal({
       // EXPENSES
       // =====================================================
 
-      case 'expenses':
+      case 'expenses': {
+        const selectedExpenseGroup = expenseCategory === 'billable'
+          ? 'billable_expenses'
+          : 'non_billable_expenses';
         return (
           <div
-            style={{
-              padding: 18,
-            }}
+            className="booking-expenses-content"
           >
-            <fieldset
-              style={{
-                border:
-                  '1px dashed #cbd5e1',
-                borderRadius: 4,
-                padding: 20,
-                margin: 0,
-              }}
-            >
-              <legend
-                style={{
-                  fontSize: 12,
-                  fontWeight: 500,
-                  color: '#2563eb',
-                  padding: '0 6px',
-                }}
+            <div className={`booking-expense-switch booking-expense-switch-${expenseCategory}`} role="tablist" aria-label="Expense category">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={expenseCategory === 'billable'}
+                className={expenseCategory === 'billable' ? 'active' : ''}
+                onClick={() => setExpenseCategory('billable')}
               >
-                Expenses
-              </legend>
-
-
-              {/* BILLABLE */}
-              <fieldset
-                style={{
-                  border:
-                    '1px dashed #cbd5e1',
-                  borderRadius: 4,
-                  padding: 14,
-                  marginBottom: 14,
-                }}
+                Billable
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={expenseCategory === 'non_billable'}
+                className={expenseCategory === 'non_billable' ? 'active' : ''}
+                onClick={() => setExpenseCategory('non_billable')}
               >
-                <legend
-                  style={{
-                    fontSize: 12,
-                    color: '#3b82f6',
-                    padding: '0 6px',
-                  }}
-                >
-                  Billable
-                </legend>
-
-
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns:
-                      '1fr 1fr 1fr',
-                    gap: 18,
-                  }}
-                >
-                  <Field label="Toll Fees">
-                    {renderInput(
-                      'toll_fees',
-                      '0.00',
-                      'number'
-                    )}
+                Non-Billable
+              </button>
+            </div>
+            <fieldset className={`booking-expense-fields booking-expense-fields-${expenseCategory}`}>
+              <legend>{expenseCategory === 'billable' ? 'Billable Expenses' : 'Non-Billable Expenses'}</legend>
+              <div className="booking-expense-grid">
+                {EXPENSE_FIELDS.map(([key, label]) => (
+                  <Field key={key} label={label}>
+                    {renderInput(`${selectedExpenseGroup}.${key}`, '0.00', 'number')}
                   </Field>
-
-
-                  <Field label="Extra Drop">
-                    {renderInput(
-                      'extra_drop',
-                      '0.00',
-                      'number'
-                    )}
-                  </Field>
-
-
-                  <Field label="Extra Helper">
-                    {renderInput(
-                      'extra_helper',
-                      '0.00',
-                      'number'
-                    )}
-                  </Field>
-
-
-                  <Field label="Other Expenses/Fees">
-                    {renderInput(
-                      'other_expenses',
-                      '0.00',
-                      'number'
-                    )}
-                  </Field>
-                </div>
-              </fieldset>
-
-
-              {/* NON-BILLABLE */}
-              <fieldset
-                style={{
-                  border:
-                    '1px dashed #cbd5e1',
-                  borderRadius: 4,
-                  padding: 14,
-                  margin: 0,
-                }}
-              >
-                <legend
-                  style={{
-                    fontSize: 12,
-                    color: '#64748b',
-                    padding: '0 6px',
-                  }}
-                >
-                  Non-Billable
-                </legend>
-
-
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns:
-                      '1fr 1fr 1fr',
-                    gap: 18,
-                  }}
-                >
-                  <Field label="Parking Fees">
-                    {renderInput(
-                      'parking_fees',
-                      '0.00',
-                      'number'
-                    )}
-                  </Field>
-
-
-                  <Field label="Toll Fees-Non Billable">
-                    {renderInput(
-                      'toll_fees_non_billable',
-                      '0.00',
-                      'number'
-                    )}
-                  </Field>
-
-
-                  <Field label="Demurrage Fees">
-                    {renderInput(
-                      'demurrage_fees',
-                      '0.00',
-                      'number'
-                    )}
-                  </Field>
-
-
-                  <Field label="Backload Fees">
-                    {renderInput(
-                      'backload_fees',
-                      '0.00',
-                      'number'
-                    )}
-                  </Field>
-
-
-                  <Field label="Other Deductions">
-                    {renderInput(
-                      'other_deductions',
-                      '0.00',
-                      'number'
-                    )}
-                  </Field>
-                </div>
-              </fieldset>
+                ))}
+              </div>
             </fieldset>
           </div>
         );
+      }
 
 
       // =====================================================

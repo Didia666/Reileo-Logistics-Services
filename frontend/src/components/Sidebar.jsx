@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import {
   LayoutDashboard, Home, ClipboardList, Receipt, Car, Bell,
-  AlertTriangle, Wrench, Package, Fuel, BarChart3, FileText, LogOut, Settings2, Users, UserCheck, UserCog, X,
+  AlertTriangle, Wrench, Package, Fuel, BarChart3, FileText, LogOut, Settings2, Users, UserCheck, UserCog, X, CircleDollarSign,
 } from 'lucide-react';
 import AccountManagementModal from './AccountManagementModal.jsx';
 
@@ -14,6 +14,7 @@ const NAV = [
   { to: '/customers',    label: 'Customers',        Icon: Users },
   { to: '/vendors',      label: 'Vendors',          Icon: Users },
   { to: '/personnel',    label: 'Personnel',        Icon: UserCheck },
+  { to: '/payroll-summary', label: 'Payroll Summary', Icon: CircleDollarSign },
   //{ to: '/billing',      label: 'Billing Mgmt',     Icon: Receipt },
   //{ to: '/assets',       label: 'Asset Mgmt',       Icon: Car },
   { to: '/vehicles',     label: 'Vehicles',         Icon: Car },

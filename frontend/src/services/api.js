@@ -147,10 +147,10 @@ export const auditLogs = {
 // ============================================================
 
 export const reports = {
-  list: (report) =>
-    request(
-      `/reports.php?report=${encodeURIComponent(report)}`
-    ),
+  list: (report, params = {}) => {
+    const query = new URLSearchParams({ report, ...params }).toString();
+    return request(`/reports.php?${query}`);
+  },
 };
 
 

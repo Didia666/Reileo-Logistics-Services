@@ -26,7 +26,8 @@ $tblBDestination    = tableName('bk_destination');
 // Completed-booking tables.
 // IMPORTANT: these names match the current database dump.
 $tblBClientCost     = tableName('bk_client_cost');
-$tblBExpenses       = tableName('bk_expenses');
+$tblBillableExpenses = tableName('bk_b_expenses');
+$tblNonBillableExpenses = tableName('bk_nb_expenses');
 
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -95,6 +96,25 @@ function tableHasColumn(PDO $db, string $table, string $column): bool
     return (bool)$stmt->fetch();
 }
 
+function saveBookingExpenseCategory(PDO $db, string $table, string $idColumn, int $bookingId, array $fields, array $values): void
+{
+    $stmt = $db->prepare("SELECT `{$idColumn}` FROM `{$table}` WHERE booking_id = ? LIMIT 1");
+    $stmt->execute([$bookingId]);
+    $existing = $stmt->fetch();
+    $fieldList = implode(', ', array_map(static fn($field) => "`{$field}`", $fields));
+
+    if ($existing) {
+        $updates = implode(', ', array_map(static fn($field) => "`{$field}` = ?", $fields));
+        $stmt = $db->prepare("UPDATE `{$table}` SET {$updates} WHERE booking_id = ?");
+        $stmt->execute([...$values, $bookingId]);
+        return;
+    }
+
+    $placeholders = implode(', ', array_fill(0, count($fields) + 1, '?'));
+    $stmt = $db->prepare("INSERT INTO `{$table}` (booking_id, {$fieldList}) VALUES ({$placeholders})");
+    $stmt->execute([$bookingId, ...$values]);
+}
+
 // -----------------------------------------------------------------------------
 // GET - Load data used by BookingCompleteModal
 // -----------------------------------------------------------------------------
@@ -136,15 +156,24 @@ if ($method === 'GET') {
                     cc.total_amount,
                     cc.subcon_rate,
 
-                    ex.b_toll_fees,
-                    ex.b_extra_drop,
-                    ex.b_extra_helper,
-                    ex.b_other_fees,
-                    ex.nb_parking_fees,
-                    ex.nb_toll_fees,
-                    ex.nb_demurrage_fees,
-                    ex.nb_backload_fees,
-                    ex.nb_other_deductions
+                    be.gas AS billable_gas,
+                    be.parking_fee AS billable_parking_fee,
+                    be.toll_free AS billable_toll_free,
+                    be.entrance_fee AS billable_entrance_fee,
+                    be.mano AS billable_mano,
+                    be.sop AS billable_sop,
+                    be.demorage AS billable_demorage,
+                    be.extra_drop AS billable_extra_drop,
+                    be.backload_fee AS billable_backload_fee,
+                    ne.gas AS non_billable_gas,
+                    ne.parking_fee AS non_billable_parking_fee,
+                    ne.toll_free AS non_billable_toll_free,
+                    ne.entrance_fee AS non_billable_entrance_fee,
+                    ne.mano AS non_billable_mano,
+                    ne.sop AS non_billable_sop,
+                    ne.demorage AS non_billable_demorage,
+                    ne.extra_drop AS non_billable_extra_drop,
+                    ne.backload_fee AS non_billable_backload_fee
 
                 
                 FROM `{$tblBookings}` b
@@ -170,8 +199,10 @@ if ($method === 'GET') {
                     ON v.vehicle_type_id = vt.vehicle_type_id
                 LEFT JOIN `{$tblBClientCost}` cc
                     ON b.booking_id = cc.booking_id
-                LEFT JOIN `{$tblBExpenses}` ex
-                    ON b.booking_id = ex.booking_id
+                LEFT JOIN `{$tblBillableExpenses}` be
+                    ON b.booking_id = be.booking_id
+                LEFT JOIN `{$tblNonBillableExpenses}` ne
+                    ON b.booking_id = ne.booking_id
                 WHERE b.booking_id = ?
                 LIMIT 1";
 
@@ -202,16 +233,40 @@ if ($method === 'GET') {
         $row['farthest_destination_name'] = $latestDestination['destination_name'] ?? null;
         $row['no_of_trips'] = $row['trips_number'] ?? null;
 
-        $row['toll_fees'] = $row['b_toll_fees'] ?? 0;
-        $row['extra_drop'] = $row['b_extra_drop'] ?? 0;
-        $row['extra_helper'] = $row['b_extra_helper'] ?? 0;
-        $row['other_expenses'] = $row['b_other_fees'] ?? 0;
+        $expenseFields = ['gas', 'parking_fee', 'toll_free', 'entrance_fee', 'mano', 'sop', 'demorage', 'extra_drop', 'backload_fee'];
+        $billableDefaults = array_fill_keys($expenseFields, '0.00');
+        $nonBillableDefaults = array_fill_keys($expenseFields, '0.00');
+        foreach ($expenseFields as $field) {
+            if ($row["billable_{$field}"] !== null) {
+                $billableDefaults[$field] = $row["billable_{$field}"];
+            }
+            if ($row["non_billable_{$field}"] !== null) {
+                $nonBillableDefaults[$field] = $row["non_billable_{$field}"];
+            }
+            unset($row["billable_{$field}"], $row["non_billable_{$field}"]);
+        }
+        $row['billable_expenses'] = $billableDefaults;
+        $row['non_billable_expenses'] = $nonBillableDefaults;
 
-        $row['parking_fees'] = $row['nb_parking_fees'] ?? 0;
-        $row['toll_fees_non_billable'] = $row['nb_toll_fees'] ?? 0;
-        $row['demurrage_fees'] = $row['nb_demurrage_fees'] ?? 0;
-        $row['backload_fees'] = $row['nb_backload_fees'] ?? 0;
-        $row['other_deductions'] = $row['nb_other_deduction'] ?? 0;
+        $stmtBillableExpenses = $db->prepare(
+            "SELECT " . implode(', ', array_map(static fn($field) => "`{$field}`", $expenseFields)) .
+            " FROM `{$tblBillableExpenses}` WHERE booking_id = ? LIMIT 1"
+        );
+        $stmtBillableExpenses->execute([$id]);
+        $billableExpenses = $stmtBillableExpenses->fetch();
+        if ($billableExpenses) {
+            $row['billable_expenses'] = array_merge($row['billable_expenses'], $billableExpenses);
+        }
+
+        $stmtNonBillableExpenses = $db->prepare(
+            "SELECT " . implode(', ', array_map(static fn($field) => "`{$field}`", $expenseFields)) .
+            " FROM `{$tblNonBillableExpenses}` WHERE booking_id = ? LIMIT 1"
+        );
+        $stmtNonBillableExpenses->execute([$id]);
+        $nonBillableExpenses = $stmtNonBillableExpenses->fetch();
+        if ($nonBillableExpenses) {
+            $row['non_billable_expenses'] = array_merge($row['non_billable_expenses'], $nonBillableExpenses);
+        }
 
         $stmtPersonnel = $db->prepare(
             "SELECT
@@ -289,12 +344,18 @@ if ($method === 'POST') {
         $bookingInfo = $input['booking_info'] ?? [];
         $vehicleAssignment = $input['vehicle_assignment'] ?? [];
         $expenses = $input['expenses'] ?? [];
+        $hasExpenseCategories = is_array($expenses)
+            && (array_key_exists('billable_expenses', $expenses) || array_key_exists('non_billable_expenses', $expenses));
         $personnelData = $input['personnel'] ?? [];
 
         if (!is_array($clientCost)) $clientCost = [];
         if (!is_array($bookingInfo)) $bookingInfo = [];
         if (!is_array($vehicleAssignment)) $vehicleAssignment = [];
         if (!is_array($expenses)) $expenses = [];
+        $billableExpenseData = $expenses['billable_expenses'] ?? [];
+        $nonBillableExpenseData = $expenses['non_billable_expenses'] ?? [];
+        if (!is_array($billableExpenseData)) $billableExpenseData = [];
+        if (!is_array($nonBillableExpenseData)) $nonBillableExpenseData = [];
         if (!is_array($personnelData)) {
         $personnelData = [];
         }
@@ -383,20 +444,6 @@ if ($method === 'POST') {
         if ($subconRate === null) {
             $subconRate = 0.0;
         }
-
-        // ---------------------------------------------------------------------
-        // Expenses
-        // Maps modal names -> actual bk_expenses columns.
-        // ---------------------------------------------------------------------
-        $tollFees = moneyValue($expenses['toll_fees'] ?? 0);
-        $extraDrop = moneyValue($expenses['extra_drop'] ?? 0);
-        $extraHelper = moneyValue($expenses['extra_helper'] ?? 0);
-        $otherExpenses = moneyValue($expenses['other_expenses'] ?? 0);
-        $parkingFees = moneyValue($expenses['parking_fees'] ?? 0);
-        $tollFeesNonBillable = moneyValue($expenses['toll_fees_non_billable'] ?? 0);
-        $demurrageFees = moneyValue($expenses['demurrage_fees'] ?? 0);
-        $backloadFees = moneyValue($expenses['backload_fees'] ?? 0);
-        $otherDeductions = moneyValue($expenses['other_deductions'] ?? 0);
 
         // ---------------------------------------------------------------------
         // Personnel Fee
@@ -524,72 +571,35 @@ if ($method === 'POST') {
             $stmtCC->execute([$id, $clientRate, $totalAmount, $subconRate]);
         }
 
-        // ---------------------------------------------------------------------
-        // 3) Expenses UPSERT
-        // Current DB table is bk_expenses, not bk_booking_expenses.
-        // ---------------------------------------------------------------------
-        $stmtExpExists = $db->prepare(
-            "SELECT booking_expenses_id
-             FROM `{$tblBExpenses}`
-             WHERE booking_id = ?
-             LIMIT 1"
+        $expenseFields = ['gas', 'parking_fee', 'toll_free', 'entrance_fee', 'mano', 'sop', 'demorage', 'extra_drop', 'backload_fee'];
+        $billableExpenseValues = array_map(
+            static fn($field) => moneyValue($billableExpenseData[$field] ?? 0),
+            $expenseFields
         );
-        $stmtExpExists->execute([$id]);
+        $nonBillableExpenseValues = array_map(
+            static fn($field) => moneyValue($nonBillableExpenseData[$field] ?? 0),
+            $expenseFields
+        );
 
-        if ($stmtExpExists->fetch()) {
-            $stmtExp = $db->prepare(
-                "UPDATE `{$tblBExpenses}`
-                 SET b_toll_fees = ?,
-                     b_extra_drop = ?,
-                     b_extra_helper = ?,
-                     b_other_fees = ?,
-                     nb_parking_fees = ?,
-                     nb_toll_fees = ?,
-                     nb_demurrage_fees = ?,
-                     nb_backload_fees = ?,
-                     nb_other_deduction = ?
-                 WHERE booking_id = ?"
-            );
-            $stmtExp->execute([
-                $tollFees,
-                $extraDrop,
-                $extraHelper,
-                $otherExpenses,
-                $parkingFees,
-                $tollFeesNonBillable,
-                $demurrageFees,
-                $backloadFees,
-                $otherDeductions,
-                $id
-            ]);
-        } else {
-            $stmtExp = $db->prepare(
-                "INSERT INTO `{$tblBExpenses}`
-                    (booking_id,
-                     b_toll_fees,
-                     b_extra_drop,
-                     b_extra_helper,
-                     b_other_fees,
-                     nb_parking_fees,
-                     nb_toll_fees,
-                     nb_demurrage_fees,
-                     nb_backload_fees,
-                     nb_other_deduction)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            );
-            $stmtExp->execute([
+        if ($hasExpenseCategories) {
+            saveBookingExpenseCategory(
+                $db,
+                $tblBillableExpenses,
+                'bk_b_ex_id',
                 $id,
-                $tollFees,
-                $extraDrop,
-                $extraHelper,
-                $otherExpenses,
-                $parkingFees,
-                $tollFeesNonBillable,
-                $demurrageFees,
-                $backloadFees,
-                $otherDeductions
-            ]);
+                $expenseFields,
+                $billableExpenseValues
+            );
+            saveBookingExpenseCategory(
+                $db,
+                $tblNonBillableExpenses,
+                'bk_nb_ex_id',
+                $id,
+                $expenseFields,
+                $nonBillableExpenseValues
+            );
         }
+
         // ---------------------------------------------------------------------
         // Personnel Rate / Allowance
         // ---------------------------------------------------------------------

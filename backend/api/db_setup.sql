@@ -88,6 +88,46 @@ CREATE TABLE `bk_expenses` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `bk_b_expenses`
+--
+
+CREATE TABLE `bk_b_expenses` (
+  `bk_b_ex_id` int(11) NOT NULL,
+  `booking_id` int(11) DEFAULT NULL,
+  `gas` decimal(10,2) DEFAULT NULL,
+  `parking_fee` decimal(10,2) DEFAULT NULL,
+  `toll_free` decimal(10,2) DEFAULT NULL,
+  `entrance_fee` decimal(10,2) DEFAULT NULL,
+  `mano` decimal(10,2) DEFAULT NULL,
+  `sop` decimal(10,2) DEFAULT NULL,
+  `demorage` decimal(10,2) DEFAULT NULL,
+  `extra_drop` decimal(10,2) DEFAULT NULL,
+  `backload_fee` decimal(10,2) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `bk_nb_expenses`
+--
+
+CREATE TABLE `bk_nb_expenses` (
+  `bk_nb_ex_id` int(11) NOT NULL,
+  `booking_id` int(11) DEFAULT NULL,
+  `gas` decimal(10,2) DEFAULT NULL,
+  `parking_fee` decimal(10,2) DEFAULT NULL,
+  `toll_free` decimal(10,2) DEFAULT NULL,
+  `entrance_fee` decimal(10,2) DEFAULT NULL,
+  `mano` decimal(10,2) DEFAULT NULL,
+  `sop` decimal(10,2) DEFAULT NULL,
+  `demorage` decimal(10,2) DEFAULT NULL,
+  `extra_drop` decimal(10,2) DEFAULT NULL,
+  `backload_fee` decimal(10,2) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `bk_fuel_trip`
 --
 
@@ -831,6 +871,20 @@ ALTER TABLE `bk_expenses`
   ADD KEY `fk_booking_expenses_booking` (`booking_id`);
 
 --
+-- Indexes for table `bk_b_expenses`
+--
+ALTER TABLE `bk_b_expenses`
+  ADD PRIMARY KEY (`bk_b_ex_id`),
+  ADD UNIQUE KEY `uq_bk_b_expenses_booking` (`booking_id`);
+
+--
+-- Indexes for table `bk_nb_expenses`
+--
+ALTER TABLE `bk_nb_expenses`
+  ADD PRIMARY KEY (`bk_nb_ex_id`),
+  ADD UNIQUE KEY `uq_bk_nb_expenses_booking` (`booking_id`);
+
+--
 -- Indexes for table `bk_fuel_trip`
 --
 ALTER TABLE `bk_fuel_trip`
@@ -1185,6 +1239,18 @@ ALTER TABLE `bk_expenses`
   MODIFY `booking_expenses_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `bk_b_expenses`
+--
+ALTER TABLE `bk_b_expenses`
+  MODIFY `bk_b_ex_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `bk_nb_expenses`
+--
+ALTER TABLE `bk_nb_expenses`
+  MODIFY `bk_nb_ex_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `bk_fuel_trip`
 --
 ALTER TABLE `bk_fuel_trip`
@@ -1482,6 +1548,18 @@ ALTER TABLE `bk_destination`
 --
 ALTER TABLE `bk_expenses`
   ADD CONSTRAINT `fk_booking_expenses_booking` FOREIGN KEY (`booking_id`) REFERENCES `bookings` (`booking_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `bk_b_expenses`
+--
+ALTER TABLE `bk_b_expenses`
+  ADD CONSTRAINT `fk_bk_b_expenses_booking` FOREIGN KEY (`booking_id`) REFERENCES `bookings` (`booking_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `bk_nb_expenses`
+--
+ALTER TABLE `bk_nb_expenses`
+  ADD CONSTRAINT `fk_bk_nb_expenses_booking` FOREIGN KEY (`booking_id`) REFERENCES `bookings` (`booking_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `bk_items`

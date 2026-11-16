@@ -16,6 +16,7 @@ import Customers from './components/Customers.jsx';
 import Personnel from './components/Personnel.jsx';
 import Logs from './components/Logs.jsx';
 import Reports from './components/Reports.jsx';
+import PayrollSummary from './components/PayrollSummary.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import { Loader2, Menu } from 'lucide-react';
 
@@ -129,6 +130,7 @@ function Layout() {
           <Route path="/home" element={<Home />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/personnel" element={<Personnel />} />
+          <Route path="/payroll-summary" element={<PayrollSummary />} />
           <Route path="/bookings" element={<BookingsList />} />
           <Route path="/bookings/new" element={<BookingForm />} />
           <Route path="/bookings/:id/edit" element={<BookingEditRoute />} />

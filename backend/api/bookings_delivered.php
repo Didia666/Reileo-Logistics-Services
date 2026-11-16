@@ -41,7 +41,8 @@ $tblBCCost = tableName('bk_client_cost');
 $tblBPFee = tableName('bk_personnel_fee');
 
 
-$tblBExpenses = tableName('bk_expenses');
+$tblBillableExpenses = tableName('bk_b_expenses');
+$tblNonBillableExpenses = tableName('bk_nb_expenses');
 $tblBPersonnelFee = tableName('bk_personnel_fee');  
 $tblBClientCost = tableName('bk_client_cost');
 
@@ -77,6 +78,24 @@ function generateBookingNo($db, $table) {
     return $prefix . str_pad((string)$nextNumber, 4, '0', STR_PAD_LEFT);
 }
 
+function saveDeliveredExpenseCategory(PDO $db, string $table, string $idColumn, int $bookingId, array $fields, array $values): void
+{
+    $stmt = $db->prepare("SELECT `{$idColumn}` FROM `{$table}` WHERE booking_id = ? LIMIT 1");
+    $stmt->execute([$bookingId]);
+    $existing = $stmt->fetch();
+    $fieldList = implode(', ', array_map(static fn($field) => "`{$field}`", $fields));
+
+    if ($existing) {
+        $updates = implode(', ', array_map(static fn($field) => "`{$field}` = ?", $fields));
+        $stmt = $db->prepare("UPDATE `{$table}` SET {$updates} WHERE booking_id = ?");
+        $stmt->execute([...$values, $bookingId]);
+        return;
+    }
+
+    $placeholders = implode(', ', array_fill(0, count($fields) + 1, '?'));
+    $stmt = $db->prepare("INSERT INTO `{$table}` (booking_id, {$fieldList}) VALUES ({$placeholders})");
+    $stmt->execute([$bookingId, ...$values]);
+}
 
 
 function detailSql(
@@ -87,7 +106,8 @@ function detailSql(
     $tblVehicles,
     $tblBVehicles,
     $tblDestination,
-    $tblBExpenses,
+    $tblBillableExpenses,
+    $tblNonBillableExpenses,
 ) {
     return "SELECT
                     b.booking_id,
@@ -106,15 +126,24 @@ function detailSql(
                     f.fuel_po,
                     f.fuel_amount,
                     r.remarks,
-                    e.b_toll_fees,
-                    e.b_extra_drop,
-                    e.b_extra_helper,
-                    e.b_other_fees,
-                    e.nb_parking_fees,
-                    e.nb_toll_fees,
-                    e.nb_demurrage_fees,
-                    e.nb_backload_fees,
-                    e.nb_other_deductions,	
+                    be.gas AS billable_gas,
+                    be.parking_fee AS billable_parking_fee,
+                    be.toll_free AS billable_toll_free,
+                    be.entrance_fee AS billable_entrance_fee,
+                    be.mano AS billable_mano,
+                    be.sop AS billable_sop,
+                    be.demorage AS billable_demorage,
+                    be.extra_drop AS billable_extra_drop,
+                    be.backload_fee AS billable_backload_fee,
+                    ne.gas AS non_billable_gas,
+                    ne.parking_fee AS non_billable_parking_fee,
+                    ne.toll_free AS non_billable_toll_free,
+                    ne.entrance_fee AS non_billable_entrance_fee,
+                    ne.mano AS non_billable_mano,
+                    ne.sop AS non_billable_sop,
+                    ne.demorage AS non_billable_demorage,
+                    ne.extra_drop AS non_billable_extra_drop,
+                    ne.backload_fee AS non_billable_backload_fee,
                     b.status_id,
                     bs.status_name,
                     b.created_at
@@ -124,7 +153,8 @@ function detailSql(
             LEFT JOIN `{$tblDestination}` dest ON b.destination_id = dest.destination_id
             LEFT JOIN `{$tblBVehicles}` bv ON b.booking_id = bv.booking_id
             LEFT JOIN `{$tblVehicles}` v ON bv.vehicle_id = v.vehicle_id
-            LEFT JOIN `{$tblBExpenses}` e ON b.booking_id = e.booking_id
+            LEFT JOIN `{$tblBillableExpenses}` be ON b.booking_id = be.booking_id
+            LEFT JOIN `{$tblNonBillableExpenses}` ne ON b.booking_id = ne.booking_id
             LEFT JOIN `{$tblBReferences}` r ON b.booking_id = r.booking_id";
 }
 
@@ -143,7 +173,8 @@ switch ($method) {
                     $tblVehicles,
                     $tblBVehicles,
                     $tblDestination,
-                    $tblBExpenses
+                    $tblBillableExpenses,
+                    $tblNonBillableExpenses
                 );
 
                 $detailSql .= " WHERE b.booking_id = ? LIMIT 1";
@@ -152,6 +183,14 @@ switch ($method) {
                 $stmt->execute([$id]);
                 $row = $stmt->fetch();
                 if (!$row) echoJson(['error' => 'Booking not found'], 404);
+                $expenseFields = ['gas', 'parking_fee', 'toll_free', 'entrance_fee', 'mano', 'sop', 'demorage', 'extra_drop', 'backload_fee'];
+                $row['billable_expenses'] = [];
+                $row['non_billable_expenses'] = [];
+                foreach ($expenseFields as $field) {
+                    $row['billable_expenses'][$field] = $row["billable_{$field}"] ?? '';
+                    $row['non_billable_expenses'][$field] = $row["non_billable_{$field}"] ?? '';
+                    unset($row["billable_{$field}"], $row["non_billable_{$field}"]);
+                }
 
                 $stmtPhotos = $db->prepare("SELECT * FROM `{$tblBPhotos}` WHERE booking_id = ? ORDER BY bk_photos_id ASC");
                 $stmtPhotos->execute([$id]);
@@ -404,6 +443,11 @@ switch ($method) {
             $fuel_trip = $input['fuel_trip'] ?? [];
             $references = $input['references'] ?? [];
             $expenses = $input['expenses'] ?? [];
+            if (!is_array($expenses)) $expenses = [];
+            $billableExpenseData = $expenses['billable_expenses'] ?? [];
+            $nonBillableExpenseData = $expenses['non_billable_expenses'] ?? [];
+            if (!is_array($billableExpenseData)) $billableExpenseData = [];
+            if (!is_array($nonBillableExpenseData)) $nonBillableExpenseData = [];
 
             //booking_info
 
@@ -434,16 +478,15 @@ switch ($method) {
             $client_ref_no = trim($references['client_ref_no'] ?? '');
             $remarks = trim($references['remarks'] ?? '');
 
-            //expenses
-            $b_toll_fees = ($expenses['b_toll_fees'] ?? '') !== '' ? (float)$expenses['b_toll_fees'] : null;
-            $b_extra_drop = ($expenses['b_extra_drop'] ?? '') !== '' ? (float)$expenses['b_extra_drop'] : null;
-            $b_extra_helper = ($expenses['b_extra_helper'] ?? '') !== '' ? (float)$expenses['b_extra_helper'] : null;
-            $b_other_fees = ($expenses['b_other_fees'] ?? '') !== '' ? (float)$expenses['b_other_fees'] : null;
-            $nb_parking_fees = ($expenses['nb_parking_fees'] ?? '') !== '' ? (float)$expenses['nb_parking_fees'] : null;
-            $nb_toll_fees = ($expenses['nb_toll_fees'] ?? '') !== '' ? (float)$expenses['nb_toll_fees'] : null;
-            $nb_demurrage_fees = ($expenses['nb_demurrage_fees'] ?? '') !== '' ? (float)$expenses['nb_demurrage_fees'] : null;
-            $nb_backload_fees = ($expenses['nb_backload_fees'] ?? '') !== '' ? (float)$expenses['nb_backload_fees'] : null;
-            $nb_other_deductions = ($expenses['nb_other_deductions'] ?? '') !== '' ? (float)$expenses['nb_other_deductions'] : null;
+            $expenseFields = ['gas', 'parking_fee', 'toll_free', 'entrance_fee', 'mano', 'sop', 'demorage', 'extra_drop', 'backload_fee'];
+            $billableExpenseValues = array_map(
+                static fn($field) => ($billableExpenseData[$field] ?? '') !== '' ? (float)$billableExpenseData[$field] : null,
+                $expenseFields
+            );
+            $nonBillableExpenseValues = array_map(
+                static fn($field) => ($nonBillableExpenseData[$field] ?? '') !== '' ? (float)$nonBillableExpenseData[$field] : null,
+                $expenseFields
+            );
 
             if ($plate_no  === '') echoJson(['error' => 'Plate Number is required'], 400);
             if ($delivered_datetime === '') echoJson(['error' => 'Delivered Date is required'], 400);
@@ -546,54 +589,22 @@ switch ($method) {
                 $stmtEMI->execute([$id, $RData['client_ref_no'], $RData['remarks']]);
             }
 
-            $stmtChkExpenses = $db->prepare("SELECT booking_id FROM `{$tblBExpenses}` WHERE booking_id = ? LIMIT 1");
-            $stmtChkExpenses->execute([$id]);
-            if ($stmtChkExpenses->fetch()) {
-                $stmtExpenses = $db->prepare(
-                    "UPDATE `{$tblBExpenses}` SET
-                        b_toll_fees = ?,
-                        b_extra_drop = ?,
-                        b_extra_helper = ?,
-                        b_other_fees = ?,
-                        nb_parking_fees = ?,
-                        nb_toll_fees = ?,
-                        nb_demurrage_fees = ?,
-                        nb_backload_fees = ?,
-                        nb_other_deductions = ?
-                     WHERE booking_id = ?"
-                );
-                $stmtExpenses->execute([
-                    $b_toll_fees,
-                    $b_extra_drop,
-                    $b_extra_helper,
-                    $b_other_fees,
-                    $nb_parking_fees,
-                    $nb_toll_fees,
-                    $nb_demurrage_fees,
-                    $nb_backload_fees,
-                    $nb_other_deductions,
-                    $id
-                ]);
-            } else {
-                $stmtExpenses = $db->prepare(
-                    "INSERT INTO `{$tblBExpenses}`
-                        (booking_id, b_toll_fees, b_extra_drop, b_extra_helper, b_other_fees,
-                         nb_parking_fees, nb_toll_fees, nb_demurrage_fees, nb_backload_fees, nb_other_deductions)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                );
-                $stmtExpenses->execute([
-                    $id,
-                    $b_toll_fees,
-                    $b_extra_drop,
-                    $b_extra_helper,
-                    $b_other_fees,
-                    $nb_parking_fees,
-                    $nb_toll_fees,
-                    $nb_demurrage_fees,
-                    $nb_backload_fees,
-                    $nb_other_deductions
-                ]);
-            }
+            saveDeliveredExpenseCategory(
+                $db,
+                $tblBillableExpenses,
+                'bk_b_ex_id',
+                $id,
+                $expenseFields,
+                $billableExpenseValues
+            );
+            saveDeliveredExpenseCategory(
+                $db,
+                $tblNonBillableExpenses,
+                'bk_nb_ex_id',
+                $id,
+                $expenseFields,
+                $nonBillableExpenseValues
+            );
 
 
             $db->commit();
@@ -607,4 +618,3 @@ switch ($method) {
                 echoJson(['error' => 'Booking update failed: ' . $e->getMessage()], 500);
             }
     }
-
