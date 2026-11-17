@@ -39,8 +39,7 @@
     $tblBDestination = tableName('bk_destination');
     $tblBVehicles = tableName('bk_vehicles');
     $tblBCCost = tableName('bk_client_cost');
-    $tblBillableExpenses = tableName('bk_b_expenses');
-    $tblNonBillableExpenses = tableName('bk_nb_expenses');
+    $tblBExpenses = tableName('bk_expenses');
     $tblBPFee = tableName('bk_personnel_fee');
 
 
@@ -363,21 +362,22 @@
                     $row['total_amount'] = $clientCost['total_amount'] ?? null;
                     $row['subcon_rate'] = $clientCost['subcon_rate'] ?? null;
 
-                    $expenseFields = ['gas', 'parking_fee', 'toll_free', 'entrance_fee', 'mano', 'sop', 'demorage', 'extra_drop', 'backload_fee'];
+                    $stmtExpenses = $db->prepare(
+                        "SELECT b_toll_fees, b_extra_drop, b_extra_helper, b_other_fees,
+                                nb_parking_fees, nb_toll_fees, nb_demurrage_fees,
+                                nb_backload_fees, nb_other_deductions
+                        FROM `{$tblBExpenses}`
+                        WHERE booking_id = ?
+                        LIMIT 1"
+                    );
+                    $stmtExpenses->execute([$id]);
+                    $bookingExpenses = $stmtExpenses->fetch() ?: [];
                     foreach ([
-                        'billable_expenses' => $tblBillableExpenses,
-                        'non_billable_expenses' => $tblNonBillableExpenses,
-                    ] as $expenseKey => $expenseTable) {
-                        $columns = implode(', ', array_map(static fn($field) => "`{$field}`", $expenseFields));
-                        $stmtExpenses = $db->prepare(
-                            "SELECT {$columns} FROM `{$expenseTable}` WHERE booking_id = ? LIMIT 1"
-                        );
-                        $stmtExpenses->execute([$id]);
-                        $savedExpenses = $stmtExpenses->fetch() ?: [];
-                        $row[$expenseKey] = array_fill_keys($expenseFields, null);
-                        foreach ($expenseFields as $expenseField) {
-                            $row[$expenseKey][$expenseField] = $savedExpenses[$expenseField] ?? null;
-                        }
+                        'b_toll_fees', 'b_extra_drop', 'b_extra_helper', 'b_other_fees',
+                        'nb_parking_fees', 'nb_toll_fees', 'nb_demurrage_fees',
+                        'nb_backload_fees', 'nb_other_deductions',
+                    ] as $expenseField) {
+                        $row[$expenseField] = $bookingExpenses[$expenseField] ?? null;
                     }
 
                     echoJson($row);
@@ -972,6 +972,16 @@
                 $helper2_rate = $nullableFloat($pricing_details['helper2_rate'] ?? null);
                 $helper2_allowance = $nullableFloat($pricing_details['helper2_allowance'] ?? null);
 
+                //expenses
+                $b_toll_fees = $nullableFloat($expenses['b_toll_fees'] ?? null);
+                $b_extra_drop = $nullableFloat($expenses['b_extra_drop'] ?? null);
+                $b_extra_helper = $nullableFloat($expenses['b_extra_helper'] ?? null);
+                $b_other_fees = $nullableFloat($expenses['b_other_fees'] ?? null);
+                $nb_parking_fees = $nullableFloat($expenses['nb_parking_fees'] ?? null);
+                $nb_toll_fees = $nullableFloat($expenses['nb_toll_fees'] ?? null);
+                $nb_demurrage_fees = $nullableFloat($expenses['nb_demurrage_fees'] ?? null);
+                $nb_backload_fees = $nullableFloat($expenses['nb_backload_fees'] ?? null);
+                $nb_other_deductions = $nullableFloat($expenses['nb_other_deductions'] ?? null);
                 try {
                     $db->beginTransaction();
 
@@ -1268,24 +1278,40 @@
                 }
 
                 if (array_key_exists('expenses', $input)) {
-                    $expenseFields = ['gas', 'parking_fee', 'toll_free', 'entrance_fee', 'mano', 'sop', 'demorage', 'extra_drop', 'backload_fee'];
-                    foreach ([
-                        'billable_expenses' => $tblBillableExpenses,
-                        'non_billable_expenses' => $tblNonBillableExpenses,
-                    ] as $expenseKey => $expenseTable) {
-                        $categoryValues = $expenses[$expenseKey] ?? [];
-                        $columns = implode(', ', array_map(static fn($field) => "`{$field}`", $expenseFields));
-                        $placeholders = implode(', ', array_fill(0, count($expenseFields) + 1, '?'));
-                        $updates = implode(', ', array_map(static fn($field) => "`{$field}` = VALUES(`{$field}`)", $expenseFields));
-                        $stmtExpense = $db->prepare(
-                            "INSERT INTO `{$expenseTable}` (booking_id, {$columns}) VALUES ({$placeholders})
-                            ON DUPLICATE KEY UPDATE {$updates}"
+                    $stmtChkEx = $db->prepare("SELECT booking_id FROM `{$tblBExpenses}` WHERE booking_id = ? LIMIT 1");
+                    $stmtChkEx->execute([$id]);
+                    $exEx = $stmtChkEx->fetch();
+                    if ($exEx) {
+                        $stmtBU = $db->prepare(
+                            "UPDATE `{$tblBExpenses}`
+                            SET b_toll_fees = ?, b_extra_drop = ?, b_extra_helper = ?, b_other_fees = ?,
+                                nb_parking_fees = ?, nb_toll_fees = ?, nb_demurrage_fees = ?, nb_backload_fees = ?, nb_other_deductions = ?
+                            WHERE booking_id = ?"
                         );
-                        $values = [$id];
-                        foreach ($expenseFields as $expenseField) {
-                            $values[] = $nullableFloat($categoryValues[$expenseField] ?? null);
-                        }
-                        $stmtExpense->execute($values);
+                        $stmtBU->execute([
+                            $b_toll_fees, $b_extra_drop, $b_extra_helper, $b_other_fees,
+                            $nb_parking_fees, $nb_toll_fees, $nb_demurrage_fees, $nb_backload_fees, $nb_other_deductions,
+                            $id
+                        ]);
+                    } else {
+                        $stmtBI = $db->prepare(
+                            "INSERT INTO `{$tblBExpenses}`
+                                (booking_id, b_toll_fees, b_extra_drop, b_extra_helper, b_other_fees,
+                                nb_parking_fees, nb_toll_fees, nb_demurrage_fees, nb_backload_fees, nb_other_deductions)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                        );
+                        $stmtBI->execute([
+                            $id,
+                            $b_toll_fees,
+                            $b_extra_drop,
+                            $b_extra_helper,
+                            $b_other_fees,
+                            $nb_parking_fees,
+                            $nb_toll_fees,
+                            $nb_demurrage_fees,
+                            $nb_backload_fees,
+                            $nb_other_deductions,
+                        ]);
                     }
                 }
 

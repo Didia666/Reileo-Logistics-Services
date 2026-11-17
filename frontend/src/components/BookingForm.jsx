@@ -15,20 +15,6 @@ const TABS = [
   { key: 'expenses', label: 'Expenses' },
 ];
 
-const EXPENSE_FIELDS = [
-  ['gas', 'Gas'],
-  ['parking_fee', 'Parking fee'],
-  ['toll_free', 'Toll free'],
-  ['entrance_fee', 'Entrance fee'],
-  ['mano', 'Mano'],
-  ['sop', 'SOP'],
-  ['demorage', 'Demorage'],
-  ['extra_drop', 'Extra drop'],
-  ['backload_fee', 'Backload fee'],
-];
-
-const EMPTY_EXPENSES = Object.fromEntries(EXPENSE_FIELDS.map(([key]) => [key, '']));
-
 function Field({ label, required, error, children, hint, style }) {
   return (
     <div style={style || { display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
@@ -100,7 +86,6 @@ const getPhotoSource = (photo) => {
 
 export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking, viewOnly }) {
   const [activeTab, setActiveTab] = useState('bookinginfo');
-  const [expenseCategory, setExpenseCategory] = useState('billable');
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ type: '', msg: '' });
   const [destinationSearch, setDestinationSearch] = useState('');
@@ -220,8 +205,16 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
     helper2_rate: '',
     helper2_allowance: '',
     
-    billable_expenses: { ...EMPTY_EXPENSES },
-    non_billable_expenses: { ...EMPTY_EXPENSES },
+    // Expenses 
+    b_toll_fees: '',
+    b_extra_drop: '',
+    b_extra_helper: '',
+    b_other_fees: '',
+    nb_parking_fees: '',
+    nb_toll_fees: '',
+    nb_demurrage_fees: '',
+    nb_backload_fees: '',
+    nb_other_deductions: '',
 
   };
 
@@ -342,8 +335,6 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
 
     if (isOpen) {
       loadLookups();
-      setActiveTab('bookinginfo');
-      setExpenseCategory('billable');
       if (editBooking) {
         setCompanyOwned(Boolean(editBooking.vendor_id));
         if (Array.isArray(editBooking.bk_photos) && editBooking.bk_photos.length > 0) {
@@ -423,8 +414,16 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
             helper2_allowance: editBooking.helper2_allowance ?? '',
 
 
-            billable_expenses: { ...EMPTY_EXPENSES, ...(editBooking.billable_expenses || {}) },
-            non_billable_expenses: { ...EMPTY_EXPENSES, ...(editBooking.non_billable_expenses || {}) },
+            // Expenses
+            b_toll_fees: editBooking.b_toll_fees ?? '',
+            b_extra_drop: editBooking.b_extra_drop ?? '',
+            b_extra_helper: editBooking.b_extra_helper ?? '',
+            b_other_fees: editBooking.b_other_fees ?? '',
+            nb_parking_fees: editBooking.nb_parking_fees ?? '',
+            nb_toll_fees: editBooking.nb_toll_fees ?? '',
+            nb_demurrage_fees: editBooking.nb_demurrage_fees ?? '',
+            nb_backload_fees: editBooking.nb_backload_fees ?? '',
+            nb_other_deductions: editBooking.nb_other_deductions ?? ''
           });
           
 
@@ -511,8 +510,16 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
               helper2_rate: full.helper2_rate ?? '',
               helper2_allowance: full.helper2_allowance ?? '',
 
-              billable_expenses: { ...EMPTY_EXPENSES, ...(full.billable_expenses || {}) },
-              non_billable_expenses: { ...EMPTY_EXPENSES, ...(full.non_billable_expenses || {}) },
+              // Expenses
+              b_toll_fees: full.b_toll_fees ?? '',
+              b_extra_drop: full.b_extra_drop ?? '',
+              b_extra_helper: full.b_extra_helper ?? '',
+              b_other_fees: full.b_other_fees ?? '',
+              nb_parking_fees: full.nb_parking_fees ?? '',
+              nb_toll_fees: full.nb_toll_fees ?? '',
+              nb_demurrage_fees: full.nb_demurrage_fees ?? '',
+              nb_backload_fees: full.nb_backload_fees ?? '',
+              nb_other_deductions: full.nb_other_deductions ?? ''
             });
           }).catch((error) => {
             if (!isCurrent) return;
@@ -527,7 +534,6 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
         setForm(blankForm);
         setCompanyOwned(false);
         setActiveTab('bookinginfo');
-        setExpenseCategory('billable');
       }
       setErrors({});
       setToast({ type: '', msg: '' });
@@ -535,7 +541,6 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
       setForm(blankForm);
       setCompanyOwned(false);
       setActiveTab('bookinginfo');
-      setExpenseCategory('billable');
       setErrors({});
       setToast({ type: '', msg: '' });
     }
@@ -792,14 +797,15 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
         },
 
         expenses: {
-          billable_expenses: Object.fromEntries(EXPENSE_FIELDS.map(([key]) => [
-            key,
-            nullableNumber(form.billable_expenses?.[key]),
-          ])),
-          non_billable_expenses: Object.fromEntries(EXPENSE_FIELDS.map(([key]) => [
-            key,
-            nullableNumber(form.non_billable_expenses?.[key]),
-          ])),
+          b_toll_fees: nullableNumber(form.b_toll_fees),
+          b_extra_drop: nullableNumber(form.b_extra_drop),
+          b_extra_helper: nullableNumber(form.b_extra_helper),
+          b_other_fees: nullableNumber(form.b_other_fees),
+          nb_parking_fees: nullableNumber(form.nb_parking_fees),
+          nb_toll_fees: nullableNumber(form.nb_toll_fees),
+          nb_demurrage_fees: nullableNumber(form.nb_demurrage_fees),
+          nb_backload_fees: nullableNumber(form.nb_backload_fees),
+          nb_other_deductions: nullableNumber(form.nb_other_deductions),
         },
 
       };
@@ -1838,43 +1844,59 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
           );
 
         case 'expenses':
-          const expenseGroup = expenseCategory === 'billable'
-            ? 'billable_expenses'
-            : 'non_billable_expenses';
-          return (
-            <div className="booking-expenses-content">
-              <div className={`booking-expense-switch booking-expense-switch-${expenseCategory}`} role="tablist" aria-label="Expense category">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={expenseCategory === 'billable'}
-                  className={expenseCategory === 'billable' ? 'active' : ''}
-                  onClick={() => setExpenseCategory('billable')}
-                >
-                  Billable
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={expenseCategory === 'non_billable'}
-                  className={expenseCategory === 'non_billable' ? 'active' : ''}
-                  onClick={() => setExpenseCategory('non_billable')}
-                >
-                  Non-Billable
-                </button>
-              </div>
-              <fieldset className={`booking-expense-fields booking-expense-fields-${expenseCategory}`}>
-                <legend>{expenseCategory === 'billable' ? 'Billable Expenses' : 'Non-Billable Expenses'}</legend>
-                <div className="booking-expense-grid">
-                  {EXPENSE_FIELDS.map(([key, label]) => (
-                    <Field key={key} label={label}>
-                      {renderInput(`${expenseGroup}.${key}`, '0.00', 'number')}
-                    </Field>
-                  ))}
+        return (
+          <div style={{ padding: 18 }}>
+            <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
+              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
+                Expenses
+              </legend>
+              <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
+              <legend style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
+                Billable
+              </legend>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                <Field label="Toll Fees">
+                  {renderInput('b_toll_fees', 'e.g. 1000', 'number')}
+                </Field>
+                <Field label="Extra Drop">
+                  {renderInput('b_extra_drop', 'e.g. 500', 'number')}
+                </Field>
+                <Field label="Extra Helper">
+                  {renderInput('b_extra_helper', 'e.g. 200', 'number')}
+                </Field>
+                <Field label="Other Expenses/Fees">
+                  {renderInput('b_other_fees', 'e.g. 300', 'number')}
+                </Field>
                 </div>
-              </fieldset>
-            </div>
-          );
+                </fieldset>
+                
+
+                <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
+                <legend style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
+                  Non-Billable
+                </legend>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                <Field label="Parking Fees">
+                  {renderInput('nb_parking_fees', 'e.g. 100', 'number')}
+                </Field>
+                <Field label="Toll Fees - Non Billable">
+                  {renderInput('nb_toll_fees', 'e.g. 500', 'number')}
+                </Field>
+                <Field label="Demurrage Fees">
+                  {renderInput('nb_demurrage_fees', 'e.g. 200', 'number')}
+                </Field>
+                <Field label="Backload Fees">
+                  {renderInput('nb_backload_fees', 'e.g. 300', 'number')}
+                </Field>
+                <Field label="Other Deductions">
+                  {renderInput('nb_other_deductions', 'e.g. 100', 'number')}
+                </Field>
+                </div>
+                </fieldset>
+
+            </fieldset>
+          </div>
+        );
         
       
 

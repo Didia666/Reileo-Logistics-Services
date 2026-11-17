@@ -281,47 +281,6 @@ table.data-table tr:hover td { background: #fafbff; }
   border-top: 1px solid #e5e7eb; margin-top: 6px;
 }
 
-.booking-expenses-content { padding: 18px; }
-.booking-expense-switch {
-  display: flex;
-  gap: 6px;
-  width: fit-content;
-  margin-bottom: 14px;
-  padding: 4px;
-  border: 1px solid #e2e8f0;
-  border-radius: 7px;
-  background: #f8fafc;
-}
-.booking-expense-switch button {
-  min-width: 130px;
-  padding: 8px 14px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: #64748b;
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-}
-.booking-expense-switch-billable button.active { background: #059669; color: white; }
-.booking-expense-switch-non_billable button.active { background: #e11d48; color: white; }
-.booking-expense-fields {
-  min-width: 0;
-  margin: 0;
-  padding: 14px;
-  border: 1px solid #a7f3d0;
-  border-radius: 7px;
-}
-.booking-expense-fields legend { padding: 0 6px; color: #047857; font-size: 12px; font-weight: 600; }
-.booking-expense-fields-non_billable { border-color: #fda4af; }
-.booking-expense-fields-non_billable legend { color: #be123c; }
-.booking-expense-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
-.booking-expense-fields-non_billable input { border-color: #fecdd3; }
-.booking-expense-fields-billable input { border-color: #a7f3d0; }
-.booking-expense-fields input:focus { outline: none; box-shadow: 0 0 0 3px rgba(5, 150, 105, .12); }
-.booking-expense-fields-non_billable input:focus { border-color: #fb7185; box-shadow: 0 0 0 3px rgba(225, 29, 72, .12); }
-
 .personnel-row {
   display: grid; grid-template-columns: 2fr 3fr 40px; gap: 10px; align-items: end;
   margin-bottom: 10px;
@@ -689,10 +648,6 @@ table.data-table tr:hover td { background: #fafbff; }
   .payroll-toolbar input { width: 100%; }
   .payroll-pagination { align-items: flex-start; flex-direction: column; }
   .payroll-detail-columns { grid-template-columns: 1fr; gap: 12px; }
-  .booking-expenses-content { padding: 12px; }
-  .booking-expense-switch { width: 100%; }
-  .booking-expense-switch button { min-width: 0; flex: 1; }
-  .booking-expense-grid { grid-template-columns: 1fr; gap: 12px; }
   .payroll-detail-section table { font-size: 10px; }
   .payroll-modal { padding-right: 10px; padding-left: 10px; }
   .reports-grid { grid-template-columns: 1fr; gap: 18px; }

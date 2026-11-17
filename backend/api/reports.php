@@ -22,8 +22,7 @@ $tables = [
     'bk_references' => tableName('bk_references'),
     'bk_client_cost' => tableName('bk_client_cost'),
     'bk_fuel_trip' => tableName('bk_fuel_trip'),
-    'bk_b_expenses' => tableName('bk_b_expenses'),
-    'bk_nb_expenses' => tableName('bk_nb_expenses'),
+    'bk_expenses' => tableName('bk_expenses'),
     'users' => tableName('reileo_logistics_services_users'),
     'booking_personnel' => tableName('booking_personnel'),
     'personnel' => tableName('personnel'),
@@ -135,12 +134,8 @@ try {
                 vd.vendor_name, r.client_ref_no, r.other_ref_no, cc.client_rate, cc.subcon_rate,
                 r.remarks, b.route_code, b.trips_number, b.drops_number,
                 {$fuelAreaSelect}, f.charges, f.trip_allowance, f.fuel, f.fuel_po, f.fuel_amount,
-                be.gas AS b_gas, be.parking_fee AS b_parking_fee, be.toll_free AS b_toll_free,
-                be.entrance_fee AS b_entrance_fee, be.mano AS b_mano, be.sop AS b_sop,
-                be.demorage AS b_demorage, be.extra_drop AS b_extra_drop, be.backload_fee AS b_backload_fee,
-                ne.gas AS nb_gas, ne.parking_fee AS nb_parking_fee, ne.toll_free AS nb_toll_free,
-                ne.entrance_fee AS nb_entrance_fee, ne.mano AS nb_mano, ne.sop AS nb_sop,
-                ne.demorage AS nb_demorage, ne.extra_drop AS nb_extra_drop, ne.backload_fee AS nb_backload_fee,
+                e.b_toll_fees, e.b_other_fees, e.b_extra_drop, e.b_extra_helper,
+                e.nb_parking_fees, e.nb_backload_fees, e.nb_demurrage_fees, e.nb_toll_fees,
                 bv.odometer AS odometer_delivered,
                 b.delivered_datetime, b.received_datetime, b.completed_at, b.created_at,
                 CASE WHEN COALESCE(bv.vendor_id, v.vendor_id) IS NULL THEN 'No' ELSE 'Yes' END AS subcon,
@@ -214,8 +209,7 @@ try {
                 LEFT JOIN `{$tables['bk_references']}` r ON r.booking_id = b.booking_id
                 LEFT JOIN `{$tables['bk_client_cost']}` cc ON cc.booking_id = b.booking_id
                 LEFT JOIN `{$tables['bk_fuel_trip']}` f ON f.booking_id = b.booking_id
-                LEFT JOIN `{$tables['bk_b_expenses']}` be ON be.booking_id = b.booking_id
-                LEFT JOIN `{$tables['bk_nb_expenses']}` ne ON ne.booking_id = b.booking_id
+                LEFT JOIN `{$tables['bk_expenses']}` e ON e.booking_id = b.booking_id
                 LEFT JOIN `{$tables['users']}` u ON u.user_id = b.created_by
                 ORDER BY b.booking_id DESC");
             reportJson($stmt->fetchAll());
