@@ -151,6 +151,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
     trips_number: '',
     drops_number: '',
     origin_id: '',
+    travel_fund: '',
     destination_ids: [],
 
     // Vehicle Assignment
@@ -351,6 +352,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
             trips_number: editBooking.trips_number ?? '',
             drops_number: editBooking.drops_number ?? '',
             origin_id: editBooking.origin_id ?? '',
+            travel_fund: editBooking.travel_fund ?? '',
             destination_ids: destinationIdsForBooking(editBooking),
 
             // Vehicle Assignment
@@ -455,6 +457,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
               trips_number: full.trips_number ?? '',
               drops_number: full.drops_number ?? '',
               origin_id: full.origin_id ?? '',
+              travel_fund: full.travel_fund ?? '',
               destination_ids: destinationIdsForBooking(full),
 
               // Vehicle Assignment
@@ -724,7 +727,10 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
     // if (!form.employment.personnel_type_id) errs['employment.personnel_type_id'] = 'Required';
     // if (!form.employment.depot_id)          errs['employment.depot_id']          = 'Required';
     // if (!form.employment.employment_type)   errs['employment.employment_type']   = 'Required';
-    // setErrors(errs);
+    if (form.travel_fund === '' || !Number.isFinite(Number(form.travel_fund))) {
+      errs.travel_fund = 'Travel fund is required and must be a number.';
+    }
+    setErrors(errs);
     if (Object.keys(errs).length) {
       setToast({ type: 'error', msg: 'Please fill in all required fields.' });
       setTimeout(() => setToast({ type: '', msg: '' }), 4000);
@@ -754,6 +760,7 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
             .filter((destinationId) => destinationId !== '' && destinationId !== null)
             .map(Number),
         },
+        travel_fund: nullableNumber(form.travel_fund),
         // Vehicle Assignment
         vehicle_assignment: {
           vehicle_id: form.vehicle_id ? Number(form.vehicle_id) : null,
@@ -1083,6 +1090,35 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
     const clientRate = Number(form.client_rate) || 0;
     const tripsNumber = Number(form.trips_number) || 0;
     const totalAmount = (clientRate * tripsNumber).toFixed(2);
+    const totalExpensesCents = [
+      form.b_gas,
+      form.b_parking_fee,
+      form.b_toll_fee,
+      form.b_entrance_fee,
+      form.b_mano,
+      form.b_SOP,
+      form.b_demurrage_fee,
+      form.b_extra_drop_fee,
+      form.b_backload_fee,
+      form.nb_gas,
+      form.nb_parking_fee,
+      form.nb_toll_fee,
+      form.nb_entrance_fee,
+      form.nb_mano,
+      form.nb_SOP,
+      form.nb_demurrage_fee,
+      form.nb_extra_drop_fee,
+      form.nb_backload_fee,
+    ].reduce((total, expense) => total + Math.round((Number(expense) || 0) * 100), 0);
+    const totalExpenses = (totalExpensesCents / 100).toFixed(2);
+    const returnFund = (
+      (Math.round((Number(form.travel_fund) || 0) * 100) - totalExpensesCents) / 100
+    ).toFixed(2);
+    const netRate = (grossRate, cashAdvance) => {
+      const grossCents = Math.round((Number(grossRate) || 0) * 100);
+      const advanceCents = Math.round((Number(cashAdvance) || 0) * 100);
+      return ((grossCents - advanceCents) / 100).toFixed(2);
+    };
 
     const vehicleOptions = lookupsData.vehicles.filter((vehicle) => {
       const isCurrentVehicle = String(vehicle.plate_no) === String(form.plate_no || '');
@@ -1168,6 +1204,15 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
                 </Field>
                 <Field label="Origin"  required error={errors.origin_id}>
                   {renderSelect('origin_id', lookupsData.origins, 'origin_id', 'origin_name', '- Select Origin -')}
+                </Field>
+                <Field label="Travel Fund"  required error={errors.travel_fund}>
+                  {renderInput('travel_fund', 'e.g. 5', 'number')}
+                </Field>
+                <Field label="Total Expenses">
+                  <input type="text" value={totalExpenses} disabled style={readOnlyStyle} />
+                </Field>
+                <Field label="Return Fund">
+                  <input type="text" value={returnFund} disabled style={readOnlyStyle} />
                 </Field>
                 <Field label="Destination" hint="Select destinations in route order; the selection order sets each stop number.">
                   <div>
@@ -1852,34 +1897,49 @@ export default function BookingFormModal({ isOpen, onClose, onSaved, editBooking
                     {renderInput('subcon_rate', 'e.g. 5', 'number')}
                   </Field>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
                   {form.driver_id && (
                     <>
-                      <Field label="Driver Rate">
+                      <Field label="Driver Gross Rate">
                         {renderInput('driver_rate', 'e.g. 5', 'number')}
                       </Field>
-                      <Field label="Driver Allowance">
+                      <Field label="Driver Cash Advance">
                         {renderInput('driver_allowance', 'e.g. 5', 'number')}
+                      </Field>
+                      <Field label="Driver Net Rate">
+                        <output aria-live="polite" style={readOnlyStyle}>
+                          {netRate(form.driver_rate, form.driver_allowance)}
+                        </output>
                       </Field>
                     </>
                   )}
                   {form.helper1_id && (
                     <>
-                      <Field label="Helper 1 Rate">
+                      <Field label="Helper 1 Gross Rate">
                         {renderInput('helper1_rate', 'e.g. 5', 'number')}
                       </Field>
-                      <Field label="Helper 1 Allowance">
+                      <Field label="Helper 1 Cash Advance">
                         {renderInput('helper1_allowance', 'e.g. 5', 'number')}
+                      </Field>
+                      <Field label="Helper 1 Net Rate">
+                        <output aria-live="polite" style={readOnlyStyle}>
+                          {netRate(form.helper1_rate, form.helper1_allowance)}
+                        </output>
                       </Field>
                     </>
                   )}
                   {form.helper2_id && (
                     <>
-                      <Field label="Helper 2 Rate">
+                      <Field label="Helper 2 Gross Rate">
                         {renderInput('helper2_rate', 'e.g. 5', 'number')}
                       </Field>
-                      <Field label="Helper 2 Allowance">
+                      <Field label="Helper 2 Cash Advance">
                         {renderInput('helper2_allowance', 'e.g. 5', 'number')}
+                      </Field>
+                      <Field label="Helper 2 Net Rate">
+                        <output aria-live="polite" style={readOnlyStyle}>
+                          {netRate(form.helper2_rate, form.helper2_allowance)}
+                        </output>
                       </Field>
                     </>
                   )}

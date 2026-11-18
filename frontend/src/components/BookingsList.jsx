@@ -656,7 +656,7 @@ export default function BookingsList() {
       setCompleteBookingDetail(null);
       setToast(`Booking ${completeBooking.booking_no} completed.`);
       setTimeout(() => setToast(''), 3000);
-    } catch (e) { setToast(e.message); setTimeout(() => setToast(''), 4000); }
+    }
     finally { setCompleteSaving(false); }
   };
 

@@ -105,6 +105,7 @@ export default function CompleteBookingModal({
     nb_SOP: '0.00',
     nb_demurrage_fee: '0.00',
     nb_extra_drop_fee: '0.00',
+    travel_fund: '',
     // =========================================================
     // PERSONNEL
     // =========================================================
@@ -213,7 +214,17 @@ export default function CompleteBookingModal({
       msg: '',
     });
     const detail = bookingDetail || {};
-    const assignments = detail.personnel_assignments || [];
+    const assignments = Array.isArray(detail.personnel_assignments)
+      ? detail.personnel_assignments
+      : [];
+    const assignmentForRole = (role) =>
+      assignments.find((assignment) => assignment.assignment_role === role);
+    const bookingDestinations = Array.isArray(detail.booking_destinations)
+      ? detail.booking_destinations
+      : Array.isArray(detail.destinations)
+        ? detail.destinations
+        : [];
+    const latestBookingDestination = bookingDestinations[bookingDestinations.length - 1];
     const nextForm = {
       ...blankForm,
 
@@ -236,7 +247,7 @@ export default function CompleteBookingModal({
 
       // Client Cost
       origin_id: detail.origin_id || '',
-      farthest_destination_id: detail.farthest_destination_id ?? '',
+      farthest_destination_id: detail.farthest_destination_id ?? latestBookingDestination?.destination_id ?? '',
       client_rate: detail.client_rate ?? '',
       no_of_trips: detail.no_of_trips ?? detail.trips_number ?? '1',
       subcon_rate: detail.subcon_rate ?? '',
@@ -261,16 +272,27 @@ export default function CompleteBookingModal({
       nb_demurrage_fee: detail.nb_demurrage_fee ?? booking?.nb_demurrage_fee ?? '',
       nb_extra_drop_fee: detail.nb_extra_drop_fee ?? booking?.nb_extra_drop_fee ?? '',
       nb_backload_fee: detail.nb_backload_fee ?? booking?.nb_backload_fee ?? '',
+      travel_fund: detail.travel_fund ?? '',
 
       // Personnel
       driver_id: detail.driver_id || personnelIdForRole(assignments, 'driver'),
       helper1_id: detail.helper1_id || personnelIdForRole(assignments, 'helper1'),
       helper2_id: detail.helper2_id || personnelIdForRole(assignments, 'helper2'),
-      driver_rate: detail.driver_rate ?? '',
+      driver_rate: detail.driver_rate
+        ?? assignmentForRole('driver')?.gross_rate
+        ?? assignmentForRole('driver')?.rate
+        ?? '',
       driver_allowance: detail.driver_allowance ?? '0.00',
-      helper1_rate: detail.helper1_rate ?? detail.helper_rate ?? '',
+      helper1_rate: detail.helper1_rate
+        ?? detail.helper_rate
+        ?? assignmentForRole('helper1')?.gross_rate
+        ?? assignmentForRole('helper1')?.rate
+        ?? '',
       helper1_allowance: detail.helper1_allowance ?? detail.helper_allowance ?? '0.00',
-      helper2_rate: detail.helper2_rate ?? '',
+      helper2_rate: detail.helper2_rate
+        ?? assignmentForRole('helper2')?.gross_rate
+        ?? assignmentForRole('helper2')?.rate
+        ?? '',
       helper2_allowance: detail.helper2_allowance ?? '0.00',
     };
 
@@ -282,6 +304,45 @@ export default function CompleteBookingModal({
       cancelled = true;
     };
   }, [isOpen, booking, bookingDetail]);
+
+  useEffect(() => {
+    if (!isOpen || lookupsData.personnel.length === 0) return;
+
+    const dailyRateFor = (personnelId) => {
+      if (!personnelId) return null;
+      const personnel = lookupsData.personnel.find(
+        (person) => String(person.personnel_id) === String(personnelId)
+      );
+      const dailyRate = personnel?.daily_rate;
+      return dailyRate !== null && dailyRate !== undefined && dailyRate !== ''
+        && Number.isFinite(Number(dailyRate))
+        ? Number(dailyRate).toFixed(2)
+        : null;
+    };
+
+    setForm((previous) => {
+      const next = { ...previous };
+      let changed = false;
+      [
+        ['driver_id', 'driver_rate'],
+        ['helper1_id', 'helper1_rate'],
+        ['helper2_id', 'helper2_rate'],
+      ].forEach(([personnelField, rateField]) => {
+        if (next[rateField] !== '') return;
+        const dailyRate = dailyRateFor(next[personnelField]);
+        if (dailyRate === null) return;
+        next[rateField] = dailyRate;
+        changed = true;
+      });
+      return changed ? next : previous;
+    });
+  }, [
+    isOpen,
+    lookupsData.personnel,
+    form.driver_id,
+    form.helper1_id,
+    form.helper2_id,
+  ]);
 
   // =========================================================
   // SET FIELD
@@ -371,6 +432,32 @@ export default function CompleteBookingModal({
   const clientRate = Number(form.client_rate) || 0;
   const numberOfTrips = Number(form.no_of_trips) || 0;
   const totalAmount = (clientRate * numberOfTrips).toFixed(2);
+  const totalExpensesCents = [
+    form.b_gas,
+    form.b_parking_fee,
+    form.b_toll_fee,
+    form.b_entrance_fee,
+    form.b_mano,
+    form.b_SOP,
+    form.b_demurrage_fee,
+    form.b_extra_drop_fee,
+    form.b_backload_fee,
+    form.nb_gas,
+    form.nb_parking_fee,
+    form.nb_toll_fee,
+    form.nb_entrance_fee,
+    form.nb_mano,
+    form.nb_SOP,
+    form.nb_demurrage_fee,
+    form.nb_extra_drop_fee,
+    form.nb_backload_fee,
+  ].reduce((total, expense) => total + Math.round((Number(expense) || 0) * 100), 0);
+  const totalExpenses = (totalExpensesCents / 100).toFixed(2);
+  const returnFund = (
+    (Math.round((Number(form.travel_fund) || 0) * 100) - totalExpensesCents) / 100
+  ).toFixed(2);
+  const netRate = (grossRate, cashAdvance) =>
+    ((Number(grossRate) || 0) - (Number(cashAdvance) || 0)).toFixed(2);
 
   // =========================================================
   // VALIDATION
@@ -517,6 +604,7 @@ export default function CompleteBookingModal({
           subcon_rate: form.subcon_rate !== '' ? Number(form.subcon_rate) : null,
         },
         b_expenses: {
+          travel_fund: form.travel_fund !== '' ? Number(form.travel_fund) : 0,
           b_gas: form.b_gas ? Number(form.b_gas) : null,
           b_parking_fee: form.b_parking_fee ? Number(form.b_parking_fee) : null,
           b_toll_fee: form.b_toll_fee ? Number(form.b_toll_fee) : null,
@@ -562,10 +650,10 @@ export default function CompleteBookingModal({
         ],
       };
 
-      if (typeof onConfirm === 'function') {
-        await onConfirm(payload);
+      if (typeof onConfirm !== 'function') {
+        throw new Error('Booking completion is unavailable.');
       }
-      setToast({ type: 'success', msg: 'Booking completed successfully.' });
+      await onConfirm(payload);
     } catch (error) {
       setToast({ type: 'error', msg: error?.message || 'Failed to complete booking.' });
     } finally {
@@ -731,7 +819,6 @@ export default function CompleteBookingModal({
                 <Field label="Customer" required error={errors.customer_id}>
                   {renderSelect('customer_id', lookupsData.customers, 'customer_id', 'customer_name', '- Select Customer -', false)}
                 </Field>
-                <div />
                 <Field label="Booking Type" required error={errors.booking_type_id}>
                   {renderSelect('booking_type_id', lookupsData.bookingTypes, 'booking_type_id', 'book_type', '- Select Booking Type -')}
                 </Field>
@@ -746,6 +833,15 @@ export default function CompleteBookingModal({
                 </Field>
                 <Field label="Commodity Type" required error={errors.commodity_type_id}>
                   {renderSelect('commodity_type_id', lookupsData.commodityTypes, 'commodity_type_id', 'commodity_type', '- Select Commodity Type -', false, handleCommodityTypeChange)}
+                </Field>
+                <Field label="Travel Fund">
+                  {renderInput('travel_fund', '0.00', 'number')}
+                </Field>
+                <Field label="Total Expenses">
+                  <input type="text" value={totalExpenses} disabled style={readOnlyStyle} />
+                </Field>
+                <Field label="Return Fund">
+                  <input type="text" value={returnFund} disabled style={readOnlyStyle} />
                 </Field>
               </div>
             </fieldset>
@@ -769,7 +865,11 @@ export default function CompleteBookingModal({
                 </Field>
                 <Field label="Farthest destination" required error={errors.farthest_destination_id}
                   style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, gridColumn: '1 / -1' }}>
-                  {renderSelect('farthest_destination_id', Array.isArray(bookingDetail?.booking_destinations) ? bookingDetail.booking_destinations : [], 'destination_id', 'destination_name', '- Select -')}
+                  {renderSelect('farthest_destination_id', Array.isArray(bookingDetail?.booking_destinations)
+                    ? bookingDetail.booking_destinations
+                    : Array.isArray(bookingDetail?.destinations)
+                      ? bookingDetail.destinations
+                      : [], 'destination_id', 'destination_name', '- Select -')}
                 </Field>
                 <Field label="Client Rate" required error={errors.client_rate}>
                   {renderInput('client_rate', '0.00', 'number')}
@@ -894,33 +994,42 @@ export default function CompleteBookingModal({
               <legend style={{ fontSize: 12, fontWeight: 500, color: '#2563eb', padding: '0 6px' }}>
                 Personnel Fee
               </legend>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 18 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 18 }}>
                 <Field label="Driver">{renderReadOnly(getPersonnelName(form.driver_id))}</Field>
-                <Field label="Driver Rate" error={errors.driver_rate}>
+                <Field label="Driver Gross Rate" error={errors.driver_rate}>
                   {renderInput('driver_rate', '0.00', 'number')}
                 </Field>
-                <Field label="Driver Allowance">
+                <Field label="Driver Cash Advance">
                   {renderInput('driver_allowance', '0.00', 'number')}
+                </Field>
+                <Field label="Driver Net Rate">
+                  {renderReadOnly(netRate(form.driver_rate, form.driver_allowance))}
                 </Field>
                 {form.helper1_id && (
                   <>
                     <Field label="Helper 1">{renderReadOnly(getPersonnelName(form.helper1_id))}</Field>
-                    <Field label="Helper 1 Rate" required error={errors.helper1_rate}>
+                    <Field label="Helper 1 Gross Rate" required error={errors.helper1_rate}>
                       {renderInput('helper1_rate', '0.00', 'number')}
                     </Field>
-                    <Field label="Helper 1 Allowance">
+                    <Field label="Helper 1 Cash Advance">
                       {renderInput('helper1_allowance', '0.00', 'number')}
+                    </Field>
+                    <Field label="Helper 1 Net Rate">
+                      {renderReadOnly(netRate(form.helper1_rate, form.helper1_allowance))}
                     </Field>
                   </>
                 )}
                 {form.helper2_id && (
                   <>
                     <Field label="Helper 2">{renderReadOnly(getPersonnelName(form.helper2_id))}</Field>
-                    <Field label="Helper 2 Rate" error={errors.helper2_rate}>
+                    <Field label="Helper 2 Gross Rate" error={errors.helper2_rate}>
                       {renderInput('helper2_rate', '0.00', 'number')}
                     </Field>
-                    <Field label="Helper 2 Allowance">
+                    <Field label="Helper 2 Cash Advance">
                       {renderInput('helper2_allowance', '0.00', 'number')}
+                    </Field>
+                    <Field label="Helper 2 Net Rate">
+                      {renderReadOnly(netRate(form.helper2_rate, form.helper2_allowance))}
                     </Field>
                   </>
                 )}

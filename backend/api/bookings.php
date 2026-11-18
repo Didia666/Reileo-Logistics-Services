@@ -41,6 +41,7 @@
     $tblBCCost = tableName('bk_client_cost');
     $tblBExpenses = tableName('bk_b_expenses');
     $tblNBExpenses = tableName('bk_nb_expenses');
+    $tblTravelFunds = tableName('bk_expenses');
     $tblBPFee = tableName('bk_personnel_fee');
 
 
@@ -285,6 +286,17 @@
                     $row = $stmt->fetch();
                     if (!$row) echoJson(['error' => 'Booking not found'], 404);
 
+                    $stmtTravelFunds = $db->prepare(
+                        "SELECT travel_fund, cash_back
+                         FROM `{$tblTravelFunds}`
+                         WHERE booking_id = ?
+                         LIMIT 1"
+                    );
+                    $stmtTravelFunds->execute([$id]);
+                    $travelFunds = $stmtTravelFunds->fetch() ?: [];
+                    $row['travel_fund'] = $travelFunds['travel_fund'] ?? null;
+                    $row['cash_back'] = $travelFunds['cash_back'] ?? null;
+
                     $stmtDestinations = $db->prepare("
                         SELECT bd.destination_id, bd.stop_order, dest.destination_name
                         FROM `{$tblBDestination}` bd
@@ -497,6 +509,18 @@
             $personnel_assignment = $input['personnel_assignment'] ?? [];
             $references = $input['references'] ?? [];
             $item_details = $input['item_details'] ?? [];
+            $b_expenses = $input['b_expenses'] ?? [];
+            if (!is_array($b_expenses)) {
+                $b_expenses = [];
+            }
+            $hasTravelFund = array_key_exists('travel_fund', $input);
+            $travelFundValue = $input['travel_fund'] ?? null;
+            if ($hasTravelFund && $travelFundValue !== '' && $travelFundValue !== null && !is_numeric($travelFundValue)) {
+                echoJson(['error' => 'Travel fund must be numeric.'], 400);
+            }
+            $travel_fund = $travelFundValue === '' || $travelFundValue === null
+                ? null
+                : (float)$travelFundValue;
 
             //booking_info
 
@@ -593,6 +617,14 @@
                 if ($stmtV->rowCount() === 0) { $db->rollBack(); echoJson(['error' => 'Insert failed'], 500); }
                 $booking_id = (int)$db->lastInsertId();
                 if ($booking_id <= 0) { $db->rollBack(); echoJson(['error' => 'Insert failed: no ID'], 500); }
+
+                if ($hasTravelFund) {
+                    $stmtTravelFund = $db->prepare(
+                        "INSERT INTO `{$tblTravelFunds}` (booking_id, travel_fund)
+                         VALUES (?, ?)"
+                    );
+                    $stmtTravelFund->execute([$booking_id, $travel_fund]);
+                }
 
                 $stmtDestination = $db->prepare(
                     "INSERT INTO `{$tblBDestination}` (booking_id, destination_id, stop_order) VALUES (?, ?, ?)"
@@ -765,6 +797,17 @@
                 $item_details = $input['item_details'] ?? [];
                 $pricing_details = $input['pricing_details'] ?? [];
                 $b_expenses = $input['b_expenses'] ?? [];
+                if (!is_array($b_expenses)) {
+                    $b_expenses = [];
+                }
+                $hasTravelFund = array_key_exists('travel_fund', $input);
+                $travelFundValue = $input['travel_fund'] ?? null;
+                if ($hasTravelFund && $travelFundValue !== '' && $travelFundValue !== null && !is_numeric($travelFundValue)) {
+                    echoJson(['error' => 'Travel fund must be numeric.'], 400);
+                }
+                $travel_fund = $travelFundValue === '' || $travelFundValue === null
+                    ? null
+                    : (float)$travelFundValue;
                 $nb_expenses = $input['nb_expenses'] ?? [];
                 $nullableFloat = static function ($value) {
                     return $value === null || $value === '' ? null : (float)$value;
@@ -1249,6 +1292,30 @@
                         $nb_extra_drop_fee,
                         $nb_backload_fee,
                     ]);
+                }
+
+                if ($hasTravelFund) {
+                    $stmtTravelFundExists = $db->prepare(
+                        "SELECT booking_id
+                         FROM `{$tblTravelFunds}`
+                         WHERE booking_id = ?
+                         LIMIT 1"
+                    );
+                    $stmtTravelFundExists->execute([$id]);
+                    if ($stmtTravelFundExists->fetch()) {
+                        $stmtTravelFund = $db->prepare(
+                            "UPDATE `{$tblTravelFunds}`
+                             SET travel_fund = ?
+                             WHERE booking_id = ?"
+                        );
+                        $stmtTravelFund->execute([$travel_fund, $id]);
+                    } else {
+                        $stmtTravelFund = $db->prepare(
+                            "INSERT INTO `{$tblTravelFunds}` (booking_id, travel_fund)
+                             VALUES (?, ?)"
+                        );
+                        $stmtTravelFund->execute([$id, $travel_fund]);
+                    }
                 }
 
                 $db->commit();

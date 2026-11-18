@@ -201,7 +201,7 @@ switch ($method) {
                 if ($stmtChkExpenses->fetch()) {
                     $stmtExpenses = $db->prepare(
                         "UPDATE `{$tblBExpenses}` SET
-                            travel_fund = ?,                            
+                            travel_fund = ?
                         WHERE booking_id = ?"
                     );
                     $stmtExpenses->execute([

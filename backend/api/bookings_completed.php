@@ -28,6 +28,7 @@ $tblBDestination    = tableName('bk_destination');
 $tblBClientCost     = tableName('bk_client_cost');
 $tblBExpenses       = tableName('bk_b_expenses');
 $tblNBExpenses      = tableName('bk_nb_expenses');
+$tblTravelFunds     = tableName('bk_expenses');
 
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -155,6 +156,11 @@ if ($method === 'GET') {
                     nbe.demurrage_fee as nb_demurrage_fee,
                     nbe.extra_drop_fee as nb_extra_drop_fee,
                     nbe.backload_fee as nb_backload_fee,
+                    tf.travel_fund,
+                    tf.cash_back,
+
+                    bkd.stop_order,
+                    bkd.destination_id AS farthest_destination_id
 
                 
                 FROM `{$tblBookings}` b
@@ -171,6 +177,8 @@ if ($method === 'GET') {
                 LEFT JOIN `{$tblBClientCost}` cc ON b.booking_id = cc.booking_id
                 LEFT JOIN `{$tblBExpenses}` be ON b.booking_id = be.booking_id
                 LEFT JOIN `{$tblNBExpenses}` nbe ON b.booking_id = nbe.booking_id
+                LEFT JOIN `{$tblTravelFunds}` tf ON b.booking_id = tf.booking_id
+                LEFT JOIN `{$tblBDestination}` bkd ON b.booking_id = bkd.booking_id
                 WHERE b.booking_id = ?
                 LIMIT 1";
 
@@ -217,7 +225,7 @@ if ($method === 'GET') {
                 booking_personnel_id,
                 personnel_id,
                 assignment_role,
-                rate,
+                COALESCE(gross_rate, rate) AS rate,
                 allowance
             FROM `{$tblBPersonnel}`
             WHERE booking_id = ?
@@ -250,7 +258,7 @@ if ($method === 'POST') {
     try {
         // Confirm booking exists before starting the transaction.
         $stmtBookingExists = $db->prepare(
-            "SELECT booking_id, status_id, customer_id, booking_type_id, depot_id, commodity_type_id
+            "SELECT booking_id, status_id, customer_id, booking_type_id, depot_id, commodity_type_id, destination_id
              FROM `{$tblBookings}`
              WHERE booking_id = ?
              LIMIT 1"
@@ -330,13 +338,18 @@ if ($method === 'POST') {
         );
         $stmtLatestDestination->execute([$id]);
         $latestDestination = $stmtLatestDestination->fetch();
+        $hasBookingDestinations = (bool)$latestDestination;
         if (!$latestDestination) {
-            echoJson(['error' => 'This booking has no destinations in bk_destination.'], 422);
+            $legacyDestinationId = nullableInt($bookingRow['destination_id'] ?? null);
+            if ($legacyDestinationId === null) {
+                echoJson(['error' => 'This booking has no destinations.'], 422);
+            }
+            $latestDestination = ['destination_id' => $legacyDestinationId];
         }
 
         if ($farthestDestinationId === null) {
             $farthestDestinationId = (int)$latestDestination['destination_id'];
-        } else {
+        } elseif ($hasBookingDestinations) {
             $stmtBookingDestination = $db->prepare(
                 "SELECT destination_id
                  FROM `{$tblBDestination}`
@@ -347,6 +360,8 @@ if ($method === 'POST') {
             if (!$stmtBookingDestination->fetch()) {
                 echoJson(['error' => 'The selected farthest destination must belong to this booking.'], 422);
             }
+        } elseif ($farthestDestinationId !== (int)$latestDestination['destination_id']) {
+            echoJson(['error' => 'The selected farthest destination must belong to this booking.'], 422);
         }
         if (
             $customerId === null ||
@@ -410,6 +425,14 @@ if ($method === 'POST') {
         $nb_demurrage_fee = moneyValue($nb_expenses['nb_demurrage_fee'] ?? null);
         $nb_extra_drop_fee = moneyValue($nb_expenses['nb_extra_drop_fee'] ?? null);
         $nb_backload_fee = moneyValue($nb_expenses['nb_backload_fee'] ?? null);
+        $hasTravelFund = array_key_exists('travel_fund', $b_expenses);
+        $travelFund = null;
+        if ($hasTravelFund) {
+            if (!is_numeric($b_expenses['travel_fund'])) {
+                echoJson(['error' => 'Travel fund must be numeric.'], 422);
+            }
+            $travelFund = (float)$b_expenses['travel_fund'];
+        }
 
         // ---------------------------------------------------------------------
         // Personnel Fee
@@ -636,6 +659,62 @@ if ($method === 'POST') {
                 $nb_backload_fee,
             ]);
         }
+
+        if ($hasTravelFund) {
+            $expenseTotalCents = 0;
+            foreach ([
+                $b_gas,
+                $b_parking_fee,
+                $b_toll_fee,
+                $b_entrance_fee,
+                $b_mano,
+                $b_SOP,
+                $b_demurrage_fee,
+                $b_extra_drop_fee,
+                $b_backload_fee,
+                $nb_gas,
+                $nb_parking_fee,
+                $nb_toll_fee,
+                $nb_entrance_fee,
+                $nb_mano,
+                $nb_SOP,
+                $nb_demurrage_fee,
+                $nb_extra_drop_fee,
+                $nb_backload_fee,
+            ] as $expense) {
+                $expenseTotalCents += (int)round($expense * 100);
+            }
+            $travelFundCents = (int)round($travelFund * 100);
+            $cashBack = number_format(
+                ($travelFundCents - $expenseTotalCents) / 100,
+                2,
+                '.',
+                ''
+            );
+
+            $stmtTravelFundsExists = $db->prepare(
+                "SELECT booking_id
+                 FROM `{$tblTravelFunds}`
+                 WHERE booking_id = ?
+                 LIMIT 1"
+            );
+            $stmtTravelFundsExists->execute([$id]);
+            if ($stmtTravelFundsExists->fetch()) {
+                $stmtTravelFunds = $db->prepare(
+                    "UPDATE `{$tblTravelFunds}`
+                     SET travel_fund = ?, cash_back = ?
+                     WHERE booking_id = ?"
+                );
+                $stmtTravelFunds->execute([$travelFund, $cashBack, $id]);
+            } else {
+                $stmtTravelFunds = $db->prepare(
+                    "INSERT INTO `{$tblTravelFunds}` (booking_id, travel_fund, cash_back)
+                     VALUES (?, ?, ?)"
+                );
+                $stmtTravelFunds->execute([$id, $travelFund, $cashBack]);
+            }
+        }
+
         // ---------------------------------------------------------------------
         // Personnel Rate / Allowance
         // ---------------------------------------------------------------------
@@ -649,85 +728,96 @@ if ($method === 'POST') {
             }
 
             $allowedRoles = ['driver', 'helper1', 'helper2'];
+            $seenRoles = [];
 
             foreach ($personnelData as $person) {
-
                 $personnelId = nullableInt($person['personnel_id'] ?? null);
                 $role = trim((string)($person['assignment_role'] ?? ''));
 
-                $rate = nullableFloat($person['rate'] ?? null);
-                $allowance = nullableFloat($person['allowance'] ?? null);
-
-                // Ignore invalid personnel / roles
-                if (
-                    $personnelId === null ||
-                    !in_array($role, $allowedRoles, true)
-                ) {
+                // Empty personnel slots are not assignments.
+                if ($personnelId === null) {
                     continue;
                 }
 
-                // If blank, allowance becomes 0
-                if ($allowance === null) {
-                    $allowance = 0.00;
+                if (!in_array($role, $allowedRoles, true) || isset($seenRoles[$role])) {
+                    $db->rollBack();
+                    echoJson(['error' => 'Invalid or duplicate personnel role.'], 422);
+                }
+                $seenRoles[$role] = true;
+
+                $submittedRate = $person['rate'] ?? null;
+                $cashAdvance = $person['allowance'] ?? 0;
+
+                if (!is_numeric($submittedRate) || !is_numeric($cashAdvance)) {
+                    $db->rollBack();
+                    echoJson(['error' => 'Personnel rate and cash advance must be numeric.'], 422);
                 }
 
-                // Check whether this role already exists for this booking
-                $stmtChkPersonnel = $db->prepare(
-                    "SELECT booking_personnel_id
+                // Convert to cents to avoid doing money subtraction with floating-point values.
+                $submittedRateCents = (int) round((float)$submittedRate * 100);
+                $cashAdvanceCents = (int) round((float)$cashAdvance * 100);
+
+                if ($submittedRateCents < 0 || $cashAdvanceCents < 0) {
+                    $db->rollBack();
+                    echoJson(['error' => 'Personnel rate and cash advance cannot be negative.'], 422);
+                }
+
+                $stmtExisting = $db->prepare(
+                    "SELECT booking_personnel_id, personnel_id, rate, gross_rate
                     FROM `{$tblBPersonnel}`
-                    WHERE booking_id = ?
-                    AND assignment_role = ?
-                    LIMIT 1"
+                    WHERE booking_id = ? AND assignment_role = ?
+                    LIMIT 1
+                    FOR UPDATE"
                 );
+                $stmtExisting->execute([$id, $role]);
+                $existing = $stmtExisting->fetch();
 
-                $stmtChkPersonnel->execute([
-                    $id,
-                    $role
-                ]);
+                if ($existing && (int)$existing['personnel_id'] !== $personnelId) {
+                    $db->rollBack();
+                    echoJson(['error' => 'Submitted personnel does not match the booking assignment.'], 422);
+                }
 
-                $existingPersonnel = $stmtChkPersonnel->fetch();
+                // On the first completion, use the submitted editable rate.
+                // On retries, use the saved gross rate so the deduction is not applied twice.
+                $grossRateCents = $existing && $existing['gross_rate'] !== null
+                    ? (int) round((float)$existing['gross_rate'] * 100)
+                    : $submittedRateCents;
 
-                if ($existingPersonnel) {
+                if ($cashAdvanceCents > $grossRateCents) {
+                    $db->rollBack();
+                    echoJson(['error' => 'Cash advance cannot exceed the personnel rate.'], 422);
+                }
 
-                    // Existing driver/helper -> update rate and allowance
-                    $stmtPersonnelUpdate = $db->prepare(
+                $netRateCents = $grossRateCents - $cashAdvanceCents;
+                $grossRate = number_format($grossRateCents / 100, 2, '.', '');
+                $netRate = number_format($netRateCents / 100, 2, '.', '');
+                $advance = number_format($cashAdvanceCents / 100, 2, '.', '');
+
+                if ($existing) {
+                    $stmtUpdate = $db->prepare(
                         "UPDATE `{$tblBPersonnel}`
-                        SET personnel_id = ?,
-                            rate = ?,
-                            allowance = ?
-                        WHERE booking_id = ?
-                        AND assignment_role = ?"
+                        SET gross_rate = ?, rate = ?, allowance = ?
+                        WHERE booking_personnel_id = ?"
                     );
-
-                    $stmtPersonnelUpdate->execute([
-                        $personnelId,
-                        $rate,
-                        $allowance,
-                        $id,
-                        $role
+                    $stmtUpdate->execute([
+                        $grossRate,
+                        $netRate,
+                        $advance,
+                        $existing['booking_personnel_id'],
                     ]);
-
                 } else {
-
-                    // Role doesn't exist yet -> create it
-                    $stmtPersonnelInsert = $db->prepare(
+                    $stmtInsert = $db->prepare(
                         "INSERT INTO `{$tblBPersonnel}`
-                            (
-                                booking_id,
-                                personnel_id,
-                                assignment_role,
-                                rate,
-                                allowance
-                            )
-                        VALUES (?, ?, ?, ?, ?)"
+                            (booking_id, personnel_id, assignment_role, gross_rate, rate, allowance)
+                        VALUES (?, ?, ?, ?, ?, ?)"
                     );
-
-                    $stmtPersonnelInsert->execute([
+                    $stmtInsert->execute([
                         $id,
                         $personnelId,
                         $role,
-                        $rate,
-                        $allowance
+                        $grossRate,
+                        $netRate,
+                        $advance,
                     ]);
                 }
             }
