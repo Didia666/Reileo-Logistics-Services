@@ -8,6 +8,7 @@ const TABS = [
   { key: 'expenses', label: 'Expenses' },
 ];
 
+
 function Field({ label, required, error, children, hint, style }) {
   return (
     <div style={style || { display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
@@ -32,6 +33,7 @@ const readOnlyStyle = {
 };
 export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, viewOnly }) {
   const [activeTab, setActiveTab] = useState('bookinginfo');
+  const [expenseTab, setExpenseTab] = useState('b_expenses');
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ type: '', msg: '' });
   const [lookupsData, setLookupsData] = useState({
@@ -52,22 +54,7 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
     // vendors: [],
   });
   
-  // const createBlankItem = () => ({
-  //   item_type_id: '',
-  //   item_description: '',
-  //   length: '',
-  //   width: '',
-  //   height: '',
-  //   weight: '',
-  // });
 
-  // const personnelIdForRole = (assignments, role) => {
-  //   const assignment = Array.isArray(assignments)
-  //     ? assignments.find((item) => item.assignment_role === role)
-  //     : null;
-  //   return assignment?.personnel_id ?? '';
-  // };
-  
 
   const blankForm = {
     // item_details: [createBlankItem()],
@@ -91,16 +78,27 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
     fuel_amount: '',
     remarks: '',
 
-    // expenses
-    b_toll_fees: '',
-    b_extra_drop: '',
-    b_extra_helper: '',
-    b_other_expenses: '',
-    nb_parking_fees: '',
-    nb_toll_fees_non_billable: '',
-    nb_demurrage_fees: '',
-    nb_backload_fees: '',
-    nb_other_deductions: '',
+    // billable expenses
+    b_gas: '',
+    b_parking_fee: '',
+    b_toll_fee: '',
+    b_entrance_fee: '',
+    b_mano: '',
+    b_SOP: '',
+    b_demurrage_fee: '',
+    b_extra_drop_fee: '',
+    b_backload_fee: '',
+
+    // non-billable expenses
+    nb_gas: '',
+    nb_parking_fee: '',
+    nb_toll_fee: '',
+    nb_entrance_fee: '',
+    nb_mano: '',
+    nb_SOP: '',
+    nb_demurrage_fee: '',
+    nb_extra_drop_fee: '',
+    nb_backload_fee: '',
   };
 
   const [form, setForm] = useState(blankForm);
@@ -168,19 +166,6 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
     }
   };
 
-  // useEffect(() => {
-  //   if (isOpen) {
-  //     loadLookups();
-  //     setForm({
-  //       delivery_date: editBooking?.delivery_date ?? '',
-  //       plate_no: editBooking?.plate_no ?? '',
-  //     });
-  //     setCompanyOwned(false);
-  //     setActiveTab('bookinginfo');
-  //     setErrors({});
-  //     setToast({ type: '', msg: '' });
-  //   }
-  // }, [isOpen, editBooking]);
 
   useEffect(() => {
       if (!isOpen || !editBooking?.booking_id) return undefined;
@@ -219,16 +204,25 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
             remarks: booking.remarks || '',
 
             // expenses
-            b_toll_fees: booking.b_toll_fees || '',
-            b_extra_drop: booking.b_extra_drop || '',
-            b_extra_helper: booking.b_extra_helper || '',
-            b_other_expenses: booking.b_other_expenses || '',
-            nb_parking_fees: booking.nb_parking_fees || '',
-            nb_toll_fees_non_billable: booking.nb_toll_fees_non_billable || '',
-            nb_demurrage_fees: booking.nb_demurrage_fees || '',
-            nb_backload_fees: booking.nb_backload_fees || '',
-            nb_other_deductions: booking.nb_other_deductions || '',
+            b_gas: booking.b_gas || '',
+            b_parking_fee: booking.b_parking_fee || '',
+            b_toll_fee: booking.b_toll_fee || '',
+            b_entrance_fee: booking.b_entrance_fee || '',
+            b_mano: booking.b_mano || '',
+            b_SOP: booking.b_SOP || '',
+            b_demurrage_fee: booking.b_demurrage_fee || '',
+            b_extra_drop_fee: booking.b_extra_drop_fee || '',
+            b_backload_fee: booking.b_backload_fee || '',
 
+            nb_gas: booking.nb_gas || '',
+            nb_parking_fee: booking.nb_parking_fee || '',
+            nb_toll_fee: booking.nb_toll_fee || '',
+            nb_entrance_fee: booking.nb_entrance_fee || '',
+            nb_mano: booking.nb_mano || '',
+            nb_SOP: booking.nb_SOP || '',
+            nb_demurrage_fee: booking.nb_demurrage_fee || '', 
+            nb_extra_drop_fee: booking.nb_extra_drop_fee || '',
+            nb_backload_fee: booking.nb_backload_fee || '',
           });
         })
         .catch((error) => {
@@ -254,61 +248,6 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
       return next;
     });
   };
-
-  // const addAttachmentRow = (type) => {
-  //   setForm(prev => ({
-  //     ...prev,
-  //     [type]: [
-  //       ...(prev[type] || []),
-  //       type === 'vh_documents'
-  //         ? { document_name: '', document_path: '' }
-  //         : { photo_name: '', photo_path: '' },
-  //     ],
-  //   }));
-  // };
-
-  // const removeAttachmentRow = (type, index) => {
-  //   setForm(prev => ({
-  //     ...prev,
-  //     [type]: (prev[type] || []).filter((_, i) => i !== index),
-  //   }));
-  // };
-
-  // const updateAttachmentRow = (type, index, field, value) => {
-  //   setForm(prev => ({
-  //     ...prev,
-  //     [type]: (prev[type] || []).map((row, i) => i === index ? { ...row, [field]: value } : row),
-  //   }));
-  // };
-
-  // const updateItem = (index, field, value) => {
-  //   setForm(prev => ({
-  //     ...prev,
-  //     item_details: (prev.item_details || []).map((item, itemIndex) => (
-  //       itemIndex === index ? { ...item, [field]: value } : item
-  //     )),
-  //   }));
-  // };
-
-  // const addItem = (index) => {
-  //   setForm(prev => {
-  //     const items = prev.item_details || [];
-  //     const currentItem = items[index];
-
-  //     if (!currentItem?.item_type_id || !String(currentItem.weight || '').trim()) {
-  //       return prev;
-  //     }
-
-  //     return {
-  //       ...prev,
-  //       item_details: [
-  //         ...items.slice(0, index + 1),
-  //         createBlankItem(),
-  //         ...items.slice(index + 1),
-  //       ],
-  //     };
-  //   });
-  // };
 
   const validate = () => {
     const errs = {};
@@ -362,16 +301,28 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
           remarks : form.remarks.trim() || null,
         },
 
-        expenses: {
-          b_toll_fees: form.b_toll_fees ? Number(form.b_toll_fees) : null,
-          b_extra_drop: form.b_extra_drop ? Number(form.b_extra_drop) : null,
-          b_extra_helper: form.b_extra_helper ? Number(form.b_extra_helper) : null,
-          b_other_fees: form.b_other_fees ? Number(form.b_other_fees) : null,
-          nb_parking_fees: form.nb_parking_fees ? Number(form.nb_parking_fees) : null,
-          nb_toll_fees: form.nb_toll_fees ? Number(form.nb_toll_fees) : null,
-          nb_demurrage_fees: form.nb_demurrage_fees ? Number(form.nb_demurrage_fees) : null,
-          nb_backload_fees: form.nb_backload_fees ? Number(form.nb_backload_fees) : null,
-          nb_other_deductions: form.nb_other_deductions ? Number(form.nb_other_deductions) : null,
+        b_expenses: {
+          b_gas: form.b_gas ? Number(form.b_gas) : null,
+          b_parking_fee: form.b_parking_fee ? Number(form.b_parking_fee) : null,
+          b_toll_fee: form.b_toll_fee ? Number(form.b_toll_fee) : null,
+          b_entrance_fee: form.b_entrance_fee ? Number(form.b_entrance_fee) : null,
+          b_mano: form.b_mano ? Number(form.b_mano) : null,
+          b_SOP: form.b_SOP ? Number(form.b_SOP) : null,
+          b_demurrage_fee: form.b_demurrage_fee ? Number(form.b_demurrage_fee) : null,
+          b_extra_drop_fee: form.b_extra_drop_fee ? Number(form.b_extra_drop_fee) : null,
+          b_backload_fee: form.b_backload_fee ? Number(form.b_backload_fee) : null,
+        },
+
+        nb_expenses: {
+          nb_gas: form.nb_gas ? Number(form.nb_gas) : null,
+          nb_parking_fee: form.nb_parking_fee ? Number(form.nb_parking_fee) : null,
+          nb_toll_fee: form.nb_toll_fee ? Number(form.nb_toll_fee) : null,
+          nb_entrance_fee: form.nb_entrance_fee ? Number(form.nb_entrance_fee) : null,
+          nb_mano: form.nb_mano ? Number(form.nb_mano) : null,
+          nb_SOP: form.nb_SOP ? Number(form.nb_SOP) : null,
+          nb_demurrage_fee: form.nb_demurrage_fee ? Number(form.nb_demurrage_fee) : null,
+          nb_extra_drop_fee: form.nb_extra_drop_fee ? Number(form.nb_extra_drop_fee) : null,
+          nb_backload_fee: form.nb_backload_fee ? Number(form.nb_backload_fee) : null,
         }
         
       };
@@ -393,14 +344,22 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
 
   const renderInput = (path, placeholder = '', type = 'text', disabled = false) => {
     const v = path.split('.').reduce((o, k) => (o || {})[k], form) ?? '';
+    const isNumberInput = type === 'number';
     return (
       <input
-        type={type}
+        type={isNumberInput ? 'text' : type}
+        step={type === 'number' ? '0.01' : undefined}
+        inputMode={isNumberInput? 'decimal' : undefined}
         disabled={viewOnly || disabled}
         style={viewOnly || disabled ? readOnlyStyle : inputStyle}
         value={v}
         placeholder={placeholder}
-        onChange={(e) => setField(path, e.target.value)}
+        onChange={(e) => {
+          const next = e.target.value;
+          if (!isNumberInput || /^\d*\.?\d*$/.test(next)) {
+            setField(path, next);
+          }
+        }}
       />
     );
   };
@@ -604,66 +563,99 @@ export default function DeliveredModal({ isOpen, editBooking, onClose, onSaved, 
           </div>
         );  
 
-        case 'expenses':
+      case 'expenses':
         return (
-          <div style={{ padding: 18 }}>
-            <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 14, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
-                Expenses
-              </legend>
-              <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-              <legend style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
-                Billable
-              </legend>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-                <Field label="Toll Fees">
-                  {renderInput('b_toll_fees', 'e.g. 1000', 'number')}
-                </Field>
-                <Field label="Extra Drop">
-                  {renderInput('b_extra_drop', 'e.g. 500', 'number')}
-                </Field>
-                <Field label="Extra Helper">
-                  {renderInput('b_extra_helper', 'e.g. 200', 'number')}
-                </Field>
-                <Field label="Other Expenses/Fees">
-                  {renderInput('b_other_fees', 'e.g. 300', 'number')}
-                </Field>
+          <div>
+            <button onClick={() => setExpenseTab('b_expenses')} style={{ marginRight: 10, padding: '12px 12px', marginLeft: 23, borderRadius: 6, border: '1px solid #000000', background: expenseTab === 'b_expenses' ? '#0a8533' : '#0fb145', color: expenseTab === 'b_expenses' ? '#fff' : '#ffffff', cursor: 'pointer' }}>
+              Billable Expenses
+            </button>
+            <button onClick={() => setExpenseTab('nb_expenses')} style={{ marginRight: 10, padding: '12px 12px', borderRadius: 6, border: '1px solid #000000', background: expenseTab === 'nb_expenses' ? '#7e1515' : '#ff0000', color: expenseTab === 'nb_expenses' ? '#fff' : '#ffffff', cursor: 'pointer' }}>
+              Non-Billable Expenses
+            </button>
+              {expenseTab === 'b_expenses' && (
+              <div>
+                <div style={{ padding: 18 }}>
+                    <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
+                    <legend style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
+                      Billable Expenses
+                    </legend>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                      <Field label="Gas">
+                        {renderInput('b_gas', 'e.g. 1000', 'number')}
+                      </Field>
+                      <Field label="Parking Fee">
+                        {renderInput('b_parking_fee', 'e.g. 500', 'number')}
+                      </Field>
+                      <Field label="Toll Fee">
+                        {renderInput('b_toll_fee', 'e.g. 200', 'number')}
+                      </Field>
+                      <Field label="Entrance Fee">
+                        {renderInput('b_entrance_fee', 'e.g. 300', 'number')}
+                      </Field>
+                      <Field label="Mano">
+                        {renderInput('b_mano', 'e.g. 300', 'number')}
+                      </Field>
+                      <Field label="Standard Operating Procedure (SOP)">
+                        {renderInput('b_SOP', 'e.g. 300', 'number')}
+                      </Field>
+                      <Field label="Demurrage Fee">
+                        {renderInput('b_demurrage_fee', 'e.g. 300', 'number')}
+                      </Field>
+                      <Field label="Extra Drop Fee">
+                        {renderInput('b_extra_drop_fee', 'e.g. 500', 'number')}
+                      </Field>
+                      <Field label="Backload Fee">
+                        {renderInput('b_backload_fee', 'e.g. 500', 'number')}
+                      </Field>
+                      </div>
+                    </fieldset>
                 </div>
-                </fieldset>
                 
-
-                <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
-                <legend style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
-                  Non-Billable
-                </legend>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-                <Field label="Parking Fees">
-                  {renderInput('nb_parking_fees', 'e.g. 100', 'number')}
-                </Field>
-                <Field label="Toll Fees - Non Billable">
-                  {renderInput('nb_toll_fees', 'e.g. 500', 'number')}
-                </Field>
-                <Field label="Demurrage Fees">
-                  {renderInput('nb_demurrage_fees', 'e.g. 200', 'number')}
-                </Field>
-                <Field label="Backload Fees">
-                  {renderInput('nb_backload_fees', 'e.g. 300', 'number')}
-                </Field>
-                <Field label="Other Deductions">
-                  {renderInput('nb_other_deductions', 'e.g. 100', 'number')}
-                </Field>
                 </div>
-                </fieldset>
-
-            </fieldset>
+              )}
+            {expenseTab === 'nb_expenses' && (
+              <div>
+                <div style={{ padding: 18 }}>
+                  <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 14, marginBottom: 18 }}>
+                    <legend style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', padding: '0 6px'}}>
+                      Non-Billable Expenses
+                    </legend>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                     <Field label="Gas">
+                        {renderInput('nb_gas', 'e.g. 1000', 'number')}
+                      </Field>
+                      <Field label="Parking Fee">
+                        {renderInput('nb_parking_fee', 'e.g. 500', 'number')}
+                      </Field>
+                      <Field label="Toll Fee">
+                        {renderInput('nb_toll_fee', 'e.g. 200', 'number')}
+                      </Field>
+                      <Field label="Entrance Fee">
+                        {renderInput('nb_entrance_fee', 'e.g. 300', 'number')}
+                      </Field>
+                      <Field label="Mano">
+                        {renderInput('nb_mano', 'e.g. 300', 'number')}
+                      </Field>
+                      <Field label="Standard Operating Procedure (SOP)">
+                        {renderInput('nb_SOP', 'e.g. 300', 'number')}
+                      </Field>
+                      <Field label="Demurrage Fee">
+                        {renderInput('nb_demurrage_fee', 'e.g. 300', 'number')}
+                      </Field>
+                      <Field label="Extra Drop Fee">
+                        {renderInput('nb_extra_drop_fee', 'e.g. 500', 'number')}
+                      </Field>
+                      <Field label="Backload Fee">
+                        {renderInput('nb_backload_fee', 'e.g. 500', 'number')}
+                      </Field>
+                    </div>
+                  </fieldset>
+                </div>
+                </div>
+              )}
           </div>
-        );
+          )
 
-      
-
-     
-        
-      
 
       default:
         return null;

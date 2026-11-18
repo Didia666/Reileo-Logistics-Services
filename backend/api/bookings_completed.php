@@ -26,7 +26,8 @@ $tblBDestination    = tableName('bk_destination');
 // Completed-booking tables.
 // IMPORTANT: these names match the current database dump.
 $tblBClientCost     = tableName('bk_client_cost');
-$tblBExpenses       = tableName('bk_expenses');
+$tblBExpenses       = tableName('bk_b_expenses');
+$tblNBExpenses      = tableName('bk_nb_expenses');
 
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -136,42 +137,40 @@ if ($method === 'GET') {
                     cc.total_amount,
                     cc.subcon_rate,
 
-                    ex.b_toll_fees,
-                    ex.b_extra_drop,
-                    ex.b_extra_helper,
-                    ex.b_other_fees,
-                    ex.nb_parking_fees,
-                    ex.nb_toll_fees,
-                    ex.nb_demurrage_fees,
-                    ex.nb_backload_fees,
-                    ex.nb_other_deductions
+                    be.gas as b_gas,
+                    be.parking_fee as b_parking_fee,
+                    be.toll_fee as b_toll_fee,
+                    be.entrance_fee as b_entrance_fee,
+                    be.mano as b_mano,
+                    be.SOP as b_SOP,
+                    be.demurrage_fee as b_demurrage_fee,
+                    be.extra_drop_fee as b_extra_drop_fee,
+                    be.backload_fee as b_backload_fee,
+                    nbe.gas as nb_gas,
+                    nbe.parking_fee as nb_parking_fee,
+                    nbe.toll_fee as nb_toll_fee,
+                    nbe.entrance_fee as nb_entrance_fee,
+                    nbe.mano as nb_mano,
+                    nbe.SOP as nb_SOP,
+                    nbe.demurrage_fee as nb_demurrage_fee,
+                    nbe.extra_drop_fee as nb_extra_drop_fee,
+                    nbe.backload_fee as nb_backload_fee,
 
                 
                 FROM `{$tblBookings}` b
-                LEFT JOIN `{$tblBStatuses}` bs
-                    ON b.status_id = bs.status_id
-                LEFT JOIN `{$tblCustomers}` c
-                    ON b.customer_id = c.customer_id
-                LEFT JOIN `{$tblBTypes}` bt
-                    ON b.booking_type_id = bt.booking_type_id
-                LEFT JOIN `{$tblDepots}` d
-                    ON b.depot_id = d.depot_id
-                LEFT JOIN `{$tblCommodityTypes}` ct
-                    ON b.commodity_type_id = ct.commodity_type_id
-                LEFT JOIN `{$tblOrigins}` o
-                    ON b.origin_id = o.origin_id
-                LEFT JOIN `{$tblDestination}` dest
-                    ON b.destination_id = dest.destination_id
-                LEFT JOIN `{$tblBVehicles}` bv
-                    ON b.booking_id = bv.booking_id
-                LEFT JOIN `{$tblVehicles}` v
-                    ON bv.vehicle_id = v.vehicle_id
-                LEFT JOIN `vh_types` vt
-                    ON v.vehicle_type_id = vt.vehicle_type_id
-                LEFT JOIN `{$tblBClientCost}` cc
-                    ON b.booking_id = cc.booking_id
-                LEFT JOIN `{$tblBExpenses}` ex
-                    ON b.booking_id = ex.booking_id
+                LEFT JOIN `{$tblBStatuses}` bs ON b.status_id = bs.status_id
+                LEFT JOIN `{$tblCustomers}` c ON b.customer_id = c.customer_id
+                LEFT JOIN `{$tblBTypes}` bt ON b.booking_type_id = bt.booking_type_id
+                LEFT JOIN `{$tblDepots}` d ON b.depot_id = d.depot_id
+                LEFT JOIN `{$tblCommodityTypes}` ct ON b.commodity_type_id = ct.commodity_type_id
+                LEFT JOIN `{$tblOrigins}` o ON b.origin_id = o.origin_id
+                LEFT JOIN `{$tblDestination}` dest ON b.destination_id = dest.destination_id
+                LEFT JOIN `{$tblBVehicles}` bv ON b.booking_id = bv.booking_id
+                LEFT JOIN `{$tblVehicles}` v ON bv.vehicle_id = v.vehicle_id
+                LEFT JOIN `vh_types` vt ON v.vehicle_type_id = vt.vehicle_type_id
+                LEFT JOIN `{$tblBClientCost}` cc ON b.booking_id = cc.booking_id
+                LEFT JOIN `{$tblBExpenses}` be ON b.booking_id = be.booking_id
+                LEFT JOIN `{$tblNBExpenses}` nbe ON b.booking_id = nbe.booking_id
                 WHERE b.booking_id = ?
                 LIMIT 1";
 
@@ -288,13 +287,15 @@ if ($method === 'POST') {
         $clientCost = $input['client_cost'] ?? [];
         $bookingInfo = $input['booking_info'] ?? [];
         $vehicleAssignment = $input['vehicle_assignment'] ?? [];
-        $expenses = $input['expenses'] ?? [];
+        $b_expenses = $input['b_expenses'] ?? [];
+        $nb_expenses = $input['nb_expenses'] ?? [];
         $personnelData = $input['personnel'] ?? [];
 
         if (!is_array($clientCost)) $clientCost = [];
         if (!is_array($bookingInfo)) $bookingInfo = [];
         if (!is_array($vehicleAssignment)) $vehicleAssignment = [];
-        if (!is_array($expenses)) $expenses = [];
+        if (!is_array($b_expenses)) $b_expenses = [];
+        if (!is_array($nb_expenses)) $nb_expenses = [];
         if (!is_array($personnelData)) {
         $personnelData = [];
         }
@@ -388,15 +389,27 @@ if ($method === 'POST') {
         // Expenses
         // Maps modal names -> actual bk_expenses columns.
         // ---------------------------------------------------------------------
-        $tollFees = moneyValue($expenses['toll_fees'] ?? 0);
-        $extraDrop = moneyValue($expenses['extra_drop'] ?? 0);
-        $extraHelper = moneyValue($expenses['extra_helper'] ?? 0);
-        $otherExpenses = moneyValue($expenses['other_expenses'] ?? 0);
-        $parkingFees = moneyValue($expenses['parking_fees'] ?? 0);
-        $tollFeesNonBillable = moneyValue($expenses['toll_fees_non_billable'] ?? 0);
-        $demurrageFees = moneyValue($expenses['demurrage_fees'] ?? 0);
-        $backloadFees = moneyValue($expenses['backload_fees'] ?? 0);
-        $otherDeductions = moneyValue($expenses['other_deductions'] ?? 0);
+        //b_expenses
+        $b_gas = moneyValue($b_expenses['b_gas'] ?? null);
+        $b_parking_fee = moneyValue($b_expenses['b_parking_fee'] ?? null);
+        $b_toll_fee = moneyValue($b_expenses['b_toll_fee'] ?? null);
+        $b_entrance_fee = moneyValue($b_expenses['b_entrance_fee'] ?? null);
+        $b_mano = moneyValue($b_expenses['b_mano'] ?? null);
+        $b_SOP = moneyValue($b_expenses['b_SOP'] ?? null);
+        $b_demurrage_fee = moneyValue($b_expenses['b_demurrage_fee'] ?? null);
+        $b_extra_drop_fee = moneyValue($b_expenses['b_extra_drop_fee'] ?? null);
+        $b_backload_fee = moneyValue($b_expenses['b_backload_fee'] ?? null);
+
+        //nb expenses
+        $nb_gas = moneyValue($nb_expenses['nb_gas'] ?? null);
+        $nb_parking_fee = moneyValue($nb_expenses['nb_parking_fee'] ?? null);
+        $nb_toll_fee = moneyValue($nb_expenses['nb_toll_fee'] ?? null);
+        $nb_entrance_fee = moneyValue($nb_expenses['nb_entrance_fee'] ?? null);
+        $nb_mano = moneyValue($nb_expenses['nb_mano'] ?? null);
+        $nb_SOP = moneyValue($nb_expenses['nb_SOP'] ?? null);
+        $nb_demurrage_fee = moneyValue($nb_expenses['nb_demurrage_fee'] ?? null);
+        $nb_extra_drop_fee = moneyValue($nb_expenses['nb_extra_drop_fee'] ?? null);
+        $nb_backload_fee = moneyValue($nb_expenses['nb_backload_fee'] ?? null);
 
         // ---------------------------------------------------------------------
         // Personnel Fee
@@ -528,66 +541,99 @@ if ($method === 'POST') {
         // 3) Expenses UPSERT
         // Current DB table is bk_expenses, not bk_booking_expenses.
         // ---------------------------------------------------------------------
-        $stmtExpExists = $db->prepare(
-            "SELECT booking_expenses_id
-             FROM `{$tblBExpenses}`
-             WHERE booking_id = ?
-             LIMIT 1"
-        );
-        $stmtExpExists->execute([$id]);
-
-        if ($stmtExpExists->fetch()) {
-            $stmtExp = $db->prepare(
-                "UPDATE `{$tblBExpenses}`
-                 SET b_toll_fees = ?,
-                     b_extra_drop = ?,
-                     b_extra_helper = ?,
-                     b_other_fees = ?,
-                     nb_parking_fees = ?,
-                     nb_toll_fees = ?,
-                     nb_demurrage_fees = ?,
-                     nb_backload_fees = ?,
-                     nb_other_deduction = ?
-                 WHERE booking_id = ?"
+        $stmtChkBExpenses = $db->prepare("SELECT booking_id FROM `{$tblBExpenses}` WHERE booking_id = ? LIMIT 1");
+        $stmtChkBExpenses->execute([$id]);
+        if ($stmtChkBExpenses->fetch()) {
+            $stmtBExpenses = $db->prepare(
+                "UPDATE `{$tblBExpenses}` SET
+                    gas = ?,
+                    parking_fee = ?,
+                    toll_fee = ?,
+                    entrance_fee = ?,
+                    mano = ?,
+                    sop = ?,
+                    demurrage_fee = ?,
+                    extra_drop_fee = ?,
+                    backload_fee = ?
+                    WHERE booking_id = ?"
             );
-            $stmtExp->execute([
-                $tollFees,
-                $extraDrop,
-                $extraHelper,
-                $otherExpenses,
-                $parkingFees,
-                $tollFeesNonBillable,
-                $demurrageFees,
-                $backloadFees,
-                $otherDeductions,
+            $stmtBExpenses->execute([
+                $b_gas,
+                $b_parking_fee,
+                $b_toll_fee,
+                $b_entrance_fee,
+                $b_mano,
+                $b_SOP,
+                $b_demurrage_fee,
+                $b_extra_drop_fee,
+                $b_backload_fee,
                 $id
             ]);
         } else {
-            $stmtExp = $db->prepare(
+            $stmtBExpenses = $db->prepare(
                 "INSERT INTO `{$tblBExpenses}`
-                    (booking_id,
-                     b_toll_fees,
-                     b_extra_drop,
-                     b_extra_helper,
-                     b_other_fees,
-                     nb_parking_fees,
-                     nb_toll_fees,
-                     nb_demurrage_fees,
-                     nb_backload_fees,
-                     nb_other_deduction)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                    (booking_id, gas, parking_fee, toll_fee, entrance_fee, mano, sop, demurrage_fee, extra_drop_fee, backload_fee)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
-            $stmtExp->execute([
+            $stmtBExpenses->execute([
                 $id,
-                $tollFees,
-                $extraDrop,
-                $extraHelper,
-                $otherExpenses,
-                $parkingFees,
-                $tollFeesNonBillable,
-                $demurrageFees,
-                $backloadFees,
-                $otherDeductions
+                $b_gas,
+                $b_parking_fee,
+                $b_toll_fee,
+                $b_entrance_fee,
+                $b_mano,
+                $b_SOP,
+                $b_demurrage_fee,
+                $b_extra_drop_fee,
+                $b_backload_fee,
+            ]);
+        }
+
+        $stmtChkNBExpenses = $db->prepare("SELECT booking_id FROM `{$tblNBExpenses}` WHERE booking_id = ? LIMIT 1");
+        $stmtChkNBExpenses->execute([$id]);
+        if ($stmtChkNBExpenses->fetch()) {
+            $stmtNBExpenses = $db->prepare(
+                "UPDATE `{$tblNBExpenses}` SET
+                    gas = ?,
+                    parking_fee = ?,
+                    toll_fee = ?,
+                    entrance_fee = ?,
+                    mano = ?,
+                    sop = ?,
+                    demurrage_fee = ?,
+                    extra_drop_fee = ?,
+                    backload_fee = ?
+                    WHERE booking_id = ?"
+            );
+            $stmtNBExpenses->execute([
+                $nb_gas,
+                $nb_parking_fee,
+                $nb_toll_fee,
+                $nb_entrance_fee,
+                $nb_mano,
+                $nb_SOP,
+                $nb_demurrage_fee,
+                $nb_extra_drop_fee,
+                $nb_backload_fee,
+                $id
+            ]);
+        } else {
+            $stmtNBExpenses = $db->prepare(
+                "INSERT INTO `{$tblNBExpenses}`
+                    (booking_id, gas, parking_fee, toll_fee, entrance_fee, mano, sop, demurrage_fee, extra_drop_fee, backload_fee)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            );
+            $stmtNBExpenses->execute([
+                $id,
+                $nb_gas,
+                $nb_parking_fee,
+                $nb_toll_fee,
+                $nb_entrance_fee,
+                $nb_mano,
+                $nb_SOP,
+                $nb_demurrage_fee,
+                $nb_extra_drop_fee,
+                $nb_backload_fee,
             ]);
         }
         // ---------------------------------------------------------------------

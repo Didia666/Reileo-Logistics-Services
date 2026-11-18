@@ -41,7 +41,8 @@ $tblBCCost = tableName('bk_client_cost');
 $tblBPFee = tableName('bk_personnel_fee');
 
 
-$tblBExpenses = tableName('bk_expenses');
+$tblBExpenses = tableName('bk_b_expenses');
+$tblNBExpenses = tableName('bk_nb_expenses');
 $tblBPersonnelFee = tableName('bk_personnel_fee');  
 $tblBClientCost = tableName('bk_client_cost');
 
@@ -88,6 +89,7 @@ function detailSql(
     $tblBVehicles,
     $tblDestination,
     $tblBExpenses,
+    $tblNBExpenses
 ) {
     return "SELECT
                     b.booking_id,
@@ -100,21 +102,30 @@ function detailSql(
                     COALESCE(NULLIF(bv.plate_no, ''), v.plate_no) AS plate_no,
                     r.client_ref_no,
                     f.charges,
-                    bv. odometer,           
+                    bv.odometer,           
                     f.trip_allowance,
                     f.fuel,
                     f.fuel_po,
                     f.fuel_amount,
                     r.remarks,
-                    e.b_toll_fees,
-                    e.b_extra_drop,
-                    e.b_extra_helper,
-                    e.b_other_fees,
-                    e.nb_parking_fees,
-                    e.nb_toll_fees,
-                    e.nb_demurrage_fees,
-                    e.nb_backload_fees,
-                    e.nb_other_deductions,	
+                    be.gas,
+                    be.parking_fee,
+                    be.toll_fee,
+                    be.entrance_fee,
+                    be.mano,
+                    be.sop,
+                    be.demurrage_fee,
+                    be.extra_drop_fee,
+                    be.backload_fee,
+                    nbe.gas,
+                    nbe.parking_fee,
+                    nbe.toll_fee,
+                    nbe.entrance_fee,
+                    nbe.mano,
+                    nbe.sop,
+                    nbe.demurrage_fee,
+                    nbe.extra_drop_fee,
+                    nbe.backload_fee,
                     b.status_id,
                     bs.status_name,
                     b.created_at
@@ -124,7 +135,8 @@ function detailSql(
             LEFT JOIN `{$tblDestination}` dest ON b.destination_id = dest.destination_id
             LEFT JOIN `{$tblBVehicles}` bv ON b.booking_id = bv.booking_id
             LEFT JOIN `{$tblVehicles}` v ON bv.vehicle_id = v.vehicle_id
-            LEFT JOIN `{$tblBExpenses}` e ON b.booking_id = e.booking_id
+            LEFT JOIN `{$tblBExpenses}` be ON b.booking_id = be.booking_id
+            LEFT JOIN `{$tblNBExpenses}` nbe ON b.booking_id = nbe.booking_id
             LEFT JOIN `{$tblBReferences}` r ON b.booking_id = r.booking_id";
 }
 
@@ -143,7 +155,8 @@ switch ($method) {
                     $tblVehicles,
                     $tblBVehicles,
                     $tblDestination,
-                    $tblBExpenses
+                    $tblBExpenses,
+                    $tblNBExpenses
                 );
 
                 $detailSql .= " WHERE b.booking_id = ? LIMIT 1";
@@ -217,182 +230,7 @@ switch ($method) {
         }
         break;
     
-    // case 'POST':
-        
 
-    //     
-    //     try {
-    //         $db->beginTransaction();
-
-    //         $bCols = []; $bPh = []; $bParams = [];
-    //         foreach ([
-    //             'booking_no'=>generateBookingNo($db, $tblBookings),
-    //             'customer_id'=>$customer_id,
-    //             'booking_type_id'=>$booking_type_id,
-    //             'status_id'=>1,
-    //             'created_by'=>(int)$currentUser['user_id'],
-    //             'delivery_date'=>$delivery_date,
-    //             'depot_id'=>$depot_id,
-    //             'commodity_type_id'=>$commodity_type_id,
-    //             'route_code'=>$route_code,
-    //             'trips_number'=>$trips_number,
-    //             'drops_number'=>$drops_number,
-    //             'origin_id'=>$origin_id,
-    //             'destination_id'=>$destination_id,
-    //         ] as $k=>$v) {
-    //             $bCols[] = "`{$k}`";
-    //             $bPh[]   = '?';
-    //             $bParams[] = $v;
-    //         }
-    //         $sql = "INSERT INTO `{$tblBookings}` (" . implode(', ', $bCols) . ") VALUES (" . implode(', ', $bPh) . ")";
-    //         $stmtV = $db->prepare($sql);
-    //         $stmtV->execute($bParams);
-    //         if ($stmtV->rowCount() === 0) { $db->rollBack(); echoJson(['error' => 'Insert failed'], 500); }
-    //         $booking_id = (int)$db->lastInsertId();
-    //         if ($booking_id <= 0) { $db->rollBack(); echoJson(['error' => 'Insert failed: no ID'], 500); }
-
-    //         $blCols = []; $blPh = []; $blParams = [];
-    //         foreach ([
-    //             'booking_id'=>$booking_id,
-    //             'vehicle_id'=>$vehicle_id,
-    //             'vendor_id'=>$vendor_id,
-    //             'plate_no'=>$plate_no,                
-    //         ] as $k=>$v) {
-    //             $blCols[] = "`{$k}`";
-    //             $blPh[]   = '?';
-    //             $blParams[] = $v;
-    //         }
-    //         $sql = "INSERT INTO `{$tblBVehicles}` (" . implode(', ', $blCols) . ") VALUES (" . implode(', ', $blPh) . ")";
-    //         $stmtVl = $db->prepare($sql);
-    //         $stmtVl->execute($blParams);
-
-    //         $bsCols = []; $bsPh = []; $bsParams = [];
-    //         foreach ([
-    //             'booking_id'=>$booking_id,
-    //             'area'=>$area,
-    //             'trip_allowance'=>$trip_allowance,
-    //             'fuel'=>$fuel,
-    //             'fuel_po'=>$fuel_po,
-    //             'fuel_amount'=>$fuel_amount,
-    //         ] as $k=>$v) {
-    //             $bsCols[] = "`{$k}`";
-    //             $bsPh[]   = '?';
-    //             $bsParams[] = $v;
-    //         }
-
-    //         $sql = "INSERT INTO `{$tblBFuel}` (" . implode(', ', $bsCols) . ") VALUES (" . implode(', ', $bsPh) . ")";
-    //         $stmtBs = $db->prepare($sql);
-    //         $stmtBs->execute($bsParams);
-
-    //         $roleBindings = [
-    //             ['driver', $driver_id],
-    //             ['helper1', $helper1_id],
-    //             ['helper2', $helper2_id],
-    //         ];
-
-    //         foreach ($roleBindings as [$role, $personnelId]) {
-    //             if ((int)$personnelId <= 0) {
-    //                 continue;
-    //             }
-
-    //             $stmtBrc = $db->prepare(
-    //                 "INSERT INTO `{$tblBPersonnel}` (booking_id, personnel_id, assignment_role) VALUES (?, ?, ?)"
-    //             );
-    //             $stmtBrc->execute([$booking_id, (int)$personnelId, $role]);
-    //         }
-
-    //         $rCols = []; $rPh = []; $rParams = [];
-    //         foreach ([
-    //             'booking_id'=>$booking_id,
-    //             'client_ref_no'=>$client_ref_no,
-    //             'other_ref_no'=>$other_ref_no,
-    //             'remarks'=>$remarks
-    //         ] as $k=>$v) {
-    //             $rCols[] =  "`{$k}`";
-    //             $rPh[] = '?';
-    //             $rParams[] = $v;
-    //         }
-
-    //         $sql = "INSERT INTO `{$tblBReferences}` (" . implode(', ', $rCols) . ") VALUES (" . implode(', ', $rPh) . ")";
-    //         $stmtR = $db->prepare($sql);
-    //         $stmtR->execute($rParams);
-
-    //         $stmtId = $db->prepare(
-    //             "INSERT INTO `{$tblBItems}`
-    //                 (booking_id, item_type_id, item_description, length, width, height, weight)
-    //              VALUES (?, ?, ?, ?, ?, ?, ?)"
-    //         );
-
-    //         foreach ($item_details as $item) {
-    //             if (!is_array($item)) {
-    //                 continue;
-    //             }
-
-    //             $itemTypeId = $item['item_type_id'] ?? null;
-    //             $itemDescription = trim((string)($item['item_description'] ?? ''));
-    //             $length = $item['length'] ?? null;
-    //             $width = $item['width'] ?? null;
-    //             $height = $item['height'] ?? null;
-    //             $weight = $item['weight'] ?? null;
-
-    //             // The form keeps one blank row ready for the next item.
-    //             if (($itemTypeId === null || $itemTypeId === '')
-    //                 && $itemDescription === ''
-    //                 && ($length === null || $length === '')
-    //                 && ($width === null || $width === '')
-    //                 && ($height === null || $height === '')
-    //                 && ($weight === null || $weight === '')) {
-    //                 continue;
-    //             }
-
-    //             $stmtId->execute([
-    //                 $booking_id,
-    //                 $itemTypeId !== null && $itemTypeId !== '' ? (int)$itemTypeId : null,
-    //                 $itemDescription !== '' ? $itemDescription : null,
-    //                 $length !== null && $length !== '' ? (float)$length : null,
-    //                 $width !== null && $width !== '' ? (float)$width : null,
-    //                 $height !== null && $height !== '' ? (float)$height : null,
-    //                 $weight !== null && $weight !== '' ? (float)$weight : null,
-    //             ]);
-    //         }
-        
-
-    //         if (is_array($bk_photos)) {
-    //             $stmtPhoto = $db->prepare("
-    //                 INSERT INTO `{$tblBPhotos}`
-    //                 (booking_id, photo_name, photo_path)
-    //                 VALUES (?, ?, ?)
-    //             ");
-
-    //             foreach ($bk_photos as $row) {
-    //                 $photoName = trim($row['photo_name'] ?? '');
-    //                 $photoPath = trim($row['photo_path'] ?? '');
-
-    //                 // Ignore completely empty rows
-    //                 if ($photoName === '' && $photoPath === '') {
-    //                     continue;
-    //                 }
-
-    //                 $stmtPhoto->execute([
-    //                     $booking_id,
-    //                     $photoName !== '' ? $photoName : null,
-    //                     $photoPath !== '' ? $photoPath : null
-    //                 ]);
-    //             }
-    //         }
-
-    //         $db->commit();
-
-    //         $stmtg = $db->prepare("SELECT * FROM `{$tblBookings}` WHERE booking_id = ? LIMIT 1");
-    //         $stmtg->execute([$booking_id]);
-    //         $saved = $stmtg->fetch();
-    //         echoJson($saved, 201);
-
-    //     } catch (PDOException $e) {
-    //         if ($db->inTransaction()) $db->rollBack();
-    //         echoJson(['error' => 'DB error: ' . $e->getMessage()], 500);
-    //     }
-    //     break;
 
         case 'POST':
             if ($id <= 0) echoJson(['error' => 'ID is required'], 400);
@@ -403,7 +241,8 @@ switch ($method) {
             $booking_info = $input['booking_info'] ?? [];
             $fuel_trip = $input['fuel_trip'] ?? [];
             $references = $input['references'] ?? [];
-            $expenses = $input['expenses'] ?? [];
+            $b_expenses = $input['b_expenses'] ?? [];
+            $nb_expenses = $input['nb_expenses'] ?? [];
 
             //booking_info
 
@@ -434,16 +273,27 @@ switch ($method) {
             $client_ref_no = trim($references['client_ref_no'] ?? '');
             $remarks = trim($references['remarks'] ?? '');
 
-            //expenses
-            $b_toll_fees = ($expenses['b_toll_fees'] ?? '') !== '' ? (float)$expenses['b_toll_fees'] : null;
-            $b_extra_drop = ($expenses['b_extra_drop'] ?? '') !== '' ? (float)$expenses['b_extra_drop'] : null;
-            $b_extra_helper = ($expenses['b_extra_helper'] ?? '') !== '' ? (float)$expenses['b_extra_helper'] : null;
-            $b_other_fees = ($expenses['b_other_fees'] ?? '') !== '' ? (float)$expenses['b_other_fees'] : null;
-            $nb_parking_fees = ($expenses['nb_parking_fees'] ?? '') !== '' ? (float)$expenses['nb_parking_fees'] : null;
-            $nb_toll_fees = ($expenses['nb_toll_fees'] ?? '') !== '' ? (float)$expenses['nb_toll_fees'] : null;
-            $nb_demurrage_fees = ($expenses['nb_demurrage_fees'] ?? '') !== '' ? (float)$expenses['nb_demurrage_fees'] : null;
-            $nb_backload_fees = ($expenses['nb_backload_fees'] ?? '') !== '' ? (float)$expenses['nb_backload_fees'] : null;
-            $nb_other_deductions = ($expenses['nb_other_deductions'] ?? '') !== '' ? (float)$expenses['nb_other_deductions'] : null;
+            //b_expenses
+            $b_gas = ($b_expenses['b_gas'] ?? '') !== '' ? (float)$b_expenses['b_gas'] : null;
+            $b_parking_fee = ($b_expenses['b_parking_fee'] ?? '') !== '' ? (float)$b_expenses['b_parking_fee'] : null;
+            $b_toll_fee = ($b_expenses['b_toll_fee'] ?? '') !== '' ? (float)$b_expenses['b_toll_fee'] : null;
+            $b_entrance_fee = ($b_expenses['b_entrance_fee'] ?? '') !== '' ? (float)$b_expenses['b_entrance_fee'] : null;
+            $b_mano = ($b_expenses['b_mano'] ?? '') !== '' ? (float)$b_expenses['b_mano'] : null;
+            $b_SOP = ($b_expenses['b_SOP'] ?? '') !== '' ? (float)$b_expenses['b_SOP'] : null;
+            $b_demurrage_fee = ($b_expenses['b_demurrage_fee'] ?? '') !== '' ? (float)$b_expenses['b_demurrage_fee'] : null;
+            $b_extra_drop_fee = ($b_expenses['b_extra_drop_fee'] ?? '') !== '' ? (float)$b_expenses['b_extra_drop_fee'] : null;
+            $b_backload_fee = ($b_expenses['b_backload_fee'] ?? '') !== '' ? (float)$b_expenses['b_backload_fee'] : null;
+
+            //nb expenses
+            $nb_gas = ($nb_expenses['nb_gas'] ?? '') !== '' ? (float)$nb_expenses['nb_gas'] : null;
+            $nb_parking_fee = ($nb_expenses['nb_parking_fee'] ?? '') !== '' ? (float)$nb_expenses['nb_parking_fee'] : null;
+            $nb_toll_fee = ($nb_expenses['nb_toll_fee'] ?? '') !== '' ? (float)$nb_expenses['nb_toll_fee'] : null;
+            $nb_entrance_fee = ($nb_expenses['nb_entrance_fee'] ?? '') !== '' ? (float)$nb_expenses['nb_entrance_fee'] : null;
+            $nb_mano = ($nb_expenses['nb_mano'] ?? '') !== '' ? (float)$nb_expenses['nb_mano'] : null;
+            $nb_SOP = ($nb_expenses['nb_SOP'] ?? '') !== '' ? (float)$nb_expenses['nb_SOP'] : null;
+            $nb_demurrage_fee = ($nb_expenses['nb_demurrage_fee'] ?? '') !== '' ? (float)$nb_expenses['nb_demurrage_fee'] : null;
+            $nb_extra_drop_fee = ($nb_expenses['nb_extra_drop_fee'] ?? '') !== '' ? (float)$nb_expenses['nb_extra_drop_fee'] : null;
+            $nb_backload_fee = ($nb_expenses['nb_backload_fee'] ?? '') !== '' ? (float)$nb_expenses['nb_backload_fee'] : null;
 
             if ($plate_no  === '') echoJson(['error' => 'Plate Number is required'], 400);
             if ($delivered_datetime === '') echoJson(['error' => 'Delivered Date is required'], 400);
@@ -546,52 +396,99 @@ switch ($method) {
                 $stmtEMI->execute([$id, $RData['client_ref_no'], $RData['remarks']]);
             }
 
-            $stmtChkExpenses = $db->prepare("SELECT booking_id FROM `{$tblBExpenses}` WHERE booking_id = ? LIMIT 1");
-            $stmtChkExpenses->execute([$id]);
-            if ($stmtChkExpenses->fetch()) {
-                $stmtExpenses = $db->prepare(
+            $stmtChkBExpenses = $db->prepare("SELECT booking_id FROM `{$tblBExpenses}` WHERE booking_id = ? LIMIT 1");
+            $stmtChkBExpenses->execute([$id]);
+            if ($stmtChkBExpenses->fetch()) {
+                $stmtBExpenses = $db->prepare(
                     "UPDATE `{$tblBExpenses}` SET
-                        b_toll_fees = ?,
-                        b_extra_drop = ?,
-                        b_extra_helper = ?,
-                        b_other_fees = ?,
-                        nb_parking_fees = ?,
-                        nb_toll_fees = ?,
-                        nb_demurrage_fees = ?,
-                        nb_backload_fees = ?,
-                        nb_other_deductions = ?
+                        gas = ?,
+                        parking_fee = ?,
+                        toll_fee = ?,
+                        entrance_fee = ?,
+                        mano = ?,
+                        sop = ?,
+                        demurrage_fee = ?,
+                        extra_drop_fee = ?,
+                        backload_fee = ?
                      WHERE booking_id = ?"
                 );
-                $stmtExpenses->execute([
-                    $b_toll_fees,
-                    $b_extra_drop,
-                    $b_extra_helper,
-                    $b_other_fees,
-                    $nb_parking_fees,
-                    $nb_toll_fees,
-                    $nb_demurrage_fees,
-                    $nb_backload_fees,
-                    $nb_other_deductions,
+                $stmtBExpenses->execute([
+                    $b_gas,
+                    $b_parking_fee,
+                    $b_toll_fee,
+                    $b_entrance_fee,
+                    $b_mano,
+                    $b_SOP,
+                    $b_demurrage_fee,
+                    $b_extra_drop_fee,
+                    $b_backload_fee,
                     $id
                 ]);
             } else {
-                $stmtExpenses = $db->prepare(
+                $stmtBExpenses = $db->prepare(
                     "INSERT INTO `{$tblBExpenses}`
-                        (booking_id, b_toll_fees, b_extra_drop, b_extra_helper, b_other_fees,
-                         nb_parking_fees, nb_toll_fees, nb_demurrage_fees, nb_backload_fees, nb_other_deductions)
+                        (booking_id, gas, parking_fee, toll_fee, entrance_fee, mano, sop, demurrage_fee, extra_drop_fee, backload_fee)
                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                 );
-                $stmtExpenses->execute([
+                $stmtBExpenses->execute([
                     $id,
-                    $b_toll_fees,
-                    $b_extra_drop,
-                    $b_extra_helper,
-                    $b_other_fees,
-                    $nb_parking_fees,
-                    $nb_toll_fees,
-                    $nb_demurrage_fees,
-                    $nb_backload_fees,
-                    $nb_other_deductions
+                    $b_gas,
+                    $b_parking_fee,
+                    $b_toll_fee,
+                    $b_entrance_fee,
+                    $b_mano,
+                    $b_SOP,
+                    $b_demurrage_fee,
+                    $b_extra_drop_fee,
+                    $b_backload_fee,
+                ]);
+            }
+
+            $stmtChkNBExpenses = $db->prepare("SELECT booking_id FROM `{$tblNBExpenses}` WHERE booking_id = ? LIMIT 1");
+            $stmtChkNBExpenses->execute([$id]);
+            if ($stmtChkNBExpenses->fetch()) {
+                $stmtNBExpenses = $db->prepare(
+                    "UPDATE `{$tblNBExpenses}` SET
+                        gas = ?,
+                        parking_fee = ?,
+                        toll_fee = ?,
+                        entrance_fee = ?,
+                        mano = ?,
+                        sop = ?,
+                        demurrage_fee = ?,
+                        extra_drop_fee = ?,
+                        backload_fee = ?
+                     WHERE booking_id = ?"
+                );
+                $stmtNBExpenses->execute([
+                    $nb_gas,
+                    $nb_parking_fee,
+                    $nb_toll_fee,
+                    $nb_entrance_fee,
+                    $nb_mano,
+                    $nb_SOP,
+                    $nb_demurrage_fee,
+                    $nb_extra_drop_fee,
+                    $nb_backload_fee,
+                    $id
+                ]);
+            } else {
+                $stmtNBExpenses = $db->prepare(
+                    "INSERT INTO `{$tblNBExpenses}`
+                        (booking_id, gas, parking_fee, toll_fee, entrance_fee, mano, sop, demurrage_fee, extra_drop_fee, backload_fee)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                );
+                $stmtNBExpenses->execute([
+                    $id,
+                    $nb_gas,
+                    $nb_parking_fee,
+                    $nb_toll_fee,
+                    $nb_entrance_fee,
+                    $nb_mano,
+                    $nb_SOP,
+                    $nb_demurrage_fee,
+                    $nb_extra_drop_fee,
+                    $nb_backload_fee,
                 ]);
             }
 
